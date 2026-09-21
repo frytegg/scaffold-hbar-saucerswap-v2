@@ -7,7 +7,7 @@ import "@nomicfoundation/hardhat-chai-matchers";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
-// Only load the Hedera forking plugin when starting the local node (yarn hardhat:chain / yarn hardhat:fork).
+// Only load the Hedera forking plugin where a script sets HEDERA_FORKING (`chain` and `test`).
 // Deploying to an already-running node doesn't need it and would fail with EADDRINUSE.
 if (process.env.HEDERA_FORKING === "true") {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional plugin load

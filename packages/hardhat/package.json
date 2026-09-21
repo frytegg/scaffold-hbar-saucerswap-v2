@@ -6,17 +6,16 @@
     "account:generate": "hardhat run scripts/generateAccount.ts",
     "account:import": "hardhat run scripts/importAccount.ts",
     "account:reveal-pk": "hardhat run scripts/revealPK.ts",
-    "chain": "HEDERA_FORKING=true hardhat node --network hardhat --no-deploy",
+    "chain": "cross-env HEDERA_FORKING=true hardhat node --network hardhat --no-deploy",
     "check-types": "tsc --noEmit --incremental",
     "compile": "hardhat compile",
     "clean": "hardhat clean",
     "deploy": "ts-node scripts/runHardhatDeployWithPK.ts",
     "flatten": "hardhat flatten",
-    "fork": "MAINNET_FORKING_ENABLED=true HEDERA_FORKING=true hardhat node --network hardhat --no-deploy",
-    "format": "prettier --write './**/*.(ts|sol)'",
+    "format": "prettier --write \"./**/*.(ts|sol)\"",
     "lint": "eslint",
     "lint-staged": "eslint",
-    "test": "HEDERA_FORKING=true REPORT_GAS=true hardhat test"
+    "test": "cross-env HEDERA_FORKING=true hardhat test"
   },
   "devDependencies": {
     "@ethersproject/abi": "~5.7.0",
@@ -34,6 +33,7 @@
     "@typescript-eslint/eslint-plugin": "~8.27.0",
     "@typescript-eslint/parser": "~8.27.0",
     "chai": "~4.5.0",
+    "cross-env": "^10.1.0",
     "eslint": "~9.23.0",
     "eslint-config-prettier": "~10.1.1",
     "eslint-plugin-prettier": "~5.2.4",

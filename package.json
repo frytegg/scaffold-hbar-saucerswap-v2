@@ -20,7 +20,6 @@
     "hardhat:compile": "yarn workspace @sh/hardhat compile",
     "hardhat:deploy": "yarn workspace @sh/hardhat deploy",
     "hardhat:flatten": "yarn workspace @sh/hardhat flatten",
-    "hardhat:fork": "yarn workspace @sh/hardhat fork",
     "hardhat:format": "yarn workspace @sh/hardhat format",
     "hardhat:lint": "yarn workspace @sh/hardhat lint",
     "hardhat:lint-staged": "yarn workspace @sh/hardhat lint-staged",
