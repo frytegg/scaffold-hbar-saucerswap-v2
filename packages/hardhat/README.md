@@ -1,6 +1,6 @@
 # Hardhat package (Hedera)
 
-Hardhat config, contracts, deploy scripts, tests, and Hashscan verification for this monorepo.
+Hardhat config, contracts, deploy scripts, and tests for this monorepo.
 
 ## Local development
 
@@ -25,9 +25,9 @@ From the repo root, use the explicit `hardhat:*` scripts for this package. Insid
    yarn hardhat:test
    ```
 
-## Deploy and verify on Hedera testnet/mainnet
+## Deploy on Hedera testnet/mainnet
 
-You need a deployer account with HBAR on the target network. Without funds, deploy and verify will fail with "Sender account not found".
+You need a deployer account with HBAR on the target network. Without funds, deploy will fail with "Sender account not found".
 
 1. **Generate or import an account** (from the repo root):
    ```bash
@@ -48,19 +48,11 @@ You need a deployer account with HBAR on the target network. Without funds, depl
    ```
    You will be prompted to enter the password to decrypt your deployer key.
 
-4. **Verify on Hashscan** (uses deployment JSON under `deployments/<network>/`, which includes compiler metadata and sources):
-   ```bash
-   yarn hardhat:verify:testnet   # all contracts on chain 296
-   yarn hardhat:verify:mainnet   # all contracts on chain 295
-   yarn workspace @sh/hardhat verify:contract -- HederaToken testnet
-   yarn workspace @sh/hardhat verify:contract -- HederaToken testnet 0xYourContractAddress
-   ```
-
 ## Layout
 
 - `contracts/` — Solidity sources
 - `deploy/` — hardhat-deploy scripts (e.g. `00_deploy_hedera_token.ts`)
-- `scripts/` — generateAccount, importAccount, verifyHedera.js, etc.
+- `scripts/` — deployer account scripts, the deploy wrapper, TypeScript ABI generation
 - `test/` — contract tests
 - `hardhat.config.ts` — networks (`hardhat`, `localhost` for RPC at 127.0.0.1:8545, `hederaTestnet`, `hederaMainnet`)
 

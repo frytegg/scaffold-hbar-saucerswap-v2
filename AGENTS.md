@@ -32,7 +32,6 @@ yarn hardhat:compile
 
 # Live networks
 yarn hardhat:deploy --network hederaTestnet   # or hederaMainnet
-yarn hardhat:verify:testnet
 
 # Deployer account
 yarn hardhat:account:generate
