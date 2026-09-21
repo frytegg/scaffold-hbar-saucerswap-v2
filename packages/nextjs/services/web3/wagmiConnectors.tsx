@@ -11,7 +11,7 @@ const { walletConnectProjectId } = scaffoldConfig;
 // wallets are offered, so the app boots with an empty environment and creates no WalletConnect connector.
 const wallets = walletConnectProjectId ? [metaMaskWallet, walletConnectWallet] : [injectedWallet];
 
-const DEV_CHAIN_IDS = new Set<number>([chains.hardhat.id, chains.foundry.id, chains.hederaTestnet.id]);
+const DEV_CHAIN_IDS = new Set<number>([chains.hardhat.id, chains.hederaTestnet.id]);
 
 const hasDevNetwork = scaffoldConfig.targetNetworks.some(n => DEV_CHAIN_IDS.has(n.id));
 

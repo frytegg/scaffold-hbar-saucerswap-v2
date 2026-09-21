@@ -1,6 +1,6 @@
 # Scaffold-HBAR — Blank starter
 
-Minimal Hedera dApp baseline: Next.js, Hardhat or Foundry, and Hedera networks (testnet, mainnet, local fork). No opinionated product UI — you add the app on top.
+Minimal Hedera dApp baseline: Next.js, Hardhat, and Hedera networks (testnet, mainnet, local fork). No opinionated product UI — you add the app on top.
 
 CLI key: `blank` (branch `templates/blank-template`).
 
@@ -10,7 +10,7 @@ The full product guide — CLI flags, npm vs Yarn, deploy, and verify — lives 
 
 - Next.js App Router with wallet connect, **Debug Contracts**, and a local block explorer
 - Sample HTS contracts (`HederaToken`, `HtsTokenCreator`) so Debug Contracts has something to call
-- Hardhat and Foundry packages (the CLI can drop one)
+- Hardhat package (contracts, deploy scripts, tests)
 - Hashio RPC + Mirror Node config for Hedera testnet and mainnet
 - Package manager: Yarn (recommended) or npm — see `template.json`
 
@@ -34,7 +34,6 @@ This branch uses Yarn workspaces, so clone-and-run needs Yarn. Apps created with
   ```bash
   corepack enable && corepack prepare yarn@stable --activate
   ```
-- **If using Foundry:** [Foundry](https://book.getfoundry.sh/getting-started/installation) (`forge`, `cast`, `anvil`)
 
 ### Quick start
 
@@ -60,15 +59,14 @@ yarn install
 yarn next:dev
 ```
 
-`yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running fork. Local Hardhat and Foundry workflows are in [`packages/hardhat/README.md`](packages/hardhat/README.md) and [`packages/foundry/README.md`](packages/foundry/README.md). Deploy and verify on testnet/mainnet: [Hedera docs](https://docs.hedera.com/solutions/tools/scaffold-hbar/index#deploying-to-testnet).
+`yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running fork. The local Hardhat workflow is in [`packages/hardhat/README.md`](packages/hardhat/README.md). Deploy and verify on testnet/mainnet: [Hedera docs](https://docs.hedera.com/solutions/tools/scaffold-hbar/index#deploying-to-testnet).
 
 ## Project layout
 
 - **packages/hardhat** — Hardhat config, contracts, `deploy/` scripts, tests
-- **packages/foundry** — Forge config, contracts, `script/` deploy scripts, tests
 - **packages/nextjs** — Next.js app, RainbowKit, wagmi, scaffold config
 
-Network and RPC URLs are in `packages/hardhat/hardhat.config.ts` and `packages/foundry/foundry.toml` respectively.
+Network and RPC URLs are in `packages/hardhat/hardhat.config.ts`.
 
 ## Links
 
