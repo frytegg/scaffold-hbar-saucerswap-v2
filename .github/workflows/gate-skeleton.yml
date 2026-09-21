@@ -1,0 +1,150 @@
+name: Gate (real path)
+
+# Runs in the public skeleton repository only. Every leg scaffolds through the path a judge uses,
+#   npx create-scaffold-hbar@latest <dir> --template <this repository>
+# with one switch changed against the baseline leg, plus the pairs of switches that interact, then runs strict
+# lint, types, production build and a boot with no env file. Each leg prints the runner's unauthenticated GitHub
+# rate limit first: a failed leg next to an exhausted quota is the runner's, not the template's.
+# No secret is used anywhere. tools/gate/README.md describes each step.
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Nightly, away from 17:00-18:00 UTC.
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: gate-real-path-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  real-path:
+    if: github.repository == 'frytegg/hbar-template-gate-skeleton'
+    name: ${{ matrix.leg }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    # Only the two legs whose flags are exercised "while the CLI's help lists them" may fail without failing the run.
+    continue-on-error: ${{ matrix.exploratory == true }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Baseline: Node 20.18.3, -s hardhat, --yes, the template's default package manager, skills off, CI=true.
+          - leg: baseline
+            node: "20.18.3"
+            options: "--solidity-framework hardhat"
+          # BLOCKING. No -s: the single-entry capability of template.json has to select Hardhat by itself.
+          - leg: no-framework-flag
+            node: "20.18.3"
+            options: ""
+          - leg: "no-framework-flag-with-npm"
+            node: "20.18.3"
+            options: "--package-manager npm"
+          # No --yes: every open prompt is answered by a flag, because a runner has no TTY.
+          - leg: flags-instead-of-yes
+            node: "20.18.3"
+            options: "--solidity-framework hardhat --prompts flags"
+          - leg: "package-manager-npm"
+            node: "20.18.3"
+            options: "--solidity-framework hardhat --package-manager npm"
+          # The registry's latest major (12) refuses unknown flags; it needs Node 22.22.2+, 24.15.0+ or 26+.
+          - leg: "package-manager-npm-major-12"
+            node: "lts/*"
+            npm-major: "12"
+            options: "--solidity-framework hardhat --package-manager npm"
+          - leg: skills-on
+            node: "20.18.3"
+            options: "--solidity-framework hardhat --skills on"
+          - leg: "skills-on-with-npm"
+            node: "20.18.3"
+            options: "--solidity-framework hardhat --skills on --package-manager npm"
+          - leg: ci-variable-unset
+            node: "20.18.3"
+            options: "--solidity-framework hardhat --unset-ci"
+          - leg: node-22
+            node: "22"
+            options: "--solidity-framework hardhat"
+          - leg: node-lts
+            node: "lts/*"
+            options: "--solidity-framework hardhat"
+          - leg: ci-flag-instead-of-yes
+            node: "20.18.3"
+            options: "--solidity-framework hardhat --prompts ci"
+            exploratory: true
+          - leg: no-directory-argument
+            node: "20.18.3"
+            options: "--solidity-framework hardhat --no-directory"
+            exploratory: true
+    steps:
+      - name: Checkout (for the gate scripts only; the project comes from the CLI)
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Replace the bundled package manager CLI with the requested major
+        if: ${{ matrix.npm-major }}
+        run: npm install --global "npm@${{ matrix.npm-major }}"
+
+      - name: Scaffold through the real path and check the project
+        run: >
+          bash tools/gate/scaffold-and-check.sh
+          --template "${{ github.repository }}"
+          --work-dir "$RUNNER_TEMP/gate"
+          --root-scripts "lint:strict typecheck build"
+          ${{ matrix.options }}
+
+      - name: Upload the step logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-path-logs-${{ matrix.leg }}
+          path: ${{ runner.temp }}/gate/logs
+          if-no-files-found: warn
+
+  literal-command-control:
+    # Negative control for the command as the bounty brief prints it. It records and never fails the run.
+    if: github.repository == 'frytegg/hbar-template-gate-skeleton'
+    name: literal command, ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Node 20.18.3 bundles major 10. Majors 11 and 12 are installed on the current LTS.
+          - label: "npm-major-10"
+            node: "20.18.3"
+          - label: "npm-major-11"
+            node: "lts/*"
+            npm-major: "11"
+          - label: "npm-major-12"
+            node: "lts/*"
+            npm-major: "12"
+    steps:
+      - name: Checkout (for the control script)
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Replace the bundled package manager CLI with the requested major
+        if: ${{ matrix.npm-major }}
+        run: npm install --global "npm@${{ matrix.npm-major }}"
+
+      - name: Record how the brief's literal command ends
+        continue-on-error: true
+        run: bash tools/gate/literal-command-control.sh --template "${{ github.repository }}"
