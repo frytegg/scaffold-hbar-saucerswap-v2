@@ -1,0 +1,8 @@
+title = "gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Vendored package-manager release: minified code that trips the generic-api-key rule."
+paths = ['''(^|/)\.yarn/releases/''']
