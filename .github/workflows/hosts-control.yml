@@ -1,0 +1,67 @@
+name: Hosts control
+
+# Runs in the public skeleton repository only. The same gate script scaffolds the hosts' own blank template, so
+# that a red leg of "Gate (real path)" can be attributed: red here as well means the base, green here means us.
+# It records and never blocks. Reds seen on the hosts' template so far, both on Windows only: the default
+# package manager under CI=true stops at the install with YN0028, and the second package manager fails the
+# production build because the @x402 guard of next.config.ts is missing on that branch.
+# The hosts' template has none of our alias scripts, hence the stock script names below.
+
+on:
+  schedule:
+    # Nightly, away from 17:00-18:00 UTC, after "Gate (real path)".
+    - cron: "11 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  hosts-blank-template:
+    if: github.repository == 'frytegg/hbar-template-gate-skeleton'
+    name: ${{ matrix.leg }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: default-package-manager
+            options: ""
+          - leg: default-package-manager-ci-variable-unset
+            options: "--unset-ci"
+          - leg: "package-manager-npm"
+            options: "--package-manager npm"
+          - leg: "ci-variable-unset-with-npm"
+            options: "--unset-ci --package-manager npm"
+    steps:
+      - name: Checkout (for the gate scripts only)
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.18.3"
+
+      - name: Scaffold the hosts' blank template and check the project
+        run: >
+          bash tools/gate/scaffold-and-check.sh
+          --template "hedera-dev/scaffold-hbar#templates/blank-template"
+          --work-dir "$RUNNER_TEMP/gate"
+          --solidity-framework hardhat
+          --root-scripts "lint next:check-types next:build"
+          --serve-script next:serve
+          ${{ matrix.options }}
+
+      - name: Upload the step logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosts-control-logs-${{ matrix.leg }}
+          path: ${{ runner.temp }}/gate/logs
+          if-no-files-found: warn
