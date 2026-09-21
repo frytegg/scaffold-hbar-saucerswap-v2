@@ -8,11 +8,14 @@ import { ENCRYPTED_KEY_ENV, NO_DEPLOYER_KEY, RUNTIME_KEY_ENV } from "../utils/de
 
 const LOCAL_NETWORKS = new Set(["localhost", "hardhat"]);
 
+// Running Hardhat's CLI entry with the current Node binary needs no shell on any platform,
+// so user-supplied arguments are never concatenated into a command line.
+const HARDHAT_CLI = require.resolve("hardhat/internal/cli/bootstrap");
+
 function runHardhatDeploy(): void {
-  const hardhat = spawn("hardhat", ["deploy", ...process.argv.slice(2)], {
+  const hardhat = spawn(process.execPath, [HARDHAT_CLI, "deploy", ...process.argv.slice(2)], {
     stdio: "inherit",
     env: process.env,
-    shell: process.platform === "win32",
   });
 
   hardhat.on("error", error => {
