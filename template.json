@@ -1,0 +1,107 @@
+{
+  "name": "hardhat-base",
+  "description": "Hardhat-only Scaffold-HBAR base: Next.js frontend, sample HTS contracts, conventional root scripts, and no default keys.",
+  "create-scaffold-hbar": {
+    "capabilities": {
+      "frontend": ["nextjs-app"],
+      "solidityFramework": ["hardhat"],
+      "packageManager": ["yarn", "npm"]
+    },
+    "defaults": {
+      "frontend": "nextjs-app",
+      "solidityFramework": "hardhat",
+      "packageManager": "yarn"
+    },
+    "envVars": [
+      {
+        "key": "NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID",
+        "description": "packages/nextjs/.env.local, optional. WalletConnect project id. Empty: only browser-injected wallets and the burner wallet are offered."
+      },
+      {
+        "key": "NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL",
+        "description": "packages/nextjs/.env.local, optional. JSON-RPC URL the frontend uses for Hedera testnet (default https://testnet.hashio.io/api)."
+      },
+      {
+        "key": "NEXT_PUBLIC_HEDERA_MAINNET_RPC_URL",
+        "description": "packages/nextjs/.env.local, optional. JSON-RPC URL the frontend uses for Hedera mainnet (default https://mainnet.hashio.io/api)."
+      },
+      {
+        "key": "HEDERA_MIRROR_TESTNET_URL",
+        "description": "packages/nextjs/.env.local, optional. Mirror Node base URL behind the /api/hedera/account route on testnet (default https://testnet.mirrornode.hedera.com)."
+      },
+      {
+        "key": "HEDERA_MIRROR_MAINNET_URL",
+        "description": "packages/nextjs/.env.local, optional. Mirror Node base URL behind the /api/hedera/account route on mainnet (default https://mainnet.mirrornode.hedera.com)."
+      },
+      {
+        "key": "HEDERA_RPC_URL",
+        "description": "packages/hardhat/.env, optional. JSON-RPC URL the local Hardhat network forks (default https://testnet.hashio.io/api)."
+      },
+      {
+        "key": "DEPLOYER_PRIVATE_KEY_ENCRYPTED",
+        "description": "packages/hardhat/.env. Password-encrypted deployer key. Never fill it by hand: the hardhat:account:generate and hardhat:account:import scripts write it."
+      }
+    ],
+    "outro": {
+      "sections": [
+        {
+          "title": "Run the app",
+          "steps": [
+            {
+              "label": "Start the frontend",
+              "command": "{run:dev}"
+            }
+          ]
+        },
+        {
+          "title": "Check the project",
+          "steps": [
+            {
+              "label": "Lint with zero warnings allowed",
+              "command": "{run:lint:strict}"
+            },
+            {
+              "label": "Type-check both packages",
+              "command": "{run:typecheck}"
+            },
+            {
+              "label": "Production build",
+              "command": "{run:build}"
+            },
+            {
+              "label": "Contract tests",
+              "command": "{run:test}"
+            }
+          ]
+        },
+        {
+          "title": "Local chain",
+          "steps": [
+            {
+              "label": "Start a Hedera-forked Hardhat node",
+              "command": "{run:hardhat:chain}"
+            },
+            {
+              "label": "Deploy the sample contracts to it",
+              "command": "{run:hardhat:deploy:localhost}"
+            }
+          ]
+        },
+        {
+          "title": "Hedera testnet",
+          "steps": [
+            {
+              "label": "Create an encrypted deployer account, then fund it from the faucet",
+              "command": "{run:hardhat:account:generate}",
+              "url": "https://portal.hedera.com/faucet"
+            },
+            {
+              "label": "Deploy",
+              "command": "{run:hardhat:deploy:testnet}"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
