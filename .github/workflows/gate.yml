@@ -1,0 +1,85 @@
+name: Gate
+
+# Gate of the template repository. The published CLI scaffolds a fresh project from this checkout through its
+# local-template seam (which also works while the repository is private), then the project is checked the way
+# a judge would check it: strict lint, types, production build, boot with no env file, every route requested.
+# No secret is used anywhere. tools/gate/README.md describes each step.
+
+on:
+  push:
+  schedule:
+    # Nightly, away from 17:00-18:00 UTC. Scheduled runs only fire on the default branch.
+    - cron: "23 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: gate-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  scaffold:
+    # Inert in scaffolded projects and in forks. The public skeleton runs gate-skeleton.yml instead.
+    if: github.repository_owner == 'frytegg' && github.repository != 'frytegg/hbar-template-gate-skeleton'
+    name: node ${{ matrix.node }}, package manager ${{ matrix.pm }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        # One leg per push. Nightly and manual runs add the current LTS and the second package manager.
+        # "default" passes no package-manager flag, so the CLI's own default applies.
+        node: ${{ fromJSON(github.event_name == 'push' && '["20.18.3"]' || '["20.18.3", "lts/*"]') }}
+        pm: ${{ fromJSON(github.event_name == 'push' && '["default"]' || '["default", "npm"]') }}
+    steps:
+      - name: Checkout with full history (the secret scan reads every commit)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Tests of the gate tooling
+        run: node --test tools/gate/routes.test.mjs
+
+      # CI stays as Actions sets it (true): installs are then immutable, which is what a CI-based judge gets.
+      # The root "test" script forks a public testnet endpoint, a third party: it is reported, never blocking.
+      - name: Scaffold from this checkout and check the project
+        run: >
+          bash tools/gate/scaffold-and-check.sh
+          --template-dir "$GITHUB_WORKSPACE"
+          --work-dir "$RUNNER_TEMP/gate"
+          --solidity-framework hardhat
+          --soft test
+          --keep
+          ${{ matrix.pm == 'npm' && '--package-manager npm' || '' }}
+
+      # The two steps below run root scripts of the scaffolded project. A script that does not exist fails the step.
+      - name: Route console probe
+        if: ${{ !cancelled() }}
+        run: bash tools/gate/run-root-script.sh "$RUNNER_TEMP/gate/gateapp" probe:routes
+
+      - name: Docs checks
+        if: ${{ !cancelled() }}
+        run: bash tools/gate/run-root-script.sh "$RUNNER_TEMP/gate/gateapp" check:docs
+
+      - name: Secret scan, tree and history
+        if: ${{ !cancelled() }}
+        run: bash tools/gate/secret-scan.sh
+
+      - name: Upload the step logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-logs-${{ strategy.job-index }}
+          path: ${{ runner.temp }}/gate/logs
+          if-no-files-found: warn
