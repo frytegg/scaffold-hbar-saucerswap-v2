@@ -12,6 +12,7 @@ import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 const Home: NextPage = () => {
   const { address: connectedAddress, status } = useAccount();
   const { targetNetwork } = useTargetNetwork();
+  const blockExplorer = targetNetwork.blockExplorers?.default;
 
   const isReconnecting = status === "reconnecting" || status === "connecting";
   const isConnected = status === "connected" && connectedAddress;
@@ -99,11 +100,15 @@ const Home: NextPage = () => {
               </div>
               <h3 className="font-bold text-lg mb-2">Block Explorer</h3>
               <p className="text-base-content/70 text-sm m-0 mb-6">
-                Explore transactions, addresses, and contract activity on Hedera.
+                Explore transactions, accounts, and contract activity on {targetNetwork.name}.
               </p>
-              <Link href="/blockexplorer" passHref className="btn btn-primary btn-sm">
-                Open Block Explorer
-              </Link>
+              {blockExplorer ? (
+                <a href={blockExplorer.url} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
+                  Open {blockExplorer.name}
+                </a>
+              ) : (
+                <p className="text-base-content/70 text-sm m-0">{targetNetwork.name} has no public explorer.</p>
+              )}
             </div>
           </div>
 
