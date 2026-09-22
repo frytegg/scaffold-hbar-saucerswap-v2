@@ -66,6 +66,35 @@ yarn hardhat:deploy:testnet     # asks for the password, deploys, regenerates th
 
 Without a stored key the deploy stops with exit code 1 and names both ways to provide one. There is no fallback key: the upstream configuration fell back to Hardhat's well-known account #0, which is a funded account on Hedera testnet.
 
+## Using the swap route
+
+`/swap` swaps HBAR for an HTS token and the token back to HBAR on SaucerSwap V2, on Hedera testnet. It needs no deployment of your own and no env file: a browser wallet holding a little testnet HBAR is enough.
+
+On Hedera a swap can pass `eth_call`, `eth_estimateGas` and the mirror node's own simulator and still be rejected by the network, which keeps the gas, while the wallet shows a fee, a Confirm button and no warning at all. `docs/hedera-behaviour.md` has those transactions, what the mistake cost and the code that avoids it. This route is that code in front of a person.
+
+What the page does, in the order it shows it:
+
+1. **Connect.** It reads and sends through a browser wallet only, on chain 296. On another chain it offers one button, which switches the wallet and adds Hedera testnet to it when it is missing. Connected with the burner wallet — which connects by itself on a first visit — it reads nothing and sends nothing, and says why: that key lives in the browser, and every transaction here is a real one on a live network.
+2. **Your account**, from the mirror node through `/api/hedera/mirror`: the Hedera account id, the HBAR, the token balance, the allowance given to the SaucerSwap router, whether the account is associated with the token, and how many automatic association slots it has. Every line is something a swap depends on.
+3. **The form**: the direction, the amount, and how far the price may move before the swap is refused. Nothing is asked of the network until the quote button is pressed, so loading the route makes no request outside the app's own origin at all — which `yarn probe:routes` checks in three network modes, the harshest of them answering every third-party host 429 and then 400.
+4. **Before the wallet opens**: the quote, the least output you accept, and one line per check the network would otherwise answer only after taking the gas. Each line is one sentence and, when the page can act on it, a button: a missing allowance offers to approve exactly the amount of the swap. A blocked line blocks the send.
+5. **The cost preview**, from `estimateContractGas` for this sender and these arguments, always said as "up to", with the line that explains why the wallet will announce more: a wallet prices the gas limit at the current gas price, and the network charges the gas the call really uses.
+6. **The send and what happened.** The call reaches the wallet with its value already in weibar and, for a call no simulator prices, with the gas limit of a rule in `packages/nextjs/lib/hedera/gasRules.ts`. The outcome is then read from the mirror node's DETAIL view rather than from the receipt: on a failure the page fetches the transaction's `/actions` view, where the reason survives that SaucerSwap's `multicall` erased, and shows one sentence, the action to take, and both links — the mirror node's, which any checker can read, and Hashscan's, which renders it for a person.
+
+What it refuses, and why:
+
+| It refuses | Because |
+| --- | --- |
+| a token-input swap while the router's allowance is below the amount | all three simulators accept that swap and the network rejects it with `SPENDER_DOES_NOT_HAVE_ALLOWANCE`, having already charged the gas. One keyless read of the allowance costs nothing and prevents it |
+| an HBAR-input swap to an account not associated with the token and with no automatic association slot | the token cannot arrive, so the swap reverts and is still charged |
+| a swap after an approval whose HTS return value is not success | an HTS operation can fail inside a transaction the network reports as a success, so the receipt alone never says whether it happened |
+| an amount of zero, an amount larger than an HTS amount can be, or a slippage that leaves a minimum output of zero | a swap with no minimum accepts any price it is given, and an amount the router cannot carry fails at the token service |
+| a send on a quote more than a minute old | the price moves, and the minimum output was computed from a price nobody has looked at since |
+| a call neither simulator will price, without a gas limit from the page | a wallet that cannot price a call refuses to send it, and the limits, with the executed transactions each one comes from, live in `packages/nextjs/lib/hedera/gasRules.ts` |
+| anything at all, before it says so on the page | no failure on this route reaches the browser console: every one of them renders as a sentence with its action |
+
+The route is testnet-only. Every address it calls comes from `packages/nextjs/lib/hedera/addresses.ts`, every check and every message from `packages/nextjs/lib/hedera`, and it never asks for a key: the wallet signs.
+
 ## Check a change
 
 ```bash
@@ -140,7 +169,7 @@ To verify a file without a key, run `yarn evidence:check`, or open its `mirrorUr
 | `yarn format` | Prettier on both packages and on `tools/` |
 | `yarn typecheck` | TypeScript on both packages, after compiling the contracts |
 | `yarn test` | Hardhat tests |
-| `yarn test:unit` | Vitest tests of `packages/nextjs/lib/hedera` and of the mirror relay, on captured testnet answers |
+| `yarn test:unit` | Vitest tests of `packages/nextjs/lib/hedera`, of the mirror relay and of the swap route's own logic, on captured testnet answers |
 | `yarn check:tools` | formatting of `tools/`, types and unit tests of `tools/checks` and `tools/gate` |
 | `yarn check:docs` | the repository checks of `tools/checks`: docs, manifest, npm-mode rewrite, evidence figures, hygiene |
 | `yarn check:all` | `lint:strict`, `typecheck`, `check:tools`, `probe:routes:check`, `check:docs` |
@@ -198,7 +227,7 @@ flowchart LR
 - Only page load is checked for third-party calls. After user action, the UI kit's address input on `/debug` asks the public mirror node directly, and its write form logs a console error when a transaction fails.
 - The `/api/hedera/rpc` relay forwards any `eth_`, `net_` or `web3_` call and adds no rate limit of its own: every visitor's calls leave from the server's address.
 - No browser-wallet signature is part of any check here, and WalletConnect is off until a project id is set.
-- The unit tests cover `packages/nextjs/lib/hedera` and the mirror relay only; pages and components are checked by the route probe alone.
+- The unit tests cover `packages/nextjs/lib/hedera`, the mirror relay and the parts of the swap route that need no browser; what a page renders is checked by the route probe alone.
 - This code is experimental and has not been audited.
 
 ## Licence and provenance
