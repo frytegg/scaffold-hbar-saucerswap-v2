@@ -17,7 +17,7 @@ yarn test                       # Hardhat tests on a fork of Hedera testnet: nee
 yarn format                     # Prettier on both packages and on tools/
 yarn check:tools                # formatting of tools/, types and tests of tools/checks and tools/gate; no network
 yarn check:docs                 # docs, manifest, npm-mode rewrite and hygiene checks (tools/checks)
-yarn check:all                  # lint:strict, typecheck, check:tools, probe:routes:check, check:docs
+yarn check:all                  # lint:strict, typecheck, check:tools, probe:routes:check, check:docs; needs the registry
 yarn probe:routes               # every page route in Chromium, three network modes; after build, port 3000
 yarn gate:local                 # scaffold HEAD through the published CLI and check the result; slow, over 1 GB
 yarn hardhat:chain              # fork of Hedera testnet, JSON-RPC on http://127.0.0.1:8545
@@ -33,7 +33,7 @@ A script that needs a flag gets a flag-free alias, as `lint:strict` and `hardhat
 Run these before you stop, and fix what fails:
 
 1. `yarn format`
-2. `yarn check:all`
+2. `yarn check:all`. It needs the package registry: it reinstalls the route probe, and the docs checks download the published CLI.
 3. Changed anything under `packages/nextjs`: `yarn build`, then `yarn probe:routes`.
 4. Changed anything under `packages/hardhat`: `yarn test`. It fails when hashio, the public relay the fork reads, is down; run it again before you debug.
 5. Changed `template.json`, a `package.json`, the lockfile or a workflow: `yarn gate:local`. It scaffolds the committed HEAD, so commit first.

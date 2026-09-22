@@ -73,12 +73,14 @@ yarn lint:strict                # ESLint and Prettier on both packages, no warni
 yarn typecheck                  # both packages; compiles the contracts first
 yarn build                      # production build of the frontend
 yarn test                       # Hardhat tests on a fork of Hedera testnet (network needed)
-yarn check:all                  # lint:strict, typecheck, the tools' tests, the docs checks
+yarn check:all                  # lint:strict, typecheck, the tools' tests, the docs checks (registry needed)
 ```
+
+`yarn check:all` needs the package registry, like `yarn test` needs hashio: it reinstalls the route probe from its lockfile, and two docs checks download the published CLI to replay its npm-mode rewrite and its manifest schema.
 
 After `yarn build`, `yarn probe:routes` loads every page route in Chromium three times: third parties reachable, third parties failing at the network level, and third parties answering 429 then 400. A console error, a page error, or any request to a third-party host fails the route. It serves the build on port 3000 and stops the server afterwards.
 
-`yarn gate:local` scaffolds the committed HEAD through the published CLI into a temporary folder, installs it, and runs `lint:strict`, `typecheck`, `build` and `test` in the new project, then boots it with no env file and requests every route. It needs well over 1 GB of disk while it runs. `.github/workflows/gate.yml` runs the same leg on every push to `main` of the template repository that changes more than Markdown, and nightly, then the route probe, the docs checks and a secret scan of the tree and the history.
+`yarn gate:local` scaffolds the committed HEAD through the published CLI into a temporary folder, installs it, and runs `lint:strict`, `typecheck`, `build` and `test` in the new project, then boots it with no env file and requests every route. It needs well over 1 GB of disk while it runs. `.github/workflows/gate.yml` runs the same leg on every push to `main` of the template repository that changes more than Markdown, and nightly, with a failed `test` reported but not blocking since it depends on hashio; then the route probe, the docs checks and a secret scan of the tree and the history.
 
 ## Working with a coding agent
 
