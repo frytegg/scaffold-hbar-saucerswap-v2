@@ -2,9 +2,9 @@
  * SaucerSwap V2 on Hedera testnet, in the only form a Hardhat deploy script needs: plain EVM addresses.
  *
  * `packages/nextjs/lib/hedera/addresses.ts` is this project's address book and the source of truth: it carries the
- * entity id, the source page and the date each entry was last read from the mirror node, and `yarn check:live`
- * re-reads all of it. A Hardhat workspace cannot import a module of the Next.js workspace, so the four entries a
- * deployment needs are copied here. Change them in both files, or not at all.
+ * entity id, the source page and the date each entry was last read from the mirror node, and the `check:live`
+ * script re-reads all of it. A Hardhat workspace cannot import a module of the Next.js workspace, so the four
+ * entries a deployment needs are copied here. Change them in both files, or not at all.
  *
  * Source: https://docs.saucerswap.finance/developers/contracts#hedera-testnet
  */

@@ -96,26 +96,23 @@ Read and write a deployed contract through the hooks of `~~/hooks/scaffold-hbar`
 "use client";
 
 import { useState } from "react";
-import { parseUnits } from "viem";
 import { useAccount } from "wagmi";
 import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-hbar";
 
-export const MintOne = () => {
+export const ConsumerHoldings = () => {
   const { address } = useAccount();
   const [failure, setFailure] = useState<string>();
-  const { data: balance } = useScaffoldReadContract({
-    contractName: "HederaToken",
-    functionName: "balanceOf",
-    args: [address],
+  const { data: held } = useScaffoldReadContract({
+    contractName: "SaucerSwapHbarConsumer",
+    functionName: "tokenBalance",
   });
-  const { writeContractAsync, isPending } = useScaffoldWriteContract({ contractName: "HederaToken" });
+  const { writeContractAsync, isPending } = useScaffoldWriteContract({ contractName: "SaucerSwapHbarConsumer" });
 
-  const mint = async () => {
-    if (!address) return;
+  const associate = async () => {
     setFailure(undefined);
     try {
-      // HederaToken keeps the ERC-20 default of 18 decimals; mint is onlyOwner.
-      await writeContractAsync({ functionName: "mint", args: [address, parseUnits("1", 18)] });
+      // The constructor already did this; a second association answers 194, which the contract reads as done.
+      await writeContractAsync({ functionName: "associate" });
     } catch (error: unknown) {
       // The transactor has already shown a notification; keep the reason next to the button too.
       setFailure(error instanceof Error ? error.message : String(error));
@@ -124,9 +121,9 @@ export const MintOne = () => {
 
   return (
     <div className="flex flex-col gap-2">
-      <p>Balance: {balance?.toString() ?? "unknown"}</p>
-      <button className="btn btn-primary" disabled={!address || isPending} onClick={mint}>
-        Mint 1 HTK
+      <p>The contract holds {held?.toString() ?? "unknown"} SAUCE units</p>
+      <button className="btn btn-primary" disabled={!address || isPending} onClick={associate}>
+        Associate again
       </button>
       {failure && <p className="text-error">{failure}</p>}
     </div>

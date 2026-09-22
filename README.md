@@ -168,7 +168,8 @@ To verify a file without a key, run `yarn evidence:check`, or open its `mirrorUr
 | `yarn lint:strict` | the same, failing on any warning |
 | `yarn format` | Prettier on both packages and on `tools/` |
 | `yarn typecheck` | TypeScript on both packages, after compiling the contracts |
-| `yarn test` | Hardhat tests |
+| `yarn test:mock` | Hardhat tests of the consumer against the injected mocks: no network, no key, about a second |
+| `yarn test` | Hardhat tests of the inherited samples, on a fork of Hedera testnet |
 | `yarn test:unit` | Vitest tests of `packages/nextjs/lib/hedera`, of the mirror relay and of the swap route's own logic, on captured testnet answers |
 | `yarn check:tools` | formatting of `tools/`, types and unit tests of `tools/checks` and `tools/gate` |
 | `yarn check:docs` | the repository checks of `tools/checks`: docs, manifest, npm-mode rewrite, evidence figures, hygiene |
@@ -176,12 +177,15 @@ To verify a file without a key, run `yarn evidence:check`, or open its `mirrorUr
 | `yarn check:live` | keyless reads of Hedera testnet: the address book, a quote, a dated simulator observation, then `evidence:check` |
 | `yarn evidence:check` | re-reads every file of `docs/evidence/` from the mirror node, without a key |
 | `yarn evidence` | signs two swaps on Hedera testnet and writes `docs/evidence/`; needs `__RUNTIME_DEPLOYER_PRIVATE_KEY`, skipped without it |
+| `yarn evidence:consumer` | signs one swap through the deployed Solidity consumer and writes its record the same way |
 | `yarn probe:routes` | browser console probe of every route (after `build`) |
 | `yarn probe:routes:check` | unit tests and types of the route probe |
 | `yarn gate:local` | one gate leg against the committed HEAD |
 | `yarn hardhat:chain` | local fork of Hedera testnet, port 8545 |
 | `yarn hardhat:deploy:localhost` | deploy the sample contracts to that fork |
 | `yarn hardhat:deploy:testnet` | deploy them to Hedera testnet |
+| `yarn hardhat:deploy:consumer:testnet` | deploy the SaucerSwap consumer alone to Hedera testnet |
+| `yarn hardhat:verify:testnet` | show the source of every testnet deployment through Sourcify |
 | `yarn hardhat:account:generate` | create a deployer key, stored encrypted |
 | `yarn hardhat:account:import` | import an existing key, stored encrypted |
 | `yarn hardhat:account` | show the deployer address and its balances |
@@ -215,7 +219,7 @@ flowchart LR
 ```
 
 - `packages/nextjs`: Next.js 15 with the app directory, RainbowKit 2.2.9, wagmi 2.19.5, viem 2.39.0 and the `@scaffold-hbar-ui` kit. Routes `/`, `/debug`, and the three route handlers above. `packages/nextjs/lib/hedera` holds the Hedera-specific code the app and scripts share: units, addresses, ABIs, error decoding, the mirror client and the checks run before a transaction is signed. It types every address as `EvmAddress`, `0x${string}`, in every project it is scaffolded into; an address that reaches your code as a plain string goes through its `toEvmAddress`, which returns the checksummed form and refuses anything that is not an address. viem's own address type still depends on the package manager that installed the project, so an address you take straight from viem or wagmi compiles into the library in one project and not in the other: `toEvmAddress` is the door that compiles in both.
-- `packages/hardhat`: Hardhat 2.22.19 with hardhat-deploy. Sample contracts `HederaToken`, an ERC-20, and `HtsTokenCreator`, which creates and mints an HTS token through the system contract at `0x167`. The tests run on a fork of Hedera testnet where `@hashgraph/system-contracts-forking` emulates the token service.
+- `packages/hardhat`: Hardhat 2.22.19 with hardhat-deploy. `SaucerSwapHbarConsumer.sol` is the contract this template deploys, verifies and exercises: it swaps the HBAR sent with a call for SAUCE on SaucerSwap V2 and keeps the tokens. Every HBAR amount it sees is tinybar, eight decimals, while a JSON-RPC caller signs `value` in weibar, which the network divides by 10^10 before the contract runs; and because a contract cannot receive an HTS token it has never held, the constructor associates it through the system contract at `0x167` and refuses to exist on any answer but 22, so the deployer pays for that relation once instead of every swap paying for it. Its interfaces are written from the deployed contracts' function shapes, under MIT: no SaucerSwap, Uniswap or Hedera source file is vendored here. `packages/hardhat/contracts/mocks/` holds the three original mocks that `yarn test:mock` injects with `hardhat_setCode` at the addresses the token service, SAUCE and the router have on testnet, so that the contract under test is built with the real address book and meets the failures measured there — 194, `TransferFail(184)`, the empty data `multicall` leaves, `RespCode(178)` — with no network. `yarn test` keeps the inherited samples `HederaToken` and `HtsTokenCreator` on a fork of Hedera testnet where `@hashgraph/system-contracts-forking` emulates the token service; a fork reproduces none of the behaviour above, which is why it is not where that behaviour is checked. `packages/hardhat/scripts/verifySourcify.ts` shows the deployed source through Sourcify's v2 API, the v1 endpoints the inherited tooling calls having been removed.
 - `tools/checks`: the repository checks behind `check:docs`; `tools/route-probe`: the browser probe, a standalone package outside the workspaces, installed from its own lockfile by npm, so that no install of the app downloads a browser; `tools/gate`: the scaffold gate. Each has a README.
 - `.github/workflows`: `gate.yml` in the template repository; `gate-skeleton.yml` and `hosts-control.yml`, which a guard limits to the public skeleton repository of this base; `lint.yaml` on pushes and pull requests to `main`: `lint:strict`, `typecheck`, `test:unit`, `check:tools`, `probe:routes:check` and ShellCheck on `tools/gate`.
 
