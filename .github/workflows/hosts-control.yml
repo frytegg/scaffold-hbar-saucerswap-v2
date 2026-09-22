@@ -2,9 +2,11 @@ name: Hosts control
 
 # Runs in the public skeleton repository only. The same gate script scaffolds the hosts' own blank template, so
 # that a red leg of "Gate (real path)" can be attributed: red here as well means the base, green here means us.
-# It records and never blocks. Reds seen on the hosts' template so far, both on Windows only: the default
-# package manager under CI=true stops at the install with YN0028, and the second package manager fails the
-# production build because the @x402 guard of next.config.ts is missing on that branch.
+# It records and never blocks. Reds seen on the hosts' template so far, on Windows and on the first Linux run: the
+# default package manager stops at the install (YN0028 under CI=true on Windows; on Linux the CLI does not print
+# the package manager's message), and the second package manager fails the production build because the @x402
+# guard of next.config.ts is missing on that branch. The legs without CI variables tell whether the install stops
+# because of CI mode.
 # The hosts' template has none of our alias scripts, hence the stock script names below.
 
 on:
