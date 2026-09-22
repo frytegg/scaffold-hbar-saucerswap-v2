@@ -55,7 +55,7 @@ The run exits 1 when any step is `FAIL`. `--soft <step>` reports a failure as `s
 
 | workflow | runs in | what |
 | --- | --- | --- |
-| `gate.yml` | the template repository | one leg per push to `main` through the seam, unless the push changes Markdown only; nightly on Node 20.18.3 and the current LTS, with both package managers; then the root scripts `probe:routes` and `check:docs` inside the scaffolded project, then the secret scan |
+| `gate.yml` | the template repository | one leg per push to `main` through the seam, unless the push changes Markdown only; nightly on Node 20.18.3 and the current LTS, with both package managers; then the root scripts `probe:routes` and `check:docs` inside the scaffolded project, then the secret scan; nightly and manual runs also run the root script `check:live` there, which reads Hedera testnet and is reported in the job summary, never blocking |
 | `gate-skeleton.yml` | the public skeleton only | the judges' path against the skeleton itself: each CLI switch changed against one baseline, plus the pairs that interact; the leg without `-s` is blocking; the secret scan of the skeleton's tree and history, blocking; three recorded runs of the brief's literal command |
 | `hosts-control.yml` | the public skeleton only | the same script against the hosts' blank template, to tell a failure of the base from a failure of this template; never blocking |
 

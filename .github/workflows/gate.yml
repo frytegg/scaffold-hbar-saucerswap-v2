@@ -85,6 +85,26 @@ jobs:
         if: ${{ !cancelled() }}
         run: bash tools/gate/run-root-script.sh "$RUNNER_TEMP/gate/gateapp" check:docs
 
+      # Keyless reads of Hedera testnet: hashio, the mirror node and SaucerSwap's contracts are third parties. Nightly
+      # and manual runs only; the outcome goes to the job summary and never fails the run.
+      - name: Live keyless tier, reported and not blocking
+        if: ${{ !cancelled() && github.event_name != 'push' }}
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/gate/logs"
+          log="$RUNNER_TEMP/gate/logs/live-tier.log"
+          status=0
+          bash tools/gate/run-root-script.sh "$RUNNER_TEMP/gate/gateapp" check:live > "$log" 2>&1 || status=$?
+          cat "$log"
+          {
+            echo "### Live keyless tier: exit $status (third parties, not blocking)"
+            echo
+            echo '```text'
+            tail -n 40 "$log"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit "$status"
+
       - name: Secret scan, tree and history
         if: ${{ !cancelled() }}
         run: bash tools/gate/secret-scan.sh
