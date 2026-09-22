@@ -8,7 +8,7 @@
     "account:reveal-pk": "hardhat run scripts/revealPK.ts",
     "chain": "cross-env HEDERA_FORKING=true hardhat node --network hardhat --no-deploy",
     "check-types": "hardhat compile --quiet && tsc --noEmit --incremental",
-    "check-types:tools": "tsc -p ../../tools/checks",
+    "check-types:tools": "tsc -p ../../tools/checks && tsc -p ../../tools/gate",
     "compile": "hardhat compile",
     "clean": "hardhat clean",
     "deploy": "ts-node scripts/runHardhatDeployWithPK.ts",

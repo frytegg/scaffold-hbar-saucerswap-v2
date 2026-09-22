@@ -18,6 +18,9 @@ const SHUTDOWN_TIMEOUT_MS = 20_000;
 const POLL_MS = 1_000;
 const CONFIG_VARIABLE = /^(NEXT_PUBLIC_|HEDERA_)/;
 
+/** @typedef {import("./routes.mjs").Target} Target */
+/** @typedef {{ child: import("node:child_process").ChildProcess, exit: string | null }} Server */
+
 function readOptions() {
   const { values, positionals } = parseArgs({
     options: {
@@ -50,6 +53,10 @@ function readOptions() {
   };
 }
 
+/**
+ * @param {number} port
+ * @returns {Promise<boolean>}
+ */
 function portIsOpen(port) {
   return new Promise(resolve => {
     const socket = net.connect(port, HOST);
@@ -61,6 +68,11 @@ function portIsOpen(port) {
   });
 }
 
+/**
+ * @param {() => Promise<boolean>} condition
+ * @param {number} timeoutMs
+ * @returns {Promise<boolean>} whether the condition held before the timeout
+ */
 async function waitFor(condition, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -70,6 +82,12 @@ async function waitFor(condition, timeoutMs) {
   return false;
 }
 
+/**
+ * @param {string[]} command
+ * @param {number} port
+ * @param {string} serverLog
+ * @returns {Server}
+ */
 function startServer(command, port, serverLog) {
   const removed = Object.keys(process.env).filter(name => CONFIG_VARIABLE.test(name));
   console.log(
@@ -80,6 +98,7 @@ function startServer(command, port, serverLog) {
   env.NEXT_TELEMETRY_DISABLED = "1";
 
   const log = openSync(serverLog, "a");
+  /** @type {import("node:child_process").StdioOptions} */
   const stdio = ["ignore", log, log];
   // Windows needs a shell to resolve the package manager's .cmd shim; the words come from the calling script
   // (fixed words and its own paths), never from user input. Elsewhere the server leads its own process group so
@@ -90,6 +109,7 @@ function startServer(command, port, serverLog) {
       : spawn(command[0], command.slice(1), { detached: true, env, stdio });
   closeSync(log);
 
+  /** @type {Server} */
   const server = { child, exit: null };
   child.once("exit", (code, signal) => {
     server.exit = `exit code ${code}, signal ${signal}`;
@@ -100,21 +120,33 @@ function startServer(command, port, serverLog) {
   return server;
 }
 
+/**
+ * @param {Server} server
+ * @param {NodeJS.Signals} signal
+ */
 function signalTree(server, signal) {
+  const { pid } = server.child;
+  // No pid: the process never started, and its "error" event has already said why.
+  if (pid === undefined) return;
   if (process.platform === "win32") {
     // taskkill walks the tree from the shell's pid, which no longer exists once the shell has exited.
     if (server.exit !== null) return;
-    const result = spawnSync("taskkill", ["/PID", String(server.child.pid), "/T", "/F"], { encoding: "utf8" });
+    const result = spawnSync("taskkill", ["/PID", String(pid), "/T", "/F"], { encoding: "utf8" });
     if (result.status !== 0) console.log(`taskkill exit ${result.status}: ${(result.stderr || result.stdout).trim()}`);
     return;
   }
   try {
-    process.kill(-server.child.pid, signal);
+    process.kill(-pid, signal);
   } catch (error) {
-    if (error.code !== "ESRCH") throw error;
+    if (!(error instanceof Error && "code" in error && error.code === "ESRCH")) throw error;
   }
 }
 
+/**
+ * @param {Server} server
+ * @param {number} port
+ * @returns {Promise<string | null>} a problem when the port stays open, null once it is closed
+ */
 async function stopServer(server, port) {
   const portIsClosed = async () => !(await portIsOpen(port));
   signalTree(server, "SIGTERM");
@@ -124,6 +156,11 @@ async function stopServer(server, port) {
   return `port ${port} is still open after the server was stopped`;
 }
 
+/**
+ * @param {Target} target
+ * @param {number} port
+ * @returns {Promise<string | null>} what is wrong with the answer, or null
+ */
 async function request(target, port) {
   let response;
   let body;

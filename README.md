@@ -96,7 +96,7 @@ After `yarn build`, `yarn probe:routes` loads every page route in Chromium three
 | `yarn format` | Prettier on both packages and on `tools/` |
 | `yarn typecheck` | TypeScript on both packages, after compiling the contracts |
 | `yarn test` | Hardhat tests |
-| `yarn check:tools` | formatting of `tools/`, types of `tools/checks`, unit tests of `tools/checks` and `tools/gate` |
+| `yarn check:tools` | formatting of `tools/`, types and unit tests of `tools/checks` and `tools/gate` |
 | `yarn check:docs` | the repository checks of `tools/checks`: docs, manifest, npm-mode rewrite, hygiene |
 | `yarn check:all` | `lint:strict`, `typecheck`, `check:tools`, `probe:routes:check`, `check:docs` |
 | `yarn probe:routes` | browser console probe of every route (after `build`) |

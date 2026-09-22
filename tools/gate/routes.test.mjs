@@ -7,8 +7,16 @@ import { after, test } from "node:test";
 
 import { collectTargets, judgeAnswer } from "./routes.mjs";
 
+/** @typedef {import("./routes.mjs").Target} Target */
+
+/** @type {string[]} */
 const buildDirs = [];
 
+/**
+ * @param {Record<string, string>} appRoutes app-path-routes-manifest.json: entry to route
+ * @param {Record<string, { srcRoute: string | null }>} [prerenderedRoutes] the "routes" of prerender-manifest.json
+ * @returns {string} a build directory holding both manifests
+ */
 function buildWith(appRoutes, prerenderedRoutes = {}) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "gate-routes-"));
   buildDirs.push(dir);
@@ -91,12 +99,14 @@ test("a missing build is an error that names the file", () => {
 });
 
 test("a handler may refuse a bare request but must not crash", () => {
+  /** @type {Target} */
   const handler = { route: "/api/account", kind: "handler", maxStatus: 499 };
   assert.equal(judgeAnswer(handler, 400, "application/json", '{"error":"Missing or invalid EVM address"}'), null);
   assert.equal(judgeAnswer(handler, 502, "application/json", "{}"), "/api/account: status 502, expected at most 499");
 });
 
 test("a page must render text; a short JSON answer and a redirect are not pages", () => {
+  /** @type {Target} */
   const page = { route: "/debug", kind: "page", maxStatus: 399 };
   const shell =
     "<html><head><style>p{}</style><script>let a = 'long enough to count if scripts counted';</script></head><body><p>Hi</p></body></html>";
@@ -110,6 +120,7 @@ test("a page must render text; a short JSON answer and a redirect are not pages"
     judgeAnswer(page, 404, "text/html", "<main>This page could not be found</main>"),
     "/debug: status 404, expected at most 399",
   );
+  /** @type {Target} */
   const extra = { route: "/api/account?evm=0x01", kind: "extra", maxStatus: 399 };
   assert.equal(judgeAnswer(extra, 200, "application/json", '{"accountId":null}'), null);
 });

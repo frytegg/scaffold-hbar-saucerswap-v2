@@ -11,6 +11,7 @@ Checks that this template still scaffolds through the published `create-scaffold
 | `run-root-script.sh` | runs one root script of a project with the package manager that project was scaffolded for; a script that is not defined is exit 3, never a skip |
 | `boot-check.mjs`, `routes.mjs` | boots the production server on a given port with no env file and requests every route of the build once |
 | `routes.test.mjs` | tests of the route rules: `node --test tools/gate/routes.test.mjs` |
+| `tsconfig.json` | strict type-check of the three JavaScript modules above; `check:tools` runs it with the tests |
 | `secret-scan.sh` | tracked env files, then gitleaks over the whole history and over an export of HEAD, with the root `.gitleaks.toml` |
 | `literal-command-control.sh` | negative control: records how the scaffolding command ends when it is typed exactly as the bounty brief prints it |
 

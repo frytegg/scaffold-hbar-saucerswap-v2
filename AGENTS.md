@@ -15,7 +15,7 @@ yarn lint:strict                # ESLint and Prettier on both packages, no warni
 yarn typecheck                  # TypeScript on both packages, after compiling the contracts
 yarn test                       # Hardhat tests on a fork of Hedera testnet: needs the network
 yarn format                     # Prettier on both packages and on tools/
-yarn check:tools                # formatting, types and unit tests of the tooling, no network
+yarn check:tools                # formatting of tools/, types and tests of tools/checks and tools/gate; no network
 yarn check:docs                 # docs, manifest, npm-mode rewrite and hygiene checks (tools/checks)
 yarn check:all                  # lint:strict, typecheck, check:tools, probe:routes:check, check:docs
 yarn probe:routes               # every page route in Chromium, three network modes; after build, port 3000

@@ -10,6 +10,12 @@ import path from "node:path";
 const MIN_VISIBLE_TEXT = 20;
 const NOT_FOUND_ROUTE = "/_not-found";
 
+/** @typedef {{ route: string, kind: "page" | "handler" | "extra", maxStatus: number }} Target */
+
+/**
+ * @param {string} file
+ * @returns {unknown}
+ */
 function readJson(file) {
   try {
     return JSON.parse(readFileSync(file, "utf8"));
@@ -18,6 +24,10 @@ function readJson(file) {
   }
 }
 
+/**
+ * @param {string} route an app route, dynamic segments included
+ * @returns {RegExp} what a concrete path of that route matches
+ */
 function patternOf(route) {
   const source = route
     .split("/")
@@ -32,6 +42,10 @@ function patternOf(route) {
   return new RegExp(`^${source || "/"}$`);
 }
 
+/**
+ * @param {string} route
+ * @returns {string}
+ */
 function pathnameOf(route) {
   return route.split(/[?#]/)[0];
 }
@@ -39,12 +53,19 @@ function pathnameOf(route) {
 /**
  * @param {string} nextDir the build output directory (it holds app-path-routes-manifest.json)
  * @param {string[]} extraRoutes concrete paths given by the caller, query string included
- * @returns {{ targets: { route: string, kind: "page" | "handler" | "extra", maxStatus: number }[], problems: string[] }}
+ * @returns {{ targets: Target[], problems: string[] }}
  */
 export function collectTargets(nextDir, extraRoutes) {
-  const appRoutes = readJson(path.join(nextDir, "app-path-routes-manifest.json"));
-  const prerendered = readJson(path.join(nextDir, "prerender-manifest.json")).routes ?? {};
+  const appRoutes = /** @type {Record<string, string>} */ (
+    readJson(path.join(nextDir, "app-path-routes-manifest.json"))
+  );
+  const prerenderManifest = /** @type {{ routes?: Record<string, { srcRoute?: string | null }> }} */ (
+    readJson(path.join(nextDir, "prerender-manifest.json"))
+  );
+  const prerendered = prerenderManifest.routes ?? {};
+  /** @type {Target[]} */
   const targets = [];
+  /** @type {string[]} */
   const problems = [];
 
   for (const [entry, route] of Object.entries(appRoutes)) {
@@ -69,6 +90,10 @@ export function collectTargets(nextDir, extraRoutes) {
   return { targets, problems };
 }
 
+/**
+ * @param {string} html
+ * @returns {number} characters of text outside tags, scripts and styles, runs of whitespace counted once
+ */
 export function visibleTextLength(html) {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -78,7 +103,13 @@ export function visibleTextLength(html) {
     .trim().length;
 }
 
-/** @returns {string | null} what is wrong with the answer, or null when it meets the target's rule */
+/**
+ * @param {Target} target
+ * @param {number} status
+ * @param {string} contentType
+ * @param {string} body
+ * @returns {string | null} what is wrong with the answer, or null when it meets the target's rule
+ */
 export function judgeAnswer(target, status, contentType, body) {
   if (status > target.maxStatus) return `${target.route}: status ${status}, expected at most ${target.maxStatus}`;
   const isRenderedPage = contentType.includes("text/html") && status < 300;
