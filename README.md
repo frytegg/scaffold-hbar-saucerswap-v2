@@ -83,6 +83,41 @@ After `yarn build`, `yarn probe:routes` loads every page route in Chromium three
 
 `yarn gate:local` scaffolds the committed HEAD through the published CLI into a temporary folder, installs it, and runs `lint:strict`, `typecheck`, `build` and `test` in the new project, then boots it with no env file and requests every route. It needs well over 1 GB of disk while it runs. `.github/workflows/gate.yml` runs the same leg on every push to `main` of the template repository that changes more than Markdown, and nightly, with a failed `test` reported but not blocking since it depends on hashio; then the route probe, the docs checks and a secret scan of the tree and the history.
 
+## Live checks and testnet evidence
+
+```bash
+yarn check:live                 # keyless reads of Hedera testnet, then evidence:check (network needed)
+yarn evidence:check             # re-reads every file of docs/evidence/ from the mirror node, no key
+yarn evidence                   # signs two swaps on Hedera testnet and writes docs/evidence/
+```
+
+`yarn check:live` needs no key and nothing but network access to hashio and the testnet mirror node, which are third parties: a failure can be theirs, so run it again before you debug. It checks that every entry of the address book in `packages/nextjs/lib/hedera/addresses.ts` has code, that the SwapRouter's `factory()`, `whbar()` and `WHBAR()` and the factory's `getPool` for WHBAR, SAUCE and the 0.30 % fee agree with it, that the router and QuoterV2 are still associated with WHBAR and SAUCE, and that QuoterV2 quotes 1 HBAR for SAUCE. It also re-asserts a dated observation: on Hedera testnet (relay/0.78.5, 22 Sept 2026) `eth_call`, `eth_estimateGas` and the mirror node's own simulator all accept a SAUCE to HBAR swap from an account that has given the router no allowance. The account it simulates from is the sender of the newest SAUCE to HBAR record of `docs/evidence/`, and a control swap for more SAUCE than that account holds must still be refused. The day a simulator refuses the swap, the check fails: the observation has ended. `.github/workflows/gate.yml` runs `check:live` inside the scaffolded project on its nightly and manual runs, writes the outcome to the job summary, and never fails the run on it.
+
+`yarn evidence` signs with `__RUNTIME_DEPLOYER_PRIVATE_KEY`, set in the shell for this one command and never written to a file; without it both swaps are skipped with that message and the command exits 0. The key has to be an ECDSA key whose account exists on testnet and holds a few HBAR (the [Hedera Portal faucet](https://portal.hedera.com/faucet) funds one):
+
+```bash
+read -rs __RUNTIME_DEPLOYER_PRIVATE_KEY   # paste the key: it is not echoed, and not kept in the history
+export __RUNTIME_DEPLOYER_PRIVATE_KEY
+yarn evidence
+unset __RUNTIME_DEPLOYER_PRIVATE_KEY
+```
+
+It stops before signing when the JSON-RPC relay does not serve chain 296, and it refuses any send that could take the run above 5 HBAR. Then it swaps 0.1 HBAR for SAUCE, and 1 SAUCE back to native HBAR, through `packages/nextjs/lib/hedera`: quote, pre-flight checks (recipient, allowance, cost preview), builders, viem's default flow on the pinned 2.39.0, the outcome read from the mirror node's DETAIL view. When the allowance check fails it first approves exactly 1 SAUCE and checks that the approval returned `true`. Each record is re-checked the way `yarn evidence:check` does before it is written to `docs/evidence/`, one file per scenario, named after the date and the scenario.
+
+What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-22-hbar-to-sauce.json` and `docs/evidence/2026-09-22-sauce-to-hbar.json`):
+
+| transaction | network fee | cost preview shown before signing | outcome |
+| --- | --- | --- | --- |
+| swap 0.1 HBAR for SAUCE | 0.21804796 HBAR | up to 0.24452658 HBAR | 4.643294 SAUCE |
+| approve 1 SAUCE for the router | 0.79222944 HBAR | up to 0.8921298 HBAR | returned `true` |
+| swap 1 SAUCE for HBAR | 0.99717124 HBAR | up to 1.10563584 HBAR | 0.0214075 HBAR, native |
+
+2.00744864 HBAR of fees in all; the account's HBAR balance fell by 2.08604114 HBAR, the fees plus the 0.1 HBAR swapped minus the 0.0214075 HBAR received. On testnet a 1 SAUCE swap returns far less HBAR than it costs: the cost check says so before signing, and the run goes on.
+
+Each file holds no key and nothing private: the scenario's `name`, `network` and `chainId`; the sender's EVM address and account id, both public on the network; the versions of viem, of the relay (its `web3_clientVersion`) and of Node.js; what each pre-flight check said; the input parameters (router, pool and fee tier, tokens, `amountIn`, `quotedAmountOut`, `slippageBps`, `amountOutMinimum`, `deadline`, `recipient`) and the `amountOut` the swap returned; and per transaction its `hash`, its `mirrorUrl` (the mirror node's DETAIL view), `result`, `consensusTimestamp`, `blockNumber`, `gasUsed`, the cost preview, the fee read from the transaction record's HBAR transfer list and the sender's net HBAR movement. Amounts are integers in the smallest unit (tinybar for HBAR, 10^-6 for SAUCE).
+
+To verify a file without a key, run `yarn evidence:check`, or open its `mirrorUrl` values: `result` must be `SUCCESS`. The check re-reads each transaction from the mirror node and fails on any difference: the result; the sender, which the mirror node names by the long-zero form of its account and the check resolves to the recorded EVM address; the block, the gas used, the fee and the sender's net HBAR movement from the transfer list; the approval's return value; and the swap's `amountOut`, decoded from its `call_result`.
+
 ## Working with a coding agent
 
 `AGENTS.md` is the briefing for coding agents: the commands, the checks to run before stopping, the invariants a change has to keep, and what to ask about first. Claude Code reads it through `CLAUDE.md`.
@@ -103,6 +138,9 @@ After `yarn build`, `yarn probe:routes` loads every page route in Chromium three
 | `yarn check:tools` | formatting of `tools/`, types and unit tests of `tools/checks` and `tools/gate` |
 | `yarn check:docs` | the repository checks of `tools/checks`: docs, manifest, npm-mode rewrite, hygiene |
 | `yarn check:all` | `lint:strict`, `typecheck`, `check:tools`, `probe:routes:check`, `check:docs` |
+| `yarn check:live` | keyless reads of Hedera testnet: the address book, a quote, a dated simulator observation, then `evidence:check` |
+| `yarn evidence:check` | re-reads every file of `docs/evidence/` from the mirror node, without a key |
+| `yarn evidence` | signs two swaps on Hedera testnet and writes `docs/evidence/`; needs `__RUNTIME_DEPLOYER_PRIVATE_KEY`, skipped without it |
 | `yarn probe:routes` | browser console probe of every route (after `build`) |
 | `yarn probe:routes:check` | unit tests and types of the route probe |
 | `yarn gate:local` | one gate leg against the committed HEAD |
@@ -128,7 +166,7 @@ Nothing needs to be set: the app, the build and the tests run with no env file. 
 | `HEDERA_MIRROR_MAINNET_URL` | `packages/nextjs/.env.local` | no | `https://mainnet.mirrornode.hedera.com` | the same routes, for mainnet |
 | `HEDERA_RPC_URL` | `packages/hardhat/.env` | no | `https://testnet.hashio.io/api` | the in-process Hardhat network, which forks it (`hardhat:chain`, `test`) |
 | `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | `packages/hardhat/.env` | for a live deploy | none; written by `hardhat:account:generate` or `hardhat:account:import` | the deploy script, which asks for its password |
-| `__RUNTIME_DEPLOYER_PRIVATE_KEY` | never a file: the shell, for one command | no | none | `packages/hardhat/hardhat.config.ts`, the only key live networks sign with; the deploy script sets it from the encrypted key |
+| `__RUNTIME_DEPLOYER_PRIVATE_KEY` | never a file: the shell, for one command | no | none | `packages/hardhat/hardhat.config.ts`, the only key live networks sign with; the deploy script sets it from the encrypted key; `yarn evidence` signs with it and is skipped without it |
 
 ## Architecture
 
