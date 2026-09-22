@@ -1,0 +1,47 @@
+{
+  "status": 200,
+  "body": {
+    "transactions": [
+      {
+        "batch_key": null,
+        "bytes": null,
+        "charged_tx_fee": 79222944,
+        "consensus_timestamp": "1790023815.578594660",
+        "entity_id": "0.0.1183558",
+        "high_volume": false,
+        "high_volume_pricing_multiplier": 0,
+        "max_fee": "1710000000",
+        "max_custom_fees": [],
+        "memo_base64": "",
+        "name": "ETHEREUMTRANSACTION",
+        "nft_transfers": [],
+        "node": "0.0.7",
+        "nonce": 0,
+        "parent_consensus_timestamp": null,
+        "result": "SUCCESS",
+        "scheduled": false,
+        "staking_reward_transfers": [],
+        "token_transfers": [],
+        "transaction_hash": "yz594oHzR6bvcBhYoIJ+z0xJkU3B1R/qq7eCZPP+OLS4u70rUG+vWO0JAxOvxc9L",
+        "transaction_id": "0.0.7314364-1790023809-732233451",
+        "transfers": [
+          {
+            "account": "0.0.802",
+            "amount": 79222944,
+            "is_approval": false
+          },
+          {
+            "account": "0.0.10645914",
+            "amount": -79222944,
+            "is_approval": false
+          }
+        ],
+        "valid_duration_seconds": "120",
+        "valid_start_timestamp": "1790023809.732233451"
+      }
+    ],
+    "links": {
+      "next": null
+    }
+  }
+}

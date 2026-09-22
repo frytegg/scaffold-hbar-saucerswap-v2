@@ -2,6 +2,15 @@ export { htsTokenAbi, quoterV2Abi, swapRevertAbi, swapRouterAbi, v2FactoryAbi } 
 export { entityIdOfLongZero, isLongZeroAddress, isSentBy } from "./addressForms";
 export type { AddressBookEntry, EntityId, HbarPoolEntry, TokenEntry } from "./addresses";
 export { testnet } from "./addresses";
+export type { EvidencePreflight, EvidenceRecord, EvidenceSwap, EvidenceTransaction } from "./evidence";
+export {
+  EVIDENCE_SCHEMA_VERSION,
+  EvidenceFormatError,
+  checkEvidence,
+  evidenceFileName,
+  evidenceTransaction,
+  parseEvidence,
+} from "./evidence";
 export type { FailureAction, FailureKind, HbarInputContext, HederaFailure } from "./failure";
 export { explainContractResult, explainError, explainResponseCode, postMortem } from "./failure";
 export type {
@@ -13,6 +22,8 @@ export type {
   MirrorErrorReason,
   MirrorResponse,
   MirrorTokenRelationship,
+  MirrorTransaction,
+  MirrorTransfer,
   MirrorTransport,
   WaitOptions,
 } from "./mirror";
@@ -43,14 +54,17 @@ export { extractRpcError } from "./rpcError";
 export type { ApproveCall, SwapBuildErrorCode, SwapCall } from "./swap";
 export {
   SwapBuildError,
+  approvalGranted,
   buildApproveCall,
   buildHbarToTokenSwap,
   buildTokenToHbarSwap,
   minimumOut,
   quoteExactInput,
+  swapAmountOut,
   swapDeadline,
   swapPath,
 } from "./swap";
+export { netTransfer, networkFee } from "./transfers";
 export type { Tinybar, UnitErrorCode, Weibar } from "./units";
 export {
   UnitError,

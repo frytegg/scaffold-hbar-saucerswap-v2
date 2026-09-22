@@ -13,17 +13,21 @@ export const mirrorPaths = {
     `/api/v1/accounts/${account}/tokens?token.id=${token}`,
   tokenAllowance: (owner: AccountRef, spender: EntityId, token: EntityId): string =>
     `/api/v1/accounts/${owner}/allowances/tokens?spender.id=${spender}&token.id=${token}`,
+  /** The transaction record at a consensus timestamp: its HBAR transfer list, fees included. */
+  transaction: (consensusTimestamp: string): string => `/api/v1/transactions?timestamp=${consensusTimestamp}`,
 };
 
 const HASH = "0x[0-9a-fA-F]{64}";
 const ENTITY = "\\d+\\.\\d+\\.\\d+";
 const ACCOUNT = `(?:${ENTITY}|0x[0-9a-fA-F]{40})`;
+const TIMESTAMP = "\\d+\\.\\d{9}";
 const RELAYED_PATHS = [
   `/api/v1/contracts/results/${HASH}`,
   `/api/v1/contracts/results/${HASH}/actions\\?limit=100`,
   `/api/v1/accounts/${ACCOUNT}\\?transactions=false`,
   `/api/v1/accounts/${ACCOUNT}/tokens\\?token\\.id=${ENTITY}`,
   `/api/v1/accounts/${ACCOUNT}/allowances/tokens\\?spender\\.id=${ENTITY}&token\\.id=${ENTITY}`,
+  `/api/v1/transactions\\?timestamp=${TIMESTAMP}`,
 ].map(pattern => new RegExp(`^${pattern}$`));
 
 export function isRelayedMirrorPath(path: string): boolean {

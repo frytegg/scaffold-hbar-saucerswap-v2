@@ -1,7 +1,14 @@
 import { htsTokenAbi, quoterV2Abi, swapRouterAbi } from "./abi";
 import { type HbarPoolEntry, type TokenEntry, testnet } from "./addresses";
 import { type Tinybar, type Weibar, payable, tinybar } from "./units";
-import { type Address, type Hex, type PublicClient, encodeFunctionData, encodePacked } from "viem";
+import {
+  type Address,
+  type Hex,
+  type PublicClient,
+  decodeFunctionResult,
+  encodeFunctionData,
+  encodePacked,
+} from "viem";
 
 export type SwapBuildErrorCode = "invalid-slippage" | "zero-minimum-out" | "amount-out-of-range";
 
@@ -153,6 +160,17 @@ export function buildApproveCall(token: TokenEntry, amount: bigint): ApproveCall
     functionName: "approve",
     args: [testnet.swapRouter.evmAddress, amount],
   };
+}
+
+/** What a swap multicall delivered, from its return value (the mirror's `call_result`): exactInput's amountOut. */
+export function swapAmountOut(callResult: Hex): bigint {
+  const [exactInputResult] = decodeFunctionResult({ abi: swapRouterAbi, functionName: "multicall", data: callResult });
+  return decodeFunctionResult({ abi: swapRouterAbi, functionName: "exactInput", data: exactInputResult });
+}
+
+/** Whether an HTS token's approve returned true. It answers a bool, not a response code. */
+export function approvalGranted(callResult: Hex): boolean {
+  return decodeFunctionResult({ abi: htsTokenAbi, functionName: "approve", data: callResult });
 }
 
 /** QuoterV2's answer for `amountIn` along `path`, read with eth_call: nothing is sent. */

@@ -14,6 +14,7 @@ import { mirrorBody, mirrorFixture, replayMirror } from "./replay";
 import { describe, expect, it } from "vitest";
 
 const N1 = mirrorBody("result-token-to-hbar-no-allowance-292").hash as `0x${string}`;
+const SWAP_AT = "1790023842.760213408";
 const MAIN = "0.0.10645914";
 
 async function mirrorErrorOf(
@@ -61,6 +62,11 @@ describe("the mirror client reads the captured payloads into typed results", () 
       [mirrorPaths.tokenAllowance(MAIN, testnet.swapRouter.id, testnet.sauce.id)]:
         mirrorFixture("allowances-router-none"),
       [mirrorPaths.tokenAllowance(MAIN, "0.0.1308184", testnet.sauce.id)]: mirrorFixture("allowances-position-manager"),
+      [mirrorPaths.transaction(SWAP_AT)]: mirrorFixture("transaction-token-to-hbar-success"),
+      [mirrorPaths.transaction("1790023842.760213409")]: {
+        status: 200,
+        body: { transactions: [], links: { next: null } },
+      },
     }),
   });
 
@@ -73,6 +79,7 @@ describe("the mirror client reads the captured payloads into typed results", () 
       from: "0x0000000000000000000000000000000000a2719a",
       gasUsed: 136_618n,
       amount: 0n,
+      blockNumber: 40_812_405n,
       timestamp: mirrorBody("result-token-to-hbar-no-allowance-292").timestamp,
     });
   });
@@ -119,6 +126,20 @@ describe("the mirror client reads the captured payloads into typed results", () 
   it("token allowances: the remaining amount, and 0 when the mirror has no row", async () => {
     expect(await mirror.getTokenAllowance(MAIN, "0.0.1308184", testnet.sauce.id)).toBe(40_000_000n);
     expect(await mirror.getTokenAllowance(MAIN, testnet.swapRouter.id, testnet.sauce.id)).toBe(0n);
+  });
+
+  it("the transaction record at a consensus timestamp, with its HBAR transfer list", async () => {
+    expect(await mirror.getTransaction(SWAP_AT)).toEqual({
+      transfers: [
+        { account: "0.0.802", amount: 99_719_740n },
+        { account: "0.0.15057", amount: -21_407_548n },
+        { account: MAIN, amount: -78_312_192n },
+      ],
+    });
+  });
+
+  it("null for a timestamp with no transaction", async () => {
+    expect(await mirror.getTransaction("1790023842.760213409")).toBeNull();
   });
 
   it("refuses a body without the fields it needs", async () => {

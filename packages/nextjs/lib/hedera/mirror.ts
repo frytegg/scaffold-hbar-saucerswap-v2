@@ -41,8 +41,16 @@ export type MirrorContractResult = {
   from: Address;
   gasUsed: bigint;
   amount: Tinybar;
+  blockNumber: bigint;
+  /** The consensus timestamp, "seconds.nanoseconds": the key of the transaction record. */
   timestamp: string;
 };
+
+/** One line of a transaction record's HBAR transfer list: a signed amount, negative for the account that paid. */
+export type MirrorTransfer = { account: EntityId; amount: bigint };
+
+/** The part of a transaction record this library reads. */
+export type MirrorTransaction = { transfers: MirrorTransfer[] };
 
 export type MirrorContractAction = {
   callDepth: number;
@@ -75,6 +83,8 @@ export type MirrorClient = {
   getTokenRelationship(account: AccountRef, token: EntityId): Promise<MirrorTokenRelationship | null>;
   /** 0 when there is no allowance row: the mirror drops the row once an allowance is used up. */
   getTokenAllowance(owner: AccountRef, spender: EntityId, token: EntityId): Promise<bigint>;
+  /** The record at a contract result's `timestamp`; null while the mirror has not ingested it. */
+  getTransaction(consensusTimestamp: string): Promise<MirrorTransaction | null>;
   waitForResult(hash: Hex, options?: WaitOptions): Promise<MirrorContractResult>;
 };
 
@@ -156,8 +166,19 @@ function parseContractResult(body: unknown, path: string): MirrorContractResult 
     from: addressAt(result, "from", path),
     gasUsed: integerAt(result, "gas_used", path),
     amount: tinybar(integerAt(result, "amount", path)),
+    blockNumber: integerAt(result, "block_number", path),
     timestamp: stringAt(result, "timestamp", path),
   };
+}
+
+function parseTransfer(value: unknown, path: string): MirrorTransfer {
+  const transfer = objectAt(value, path, "transfer");
+  return { account: entityIdAt(transfer, "account", path), amount: integerAt(transfer, "amount", path) };
+}
+
+function parseTransaction(value: unknown, path: string): MirrorTransaction {
+  const transaction = objectAt(value, path, "transaction");
+  return { transfers: arrayAt(transaction, "transfers", path).map(transfer => parseTransfer(transfer, path)) };
 }
 
 function parseAction(value: unknown, path: string): MirrorContractAction {
@@ -272,6 +293,12 @@ export function createMirrorClient({ transport, sleep = wait, now = Date.now }: 
       const path = mirrorPaths.tokenAllowance(owner, spender, token);
       const [first] = await getList(path, "allowances");
       return first === undefined ? 0n : integerAt(objectAt(first, path, "allowance"), "amount", path);
+    },
+
+    async getTransaction(consensusTimestamp) {
+      const path = mirrorPaths.transaction(consensusTimestamp);
+      const [record] = await getList(path, "transactions");
+      return record === undefined ? null : parseTransaction(record, path);
     },
 
     async waitForResult(hash, options = {}) {

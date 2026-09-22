@@ -4,31 +4,35 @@ Answers of Hedera testnet, replayed by the offline tests of `packages/nextjs/lib
 
 ## Mirror node answers
 
-In `mirror/`, each file holds the HTTP status and the JSON body that https://testnet.mirrornode.hedera.com answered to one GET on 22 Sept 2026 at 14:40 UTC. The account answers leave out three fields the library never reads: the public key, which trips generic secret scanners, the transaction list and the paging links.
+In `mirror/`, each file holds the HTTP status and the JSON body that https://testnet.mirrornode.hedera.com answered to one GET on 22 Sept 2026 at 14:40 UTC, or at 15:40 UTC for the approval and the three transaction records. The account answers leave out three fields the library never reads: the public key, which trips generic secret scanners, the transaction list and the paging links.
 
-| file                                                        | GET, and what it shows                                                                                                     |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `mirror/result-token-to-hbar-no-allowance-292.json`         | /api/v1/contracts/results/0x756bfe64…dabc: SAUCE to HBAR with no allowance, reverted, empty revert data                    |
-| `mirror/actions-token-to-hbar-no-allowance-292.json`        | the same transaction's /actions: RespCode(292) at call depths 1 to 3                                                       |
-| `mirror/result-token-to-hbar-allowance-too-small-293.json`  | /api/v1/contracts/results/0x2eed251d…223c: an allowance of 10 SAUCE for 20, reverted, empty revert data                    |
-| `mirror/actions-token-to-hbar-allowance-too-small-293.json` | its /actions: RespCode(293)                                                                                                |
-| `mirror/result-multicall-unassociated-recipient-184.json`   | /api/v1/contracts/results/0x4d10ea98…a483: HBAR to SAUCE through multicall to a recipient without SAUCE, empty revert data |
-| `mirror/actions-multicall-unassociated-recipient-184.json`  | its /actions: TransferFail(184)                                                                                            |
-| `mirror/result-direct-unassociated-recipient-184.json`      | /api/v1/contracts/results/0xc0fb56df…976b: the same swap called directly, TransferFail(184) kept in error_message          |
-| `mirror/result-hbar-to-token-success.json`                  | /api/v1/contracts/results/0x82c44f7a…ff9d: 1 HBAR to SAUCE, sent with viem 2.39.0                                          |
-| `mirror/result-token-to-hbar-success.json`                  | /api/v1/contracts/results/0xf1c4aaa0…627d: 10 SAUCE to native HBAR in one multicall                                        |
-| `mirror/result-associate-again-194.json`                    | /api/v1/contracts/results/0x6d58685d…225e: a second associate(), a successful transaction that returned 194                |
-| `mirror/result-not-found.json`                              | /api/v1/contracts/results/ with a hash the network never saw: 404                                                          |
-| `mirror/account-unlimited-slots.json`                       | /api/v1/accounts/0.0.10645914: an ECDSA account with its own EVM address and unlimited automatic associations              |
-| `mirror/account-by-long-zero-address.json`                  | the same account asked for by its long-zero address                                                                        |
-| `mirror/account-zero-slots-unassociated.json`               | /api/v1/accounts/0.0.10574825: no automatic association slot, no SAUCE                                                     |
-| `mirror/account-zero-slots-associated.json`                 | /api/v1/accounts/0.0.10650085: no slot, SAUCE associated explicitly                                                        |
-| `mirror/account-not-found.json`                             | /api/v1/accounts/ with an address no account has: 404                                                                      |
-| `mirror/tokens-relation-explicit.json`                      | /api/v1/accounts/0.0.10650085/tokens?token.id=0.0.1183558                                                                  |
-| `mirror/tokens-relation-automatic.json`                     | /api/v1/accounts/0.0.10645914/tokens?token.id=0.0.1183558                                                                  |
-| `mirror/tokens-no-relation.json`                            | /api/v1/accounts/0.0.10574825/tokens?token.id=0.0.1183558: an empty list                                                   |
-| `mirror/allowances-router-none.json`                        | /api/v1/accounts/0.0.10645914/allowances/tokens for the SwapRouter: no row                                                 |
-| `mirror/allowances-position-manager.json`                   | the same for the position manager 0.0.1308184: 40 SAUCE left                                                               |
+| file                                                        | GET, and what it shows                                                                                                         |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `mirror/result-token-to-hbar-no-allowance-292.json`         | /api/v1/contracts/results/0x756bfe64…dabc: SAUCE to HBAR with no allowance, reverted, empty revert data                        |
+| `mirror/actions-token-to-hbar-no-allowance-292.json`        | the same transaction's /actions: RespCode(292) at call depths 1 to 3                                                           |
+| `mirror/result-token-to-hbar-allowance-too-small-293.json`  | /api/v1/contracts/results/0x2eed251d…223c: an allowance of 10 SAUCE for 20, reverted, empty revert data                        |
+| `mirror/actions-token-to-hbar-allowance-too-small-293.json` | its /actions: RespCode(293)                                                                                                    |
+| `mirror/result-multicall-unassociated-recipient-184.json`   | /api/v1/contracts/results/0x4d10ea98…a483: HBAR to SAUCE through multicall to a recipient without SAUCE, empty revert data     |
+| `mirror/actions-multicall-unassociated-recipient-184.json`  | its /actions: TransferFail(184)                                                                                                |
+| `mirror/result-direct-unassociated-recipient-184.json`      | /api/v1/contracts/results/0xc0fb56df…976b: the same swap called directly, TransferFail(184) kept in error_message              |
+| `mirror/result-hbar-to-token-success.json`                  | /api/v1/contracts/results/0x82c44f7a…ff9d: 1 HBAR to SAUCE, sent with viem 2.39.0                                              |
+| `mirror/result-token-to-hbar-success.json`                  | /api/v1/contracts/results/0xf1c4aaa0…627d: 10 SAUCE to native HBAR in one multicall                                            |
+| `mirror/result-approve-success.json`                        | /api/v1/contracts/results/0x75c13d43…0a1f: approve(SwapRouter, 10 SAUCE) on the SAUCE token, returned true                     |
+| `mirror/transaction-approve-success.json`                   | /api/v1/transactions?timestamp=1790023815.578594660: that approval's record, with its HBAR transfer list                       |
+| `mirror/transaction-hbar-to-token-success.json`             | /api/v1/transactions?timestamp=1790023599.459077954: the 1 HBAR to SAUCE swap; the sender paid 1 HBAR and the fee              |
+| `mirror/transaction-token-to-hbar-success.json`             | /api/v1/transactions?timestamp=1790023842.760213408: the 10 SAUCE to HBAR swap; the WHBAR contract 0.0.15057 paid the HBAR out |
+| `mirror/result-associate-again-194.json`                    | /api/v1/contracts/results/0x6d58685d…225e: a second associate(), a successful transaction that returned 194                    |
+| `mirror/result-not-found.json`                              | /api/v1/contracts/results/ with a hash the network never saw: 404                                                              |
+| `mirror/account-unlimited-slots.json`                       | /api/v1/accounts/0.0.10645914: an ECDSA account with its own EVM address and unlimited automatic associations                  |
+| `mirror/account-by-long-zero-address.json`                  | the same account asked for by its long-zero address                                                                            |
+| `mirror/account-zero-slots-unassociated.json`               | /api/v1/accounts/0.0.10574825: no automatic association slot, no SAUCE                                                         |
+| `mirror/account-zero-slots-associated.json`                 | /api/v1/accounts/0.0.10650085: no slot, SAUCE associated explicitly                                                            |
+| `mirror/account-not-found.json`                             | /api/v1/accounts/ with an address no account has: 404                                                                          |
+| `mirror/tokens-relation-explicit.json`                      | /api/v1/accounts/0.0.10650085/tokens?token.id=0.0.1183558                                                                      |
+| `mirror/tokens-relation-automatic.json`                     | /api/v1/accounts/0.0.10645914/tokens?token.id=0.0.1183558                                                                      |
+| `mirror/tokens-no-relation.json`                            | /api/v1/accounts/0.0.10574825/tokens?token.id=0.0.1183558: an empty list                                                       |
+| `mirror/allowances-router-none.json`                        | /api/v1/accounts/0.0.10645914/allowances/tokens for the SwapRouter: no row                                                     |
+| `mirror/allowances-position-manager.json`                   | the same for the position manager 0.0.1308184: 40 SAUCE left                                                                   |
 
 ## JSON-RPC answers
 

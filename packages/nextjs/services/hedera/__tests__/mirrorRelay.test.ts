@@ -15,6 +15,7 @@ describe("the relay forwards exactly the paths the mirror client builds", () => 
     mirrorPaths.account("0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01"),
     mirrorPaths.tokenRelationship("0.0.10645914", testnet.sauce.id),
     mirrorPaths.tokenAllowance("0.0.10645914", testnet.swapRouter.id, testnet.sauce.id),
+    mirrorPaths.transaction("1790023842.760213408"),
   ])("forwards %s", path => {
     expect(isRelayedMirrorPath(path)).toBe(true);
   });
@@ -27,6 +28,8 @@ describe("the relay forwards exactly the paths the mirror client builds", () => 
     "/api/v1/accounts/0.0.2?transactions=false&limit=100",
     "https://example.com/api/v1/accounts/0.0.2?transactions=false",
     "/api/v1/accounts/../network/nodes?transactions=false",
+    "/api/v1/transactions?timestamp=gt:1790023842.760213408",
+    "/api/v1/transactions?account.id=0.0.2",
   ])("refuses %j", path => {
     expect(isRelayedMirrorPath(path)).toBe(false);
   });
