@@ -6,16 +6,16 @@ import type { AccountLookupErrorCode, AccountLookupResponse } from "~~/utils/sca
 const EVM_ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const MIRROR_TIMEOUT_MS = 8_000;
 
-function respond(body: AccountLookupResponse) {
+function respond(body: AccountLookupResponse): NextResponse<AccountLookupResponse> {
   return NextResponse.json(body);
 }
 
-function fail(code: AccountLookupErrorCode, message: string) {
+function fail(code: AccountLookupErrorCode, message: string): NextResponse<AccountLookupResponse> {
   return respond({ ok: false, error: { code, message } });
 }
 
 /** Resolves an EVM address to its Hedera account ID. Answers 200 in every case: see AccountLookupResponse. */
-export async function GET(req: Request) {
+export async function GET(req: Request): Promise<NextResponse<AccountLookupResponse>> {
   const { searchParams } = new URL(req.url);
   const evm = searchParams.get("evm");
   const network = (searchParams.get("network") ?? "testnet").toLowerCase();

@@ -12,7 +12,7 @@ const MAX_BODY_BYTES = 1_000_000;
  * Same-origin JSON-RPC endpoint of the browser's wallet stack, POST /api/hedera/rpc?network=testnet|mainnet.
  * It answers 200 every time, with a JSON-RPC error body when something failed: see relayJsonRpc.
  */
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse> {
   const network = new URL(request.url).searchParams.get("network");
   if (!isHederaNetwork(network)) {
     return NextResponse.json(jsonRpcFailure(null, INVALID_REQUEST, `Unknown Hedera network "${network}".`));

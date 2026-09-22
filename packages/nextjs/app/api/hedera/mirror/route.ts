@@ -6,7 +6,7 @@ import { UpstreamConfigError, isHederaNetwork, mirrorNodeUrl } from "~~/services
 
 const MIRROR_TIMEOUT_MS = 8_000;
 
-function respond(payload: MirrorRelayResponse) {
+function respond(payload: MirrorRelayResponse): NextResponse<MirrorRelayResponse> {
   return NextResponse.json(payload);
 }
 
@@ -14,7 +14,7 @@ function respond(payload: MirrorRelayResponse) {
  * Same-origin GET relay to the mirror node for the browser, GET /api/hedera/mirror?network=testnet&path=/api/v1/…
  * Only the paths of lib/hedera's mirror client are forwarded. It answers 200 every time: see relayMirrorGet.
  */
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse<MirrorRelayResponse>> {
   const params = new URL(request.url).searchParams;
   const network = params.get("network");
   if (!isHederaNetwork(network)) {
