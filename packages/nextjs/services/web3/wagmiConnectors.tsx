@@ -11,6 +11,11 @@ const { walletConnectProjectId } = scaffoldConfig;
 // wallets are offered, so the app boots with an empty environment and creates no WalletConnect connector.
 const wallets = walletConnectProjectId ? [metaMaskWallet, walletConnectWallet] : [injectedWallet];
 
+// The connect modal is where a developer looks for the missing WalletConnect entry, so the reason is its group title.
+const walletGroupName = walletConnectProjectId
+  ? "Supported Wallets"
+  : "Browser wallet (WalletConnect off: no project id)";
+
 // The burner wallet builds its own RPC client; without this it would call the chain's public endpoint directly.
 rainbowkitBurnerWallet.rpcUrls = scaffoldConfig.rpcOverrides;
 
@@ -25,7 +30,7 @@ export const wagmiConnectors = () => {
 
   const walletGroups: WalletList = [
     {
-      groupName: "Supported Wallets",
+      groupName: walletGroupName,
       wallets,
     },
   ];
