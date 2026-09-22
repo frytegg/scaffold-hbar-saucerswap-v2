@@ -1,4 +1,5 @@
 import { swapRevertAbi } from "./abi";
+import { GAS_RULES_MODULE, GasRuleError } from "./gasRules";
 import { type MirrorClient, type MirrorContractAction, type MirrorContractResult, MirrorError } from "./mirror";
 import { type StatusName, failureStatusIn, statusNameOf } from "./responseCodes";
 import { extractRpcError } from "./rpcError";
@@ -7,7 +8,15 @@ import { type Tinybar, UnitError, type Weibar, valueShortfall } from "./units";
 import { type DecodeErrorResultReturnType, type Hex, decodeErrorResult, isHex } from "viem";
 
 /** What the person in front of the app can do about a failure. */
-export type FailureAction = "associate" | "approve" | "fund" | "scale-value" | "requote" | "retry" | "none";
+export type FailureAction =
+  | "associate"
+  | "approve"
+  | "fund"
+  | "scale-value"
+  | "requote"
+  | "retry"
+  | "supply-gas"
+  | "none";
 
 export type FailureKind =
   /** Refused by this library before any request: a unit mistake, a zero minimum, an out-of-range amount. */
@@ -20,6 +29,8 @@ export type FailureKind =
   | "hts-response-code"
   /** The revert data was empty; the status name survived only in the relay's message. */
   | "hedera-status-text"
+  /** Neither simulator will price this call, so no wallet can send it without a gas limit from the dapp. */
+  | "not-estimable"
   | "revert-string"
   | "empty-revert"
   | "unknown-revert"
@@ -66,6 +77,12 @@ const STATUS_ADVICE: Record<Exclude<StatusName, "SUCCESS" | "CONTRACT_REVERT_EXE
     message:
       "The recipient has no automatic association slot left. Associate the token from the recipient's account first.",
   },
+  // This is what a transaction that reached the network means by 226. Before a send, the same answer is how both
+  // simulators refuse a call they cannot price, and explainError reads it as that instead.
+  INVALID_NFT_ID: {
+    action: "none",
+    message: "The network answered INVALID_NFT_ID: the position NFT this call names does not exist.",
+  },
   INVALID_ALIAS_KEY: {
     action: "none",
     message:
@@ -90,6 +107,15 @@ const REVERT_STRINGS = new Map([
   ],
   ["Transaction too old", "The deadline passed before the swap executed. Get a new quote and send it again."],
 ]);
+
+const NOT_ESTIMABLE_MESSAGE =
+  "This call cannot be estimated on Hedera; the dapp must supply a gas limit, because a wallet that cannot price a " +
+  `call will not send it. The limits this template supplies, and where each number comes from, are in ${GAS_RULES_MODULE}.`;
+
+// What MetaMask 13.48.0 (Chrome 152, Hedera testnet, 22 Sept 2026) wrapped the relay's refusal in when it could not
+// price a position mint: it displayed no fee at all and the send failed. The method name keeps the pattern narrow.
+const WALLET_REFUSED_TO_PRICE = /RPC endpoint returned HTTP client error/i;
+const PRICED_METHOD = /eth_(?:sendRawTransaction|sendTransaction|estimateGas)\b/;
 
 const EMPTY_REVERT_SIMULATED =
   "The call reverted without data. SaucerSwap's multicall drops its custom errors, which are too short to pass " +
@@ -160,16 +186,30 @@ function explainRevert(data: Hex, relayText: string | null, emptyMessage: string
   return { kind: "empty-revert", code: null, statusName: null, message: emptyMessage, action: "none", via };
 }
 
-function fromLibraryError(error: UnitError | SwapBuildError): HederaFailure {
+function fromLibraryError(error: UnitError | SwapBuildError | GasRuleError): HederaFailure {
   const scalesValue = error instanceof UnitError && error.code.startsWith("value-");
+  const suppliesGas = error instanceof GasRuleError;
   return {
     kind: "refused-before-sending",
     code: null,
     statusName: null,
     message: error.message,
-    action: scalesValue ? "scale-value" : "none",
+    action: scalesValue ? "scale-value" : suppliesGas ? "supply-gas" : "none",
     via: `${error.name} ${error.code}`,
   };
+}
+
+/** A call neither simulator prices. Both the wallet's refusal and the simulators' own answer arrive here. */
+function notEstimable(code: number | null, statusName: StatusName | null, via: string): HederaFailure {
+  return { kind: "not-estimable", code, statusName, message: NOT_ESTIMABLE_MESSAGE, action: "supply-gas", via };
+}
+
+/** The error's own text, for the shapes a browser wallet wraps a refusal in and gives no JSON-RPC code. */
+function textOf(error: unknown): string {
+  if (typeof error === "string") return error;
+  if (typeof error !== "object" || error === null) return "";
+  const { message } = error as { message?: unknown };
+  return typeof message === "string" ? message : "";
 }
 
 /**
@@ -177,7 +217,9 @@ function fromLibraryError(error: UnitError | SwapBuildError): HederaFailure {
  * reads as INSUFFICIENT_TOKEN_BALANCE, and the advice would be to fund the account.
  */
 export function explainError(error: unknown, context?: HbarInputContext): HederaFailure {
-  if (error instanceof UnitError || error instanceof SwapBuildError) return fromLibraryError(error);
+  if (error instanceof UnitError || error instanceof SwapBuildError || error instanceof GasRuleError) {
+    return fromLibraryError(error);
+  }
   if (error instanceof MirrorError) {
     const transient = error.reason === "unavailable" || error.reason === "timeout";
     return {
@@ -192,6 +234,7 @@ export function explainError(error: unknown, context?: HbarInputContext): Hedera
 
   const rpc = extractRpcError(error);
   const relayMessage = rpc.message ?? "";
+  const walletText = `${relayMessage}\n${textOf(error)}`;
 
   if (rpc.code === -32602 && relayMessage.includes("less than 10_000_000_000 wei")) {
     return {
@@ -204,8 +247,18 @@ export function explainError(error: unknown, context?: HbarInputContext): Hedera
     };
   }
 
+  // A wallet that could not price the call: it has no revert data to show, only its own wrapper of the refusal.
+  if (rpc.data === null && WALLET_REFUSED_TO_PRICE.test(walletText) && PRICED_METHOD.test(walletText)) {
+    return notEstimable(rpc.code, null, "the wallet could not price the call and refused to send it");
+  }
+
   if (rpc.code === 3 || rpc.data !== null) {
     const failure = explainRevert(rpc.data ?? "0x", rpc.message, EMPTY_REVERT_SIMULATED, "revert");
+    // Both simulators refuse a position mint with this status although the network executes it: it is the answer
+    // of a call that cannot be priced, not of a missing NFT. A transaction that reached the network keeps 226.
+    if (failure.statusName === "INVALID_NFT_ID") {
+      return notEstimable(failure.code, failure.statusName, `${failure.via}, refused at simulation`);
+    }
     const shortfall = context === undefined ? null : valueShortfall(context.value, context.amountIn);
     if (failure.statusName === "INSUFFICIENT_TOKEN_BALANCE" && shortfall !== null) {
       return { ...failure, kind: "unscaled-value", message: shortfall.message, action: "scale-value" };

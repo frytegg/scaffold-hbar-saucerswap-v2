@@ -2,12 +2,21 @@ import { swapRevertAbi, swapRouterAbi } from "../abi";
 import { testnet } from "../addresses";
 import type { EvmAddress } from "../evmAddress";
 import { explainContractResult, explainError, explainResponseCode, postMortem } from "../failure";
+import { withGasLimit } from "../gasRules";
 import { MirrorError, createMirrorClient } from "../mirror";
 import { mirrorPaths } from "../mirrorPaths";
 import { SwapBuildError, buildHbarToTokenSwap, minimumOut, quoteExactInput, swapPath } from "../swap";
 import { UnitError, assertJsonRpcValue, hbarToTinybar, tinybar } from "../units";
-import { mirrorBody, mirrorFixture, replayClient, replayFetch, replayMirror, rpcFixture } from "./replay";
-import { createWalletClient, encodeErrorResult, http } from "viem";
+import {
+  mirrorBody,
+  mirrorFixture,
+  replayClient,
+  replayFetch,
+  replayMirror,
+  rpcFixture,
+  walletErrorRecord,
+} from "./replay";
+import { createWalletClient, encodeErrorResult, encodeFunctionData, http, parseAbi } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { hederaTestnet } from "viem/chains";
 import { describe, expect, it } from "vitest";
@@ -21,6 +30,15 @@ const UNASSOCIATED_LONG_ZERO = "0x0000000000000000000000000000000000A15BE9";
 async function thrownBy(run: () => Promise<unknown>): Promise<unknown> {
   try {
     await run();
+  } catch (error: unknown) {
+    return error;
+  }
+  throw new Error("expected the call to fail");
+}
+
+function thrownBySync(run: () => unknown): unknown {
+  try {
+    run();
   } catch (error: unknown) {
     return error;
   }
@@ -186,6 +204,104 @@ describe("explainError before sending: simulation and estimation answers", () =>
     });
     expect(failure).toMatchObject({ kind: "unknown-revert", action: "none" });
     expect(failure.message).toContain("0xdeadbeef");
+  });
+});
+
+describe("a call no simulator prices is not an empty revert", () => {
+  const managerAbi = parseAbi([
+    "function mint((address token0, address token1, uint24 fee, int24 tickLower, int24 tickUpper, uint256 amount0Desired, uint256 amount1Desired, uint256 amount0Min, uint256 amount1Min, address recipient, uint256 deadline) params) payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1)",
+    "function multicall(bytes[] data) payable returns (bytes[] results)",
+    "function refundETH() payable",
+  ]);
+  // The arguments of the capture: the position of 22 Sept, with a deadline a test can repeat.
+  const mintArgs = [
+    {
+      token0: testnet.whbar.evmAddress,
+      token1: testnet.sauce.evmAddress,
+      fee: 3000,
+      tickLower: -7680,
+      tickUpper: -7620,
+      amount0Desired: 100_000_000n,
+      amount1Desired: 20_000_000n,
+      amount0Min: 0n,
+      amount1Min: 0n,
+      recipient: SENDER,
+      deadline: 1_790_200_000n,
+    },
+  ] as const;
+  const mintCall = {
+    address: testnet.positionManager.evmAddress,
+    abi: managerAbi,
+    functionName: "mint",
+    args: mintArgs,
+    value: 1_653_611_530_000_000_000n,
+    account: SENDER,
+  } as const;
+  const supplyGas = {
+    kind: "not-estimable",
+    code: 226,
+    statusName: "INVALID_NFT_ID",
+    action: "supply-gas",
+  };
+
+  it("eth_call refuses the mint with INVALID_NFT_ID: the answer is that it cannot be priced", async () => {
+    const client = replayClient([rpcFixture("call-mint-not-estimable")]);
+    const failure = explainError(await thrownBy(() => client.simulateContract(mintCall)));
+    expect(failure).toMatchObject(supplyGas);
+    expect(failure.message).toContain("the dapp must supply a gas limit");
+    expect(failure.message).toContain("lib/hedera/gasRules.ts");
+  });
+
+  it("eth_estimateGas refuses it the same way", async () => {
+    const client = replayClient([rpcFixture("estimate-mint-not-estimable")]);
+    expect(explainError(await thrownBy(() => client.estimateContractGas(mintCall)))).toMatchObject(supplyGas);
+  });
+
+  it("through multicall too, which is the shape a position mint is sent in", async () => {
+    const client = replayClient([rpcFixture("call-multicall-mint-not-estimable")]);
+    const inner = [
+      encodeFunctionData({ abi: managerAbi, functionName: "mint", args: mintArgs }),
+      encodeFunctionData({ abi: managerAbi, functionName: "refundETH" }),
+    ];
+    const failure = explainError(
+      await thrownBy(() => client.simulateContract({ ...mintCall, functionName: "multicall", args: [inner] })),
+    );
+    expect(failure).toMatchObject(supplyGas);
+  });
+
+  it("the wallet's own refusal, when it could not price the call, says the same thing", () => {
+    const failure = explainError(walletErrorRecord("metamask-send-refused-no-gas-limit").error);
+    expect(failure).toMatchObject({ kind: "not-estimable", action: "supply-gas", statusName: null });
+    expect(failure.via).toBe("the wallet could not price the call and refused to send it");
+  });
+
+  it("and still says it wrapped in a viem error, or carrying a JSON-RPC code of its own", () => {
+    const { message } = walletErrorRecord("metamask-send-refused-no-gas-limit").error;
+    const wrapped = new Error(`An internal error was received.\n\nDetails: ${message}\nVersion: viem@2.39.0`);
+    expect(explainError(wrapped).kind).toBe("not-estimable");
+    expect(explainError({ code: -32603, message }).kind).toBe("not-estimable");
+  });
+
+  it("an empty revert through multicall stays an empty revert, with the mirror post-mortem to read", () => {
+    const failure = explainError(rpcErrorOf("call-quote-no-pool"));
+    expect(failure).toMatchObject({ kind: "empty-revert", action: "none" });
+    expect(failure.message).not.toContain("gas limit");
+  });
+
+  it("a simulator's 226 asks for a gas limit; the same status met on the network is a missing NFT", () => {
+    const failure = explainError({ code: 3, message: "execution reverted: CONTRACT_REVERT_EXECUTED, INVALID_NFT_ID" });
+    expect(failure.kind).toBe("not-estimable");
+    expect(explainResponseCode(226, "positions()")).toMatchObject({
+      kind: "hts-response-code",
+      statusName: "INVALID_NFT_ID",
+      action: "none",
+    });
+  });
+
+  it("the library's own refusal to build the call without a limit asks for one too", () => {
+    const built = { address: mintCall.address, abi: managerAbi, functionName: "multicall", args: [[]] };
+    const refusal = thrownBySync(() => withGasLimit(built, { functions: ["mint"] }));
+    expect(explainError(refusal)).toMatchObject({ kind: "refused-before-sending", action: "supply-gas" });
   });
 });
 

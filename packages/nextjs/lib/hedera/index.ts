@@ -2,6 +2,8 @@ export { htsTokenAbi, quoterV2Abi, swapRevertAbi, swapRouterAbi, v2FactoryAbi } 
 export { entityIdOfLongZero, isLongZeroAddress, isSentBy } from "./addressForms";
 export type { AddressBookEntry, EntityId, HbarPoolEntry, TokenEntry } from "./addresses";
 export { testnet } from "./addresses";
+export type { CostSource } from "./cost";
+export { WALLET_FEE_NOTE, feeForGas } from "./cost";
 export type { EvidencePreflight, EvidenceRecord, EvidenceSwap, EvidenceTransaction } from "./evidence";
 export {
   EVIDENCE_SCHEMA_VERSION,
@@ -15,6 +17,8 @@ export type { EvmAddress } from "./evmAddress";
 export { isEvmAddress, toEvmAddress } from "./evmAddress";
 export type { FailureAction, FailureKind, HbarInputContext, HederaFailure } from "./failure";
 export { explainContractResult, explainError, explainResponseCode, postMortem } from "./failure";
+export type { GasMeasurement, GasRule, GasRuleErrorCode } from "./gasRules";
+export { GAS_RULES_MODULE, GasRuleError, gasRuleFor, gasRules, largestMeasuredGas, withGasLimit } from "./gasRules";
 export type {
   MirrorAccount,
   MirrorClient,

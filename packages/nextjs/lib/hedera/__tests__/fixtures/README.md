@@ -62,6 +62,23 @@ In `rpc/`, each file holds the method, the HTTP status and the body that https:/
 | `rpc/call-quote-no-pool.json`                    | eth_call, a quote through a fee tier with no pool: empty data (same log, line 87)                                         |
 | `rpc/get-logs-span-over-7-days.json`             | eth_getLogs over 9.37 days: HTTP 400, -32004 (same log, line 16)                                                          |
 
+The last three were captured on 22 Sept 2026 at 21:20 UTC, from the same address, by simulating a SaucerSwap V2 position mint that nothing signed. They keep their params too.
+
+| file                                         | request, and what it shows                                                                            |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `rpc/call-mint-not-estimable.json`           | eth_call, a position mint: CONTRACT_REVERT_EXECUTED, INVALID_NFT_ID, although the network executes it |
+| `rpc/estimate-mint-not-estimable.json`       | eth_estimateGas of the same call: the same answer, so no wallet can price it                          |
+| `rpc/call-multicall-mint-not-estimable.json` | the same mint through multicall, the shape a position is opened with: the same answer                 |
+
+## What a browser wallet did
+
+In `wallet/`, two records of the builder's MetaMask session of 22 Sept 2026 (MetaMask 13.48.0 on Chrome 152, chain 296). No agent was in that session: the figures of the first file were read back from the mirror node afterwards, and the second holds the sentence the wallet itself gave the page.
+
+| file                                             | what it holds                                                                                                                                                 |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `wallet/metamask-fee-display.json`               | the seven transactions whose fee display was recorded: gas limit, gas used and fee from the mirror node, and what the wallet announced before the signature   |
+| `wallet/metamask-send-refused-no-gas-limit.json` | the sentence the wallet wrapped the relay's refusal in when it could not price a position mint sent with no gas limit, and what it displayed instead of a fee |
+
 ## Lint fixture
 
 `lint/plantedValueViolations.ts` is written for this repository: planted violations of the transaction-value lint guard, which `lintGuard.test.ts` lints as a file of the app's hooks directory.
