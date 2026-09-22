@@ -135,6 +135,7 @@ jobs:
     name: literal command, ${{ matrix.label }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -162,5 +163,4 @@ jobs:
         run: npm install --global "npm@${{ matrix.npm-major }}"
 
       - name: Record how the brief's literal command ends
-        continue-on-error: true
         run: bash tools/gate/literal-command-control.sh --template "${{ github.repository }}"
