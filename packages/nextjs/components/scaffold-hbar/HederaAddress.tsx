@@ -17,7 +17,7 @@ type HederaAddressProps = {
 
 export const HederaAddress = ({ address, chain, format, disableAddressLink }: HederaAddressProps) => {
   const [copied, setCopied] = useState(false);
-  const { accountId, isLoading } = useHederaAccountId(address, chain.id);
+  const { accountId, isLoading, error } = useHederaAccountId(address, chain.id);
 
   if (!address) {
     return (
@@ -64,6 +64,10 @@ export const HederaAddress = ({ address, chain, format, disableAddressLink }: He
         <span className="text-xs text-base-content/60 animate-pulse">Resolving Hedera Account ID…</span>
       ) : accountId ? (
         <span className="text-xs text-base-content/80">Hedera Account ID: {accountId}</span>
+      ) : error ? (
+        <span className="text-xs text-warning" title={error}>
+          Hedera Account ID unavailable
+        </span>
       ) : null}
     </div>
   );

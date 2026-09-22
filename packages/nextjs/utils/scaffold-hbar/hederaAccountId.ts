@@ -1,6 +1,15 @@
 export type HederaNetwork = "testnet" | "mainnet";
 
-type AccountIdResponse = { accountId: string | null } | { error: string };
+export type AccountLookupErrorCode = "invalid_address" | "invalid_network" | "misconfigured" | "mirror_unavailable";
+
+/**
+ * Body of GET /api/hedera/account. The route answers HTTP 200 in every case, because a browser logs any
+ * 4xx/5xx response as a console error before the caller can handle it; success and failure are told
+ * apart by `ok`. `accountId` is null for an address the network has not seen yet.
+ */
+export type AccountLookupResponse =
+  | { ok: true; accountId: string | null }
+  | { ok: false; error: { code: AccountLookupErrorCode; message: string } };
 
 const CHAIN_ID_TO_NETWORK: Record<number, HederaNetwork> = {
   295: "mainnet",
@@ -13,26 +22,20 @@ export function chainIdToHederaNetwork(chainId: number): HederaNetwork {
 }
 
 /**
- * Returns the Hedera account ID (e.g. "0.0.8041897") for an EVM address.
- *
- * @param evmAddress - EVM address (0x...)
- * @param network - "testnet" (default) or "mainnet"
- * @returns Hedera account ID or null if not found
+ * Looks up the Hedera account ID (e.g. "0.0.8041897") of an EVM address through the app's own route.
+ * Never throws: a request that cannot complete comes back as the same `ok: false` shape the route uses.
  */
-export async function getHederaAccountId(
+export async function lookupHederaAccountId(
   evmAddress: string,
   network: HederaNetwork = "testnet",
-): Promise<string | null> {
+): Promise<AccountLookupResponse> {
   const params = new URLSearchParams({ evm: evmAddress, network });
-  const res = await fetch(`/api/hedera/account?${params}`);
 
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as AccountIdResponse;
-    if ("error" in body) throw new Error(body.error);
-    return null;
+  try {
+    const response = await fetch(`/api/hedera/account?${params}`);
+    return (await response.json()) as AccountLookupResponse;
+  } catch (error: unknown) {
+    const reason = error instanceof Error ? error.message : String(error);
+    return { ok: false, error: { code: "mirror_unavailable", message: `Account lookup failed: ${reason}` } };
   }
-
-  const data = (await res.json()) as AccountIdResponse;
-  if ("error" in data) throw new Error(data.error);
-  return data.accountId;
 }
