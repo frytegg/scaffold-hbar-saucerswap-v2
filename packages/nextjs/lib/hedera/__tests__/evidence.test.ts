@@ -83,6 +83,69 @@ async function probeRecord(): Promise<EvidenceRecord> {
   };
 }
 
+// This template's own Solidity consumer, 0.0.10671897, deployed and exercised on 22 Sept 2026:
+// docs/evidence/2026-09-22-consumer-hbar-to-sauce.json.
+const CONSUMER = "0x7E1a4337BEBB0cC8e231c6137Da17F04C7cd3409" as const;
+const CONSUMER_DEPLOY = mirrorBody("result-consumer-deploy").hash as Hex;
+const CONSUMER_SWAP = mirrorBody("result-consumer-swap").hash as Hex;
+
+const consumerMirror = createMirrorClient({
+  transport: replayMirror({
+    [mirrorPaths.contractResult(CONSUMER_DEPLOY)]: mirrorFixture("result-consumer-deploy"),
+    [mirrorPaths.contractResult(CONSUMER_SWAP)]: mirrorFixture("result-consumer-swap"),
+    [mirrorPaths.account(LONG_ZERO_MAIN)]: mirrorFixture("account-by-long-zero-address"),
+    [mirrorPaths.transaction("1790116304.928741972")]: mirrorFixture("transaction-consumer-deploy"),
+    [mirrorPaths.transaction("1790116752.637880104")]: mirrorFixture("transaction-consumer-swap"),
+  }),
+});
+
+async function consumerEntry(role: "deploy" | "swap", hash: Hex, previewFee: bigint) {
+  const result = (await consumerMirror.getContractResult(hash)) as MirrorContractResult;
+  const record = (await consumerMirror.getTransaction(result.timestamp)) as MirrorTransaction;
+  return evidenceTransaction({
+    role,
+    result,
+    record,
+    sender: MAIN.accountId,
+    previewFee: tinybar(previewFee),
+    mirrorBaseUrl: MIRROR,
+  });
+}
+
+async function consumerRecord(): Promise<EvidenceRecord> {
+  return {
+    schemaVersion: 1,
+    name: "consumer-hbar-to-sauce",
+    network: "testnet",
+    chainId: 296,
+    recordedAt: "2026-09-22T22:39:17.275Z",
+    sender: MAIN,
+    software: { viem: "2.39.0", relay: "relay/0.78.5", node: "v24.13.0" },
+    preflight: [{ check: "recipient", status: "pass", message: "0.0.10671897 is already associated with SAUCE." }],
+    swap: {
+      direction: "hbar-to-token",
+      router: testnet.swapRouter.id,
+      pool: testnet.hbarSaucePool.id,
+      poolFee: 3000,
+      tokenIn: "HBAR",
+      tokenOut: "SAUCE 0.0.1183558",
+      amountIn: "5000000",
+      quotedAmountOut: "2321545",
+      slippageBps: 100,
+      amountOutMinimum: "2298329",
+      deadline: "1790117049",
+      recipient: CONSUMER,
+      amountOut: "2321545",
+      summary: "0.05 HBAR -> 2.321545 SAUCE",
+      via: { contract: "0.0.10671897", evmAddress: CONSUMER, function: "swapExactHbarForToken" },
+    },
+    transactions: [
+      await consumerEntry("deploy", CONSUMER_DEPLOY, 3_000_000n * 114n),
+      await consumerEntry("swap", CONSUMER_SWAP, 236_943n * 114n),
+    ],
+  };
+}
+
 function formatErrorOf(run: () => unknown): string {
   try {
     run();
@@ -279,5 +342,46 @@ describe("checkEvidence re-reads every recorded figure from the mirror node", ()
     expect(await checkEvidence(unknown, mirror)).toEqual([
       `swap 0x${"ab".repeat(32)}: the mirror node has no result for this hash.`,
     ]);
+  });
+});
+
+describe("a record of a swap sent through a contract of this repository", () => {
+  it("reads the amount out of the contract's own return value, not of a router multicall", async () => {
+    expect(await checkEvidence(await consumerRecord(), consumerMirror)).toEqual([]);
+  });
+
+  it("fails when the contract's return value is not the amount the file records", async () => {
+    const record = await consumerRecord();
+    const edited = { ...record, swap: { ...record.swap, amountOut: "2321546" } };
+    expect(await checkEvidence(edited, consumerMirror)).toEqual([
+      `swap ${CONSUMER_SWAP}: the swap's amountOut is 2321545 on the mirror node, 2321546 in the file.`,
+    ]);
+  });
+
+  it("asks a contract creation for no return value: its call_result is the runtime bytecode", async () => {
+    const record = await consumerRecord();
+    const deployOnly = { ...record, transactions: [record.transactions[0]] };
+    const result = (await consumerMirror.getContractResult(CONSUMER_DEPLOY)) as MirrorContractResult;
+    expect(result.callResult?.length).toBeGreaterThan(1_000);
+    expect(() => swapAmountOut(result.callResult as Hex)).toThrow();
+    expect(await checkEvidence(deployOnly, consumerMirror)).toEqual([]);
+  });
+
+  it("refuses a role no evidence record uses", async () => {
+    const record = await consumerRecord();
+    const [deploy, swap] = record.transactions;
+    const mislabelled = { ...record, transactions: [{ ...deploy, role: "verify" }, swap] };
+    expect(formatErrorOf(() => parseEvidence(mislabelled, "a.json"))).toBe(
+      "a.json is not an evidence record: role is missing or malformed.",
+    );
+  });
+
+  it("refuses a via block that names no contract", async () => {
+    const record = await consumerRecord();
+    const { contract, ...rest } = record.swap.via ?? {};
+    expect(contract).toBe("0.0.10671897");
+    expect(formatErrorOf(() => parseEvidence({ ...record, swap: { ...record.swap, via: rest } }, "a.json"))).toBe(
+      "a.json is not an evidence record: contract is missing or malformed.",
+    );
   });
 });

@@ -5,7 +5,7 @@ import { mirrorPaths } from "./mirrorPaths";
 import { approvalGranted, swapAmountOut } from "./swap";
 import { netTransfer, networkFee } from "./transfers";
 import { type Tinybar, formatHbar } from "./units";
-import { type Hex, isHex } from "viem";
+import { type Hex, decodeAbiParameters, isHex } from "viem";
 
 // A file of docs/evidence/ records one swap that the signed evidence run made on Hedera testnet: what was asked, what
 // the network did, and the software that did it. Nothing in it is private. checkEvidence re-reads every figure from
@@ -14,7 +14,8 @@ import { type Hex, isHex } from "viem";
 export const EVIDENCE_SCHEMA_VERSION = 1;
 
 export type EvidenceTransaction = {
-  role: "approve" | "swap";
+  /** `deploy` is the creation of the contract a `via` swap went through. */
+  role: "approve" | "swap" | "deploy";
   hash: Hex;
   /** The mirror node's DETAIL view of the transaction: the machine-checkable proof. */
   mirrorUrl: string;
@@ -50,6 +51,11 @@ export type EvidenceSwap = {
   amountOut: string;
   /** The same two amounts with their unit, for reading. */
   summary: string;
+  /**
+   * Set when the swap was not sent to the router but to a contract of this repository that swaps on the sender's
+   * behalf. The transaction's return value is then that contract's, not the router's multicall's.
+   */
+  via?: { contract: EntityId; evmAddress: EvmAddress; function: string };
 };
 
 export type EvidencePreflight = { check: string; status: string; message: string };
@@ -98,7 +104,7 @@ const oneOf =
 function parseTransaction(value: unknown, file: string): EvidenceTransaction {
   if (!isObject(value)) throw new EvidenceFormatError(file, "transactions");
   return {
-    role: field(value, "role", file, oneOf("approve", "swap")),
+    role: field(value, "role", file, oneOf("approve", "swap", "deploy")),
     hash: field(value, "hash", file, isHash),
     mirrorUrl: field(value, "mirrorUrl", file, isString),
     result: field(value, "result", file, oneOf("SUCCESS")),
@@ -121,9 +127,20 @@ function parsePreflight(value: unknown, file: string): EvidencePreflight {
   };
 }
 
+function parseVia(value: unknown, file: string): EvidenceSwap["via"] {
+  if (value === undefined) return undefined;
+  if (!isObject(value)) throw new EvidenceFormatError(file, "swap.via");
+  return {
+    contract: field(value, "contract", file, isEntityId),
+    evmAddress: field(value, "evmAddress", file, isEvmAddress),
+    function: field(value, "function", file, isString),
+  };
+}
+
 function parseSwap(value: unknown, file: string): EvidenceSwap {
   if (!isObject(value)) throw new EvidenceFormatError(file, "swap");
   return {
+    via: parseVia(value.via, file),
     direction: field(value, "direction", file, oneOf("hbar-to-token", "token-to-hbar")),
     router: field(value, "router", file, isEntityId),
     pool: field(value, "pool", file, isEntityId),
@@ -212,6 +229,16 @@ export function evidenceTransaction({
   };
 }
 
+/**
+ * What the swap paid out, from the transaction's return value: the router's multicall answers the amount inside an
+ * array of results, while a contract of this repository answers `(amountOut, refundedTinybar)` of its own.
+ */
+function amountOutOf(swap: EvidenceSwap, callResult: Hex): bigint {
+  if (swap.via === undefined) return swapAmountOut(callResult);
+  const [amountOut] = decodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], callResult);
+  return amountOut;
+}
+
 async function checkTransaction(
   record: EvidenceRecord,
   recorded: EvidenceTransaction,
@@ -251,12 +278,14 @@ async function checkTransaction(
     );
   }
 
+  // A contract creation answers with the runtime bytecode it deployed, which is not a value to compare.
+  if (recorded.role === "deploy") return findings;
   if (result.callResult === null) {
     findings.push(`${at}: the mirror node has no return value for this transaction.`);
   } else if (result.result === "SUCCESS" && recorded.role === "approve") {
     compare("the approval's return value", String(approvalGranted(result.callResult)), "true");
   } else if (result.result === "SUCCESS") {
-    compare("the swap's amountOut", swapAmountOut(result.callResult).toString(), record.swap.amountOut);
+    compare("the swap's amountOut", amountOutOf(record.swap, result.callResult).toString(), record.swap.amountOut);
   }
   return findings;
 }
