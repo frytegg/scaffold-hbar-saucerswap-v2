@@ -39,6 +39,9 @@ jobs:
       - name: Type-check both packages
         run: yarn typecheck
 
+      - name: Offline unit tests of packages/nextjs, no network and no key
+        run: yarn test:unit
+
       - name: Formatting, types and tests of tools/checks and tools/gate
         run: yarn check:tools
 
