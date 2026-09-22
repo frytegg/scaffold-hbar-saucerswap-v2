@@ -119,8 +119,8 @@ describe("the token swap's inputs", () => {
 
     expect(refusalOf(() => assertOwnedBySigner({ contract: consumer, owner: stranger, signer: MAIN }))).toBe(
       `The consumer at ${consumer} belongs to ${stranger}, not to the signer ${MAIN}, and it keeps the tokens it ` +
-        "buys: only its owner can withdraw them. Deploy your own with yarn hardhat:deploy:consumer:testnet, which " +
-        "rewrites the frontend's contract list, then run this again. Nothing was sent.",
+        "buys: only its owner can withdraw them. Deploy your own with the hardhat:deploy:consumer:testnet script, " +
+        "which rewrites the frontend's contract list, then run this again. Nothing was sent.",
     );
   });
 

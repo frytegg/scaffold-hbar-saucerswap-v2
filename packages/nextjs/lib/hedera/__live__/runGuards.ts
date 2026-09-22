@@ -100,8 +100,8 @@ export function assertOwnedBySigner({
   if (owner.toLowerCase() === signer.toLowerCase()) return;
   throw new EvidenceRunRefusal(
     `The consumer at ${contract} belongs to ${owner}, not to the signer ${signer}, and it keeps the tokens it ` +
-      "buys: only its owner can withdraw them. Deploy your own with yarn hardhat:deploy:consumer:testnet, which " +
-      "rewrites the frontend's contract list, then run this again. Nothing was sent.",
+      "buys: only its owner can withdraw them. Deploy your own with the hardhat:deploy:consumer:testnet script, " +
+      "which rewrites the frontend's contract list, then run this again. Nothing was sent.",
   );
 }
 
