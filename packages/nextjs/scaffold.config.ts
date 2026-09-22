@@ -32,9 +32,9 @@ const scaffoldConfig = {
 
   enableBurnerWallet: true,
 
-  // The browser reaches Hedera JSON-RPC through the app's own relay (app/api/hedera/rpc), never directly:
-  // a public endpoint that rate-limits or rejects a call answers HTTP 4xx, which the browser logs as a
-  // console error. The relay's upstream is set on the server: HEDERA_RPC_TESTNET_URL, HEDERA_RPC_MAINNET_URL.
+  // The browser reaches Hedera JSON-RPC through the app's own relay (app/api/hedera/rpc), never directly;
+  // services/hedera/jsonRpcRelay.ts says why. The relay's upstream is set on the server: HEDERA_RPC_TESTNET_URL,
+  // HEDERA_RPC_MAINNET_URL.
   rpcOverrides: {
     [chains.hedera.id]: "/api/hedera/rpc?network=mainnet",
     [chains.hederaTestnet.id]: "/api/hedera/rpc?network=testnet",

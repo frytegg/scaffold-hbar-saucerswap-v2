@@ -3,9 +3,9 @@ export type HederaNetwork = "testnet" | "mainnet";
 export type AccountLookupErrorCode = "invalid_address" | "invalid_network" | "misconfigured" | "mirror_unavailable";
 
 /**
- * Body of GET /api/hedera/account. The route answers HTTP 200 in every case, because a browser logs any
- * 4xx/5xx response as a console error before the caller can handle it; success and failure are told
- * apart by `ok`. `accountId` is null for an address the network has not seen yet.
+ * Body of GET /api/hedera/account. The route answers HTTP 200 in every case, as the JSON-RPC relay does
+ * (services/hedera/jsonRpcRelay.ts says why); success and failure are told apart by `ok`. `accountId` is
+ * null for an address the network has not seen yet.
  */
 export type AccountLookupResponse =
   | { ok: true; accountId: string | null }
