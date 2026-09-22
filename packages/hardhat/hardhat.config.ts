@@ -9,6 +9,7 @@ dotenv.config();
 const forkingTier = process.env.HEDERA_FORKING === "true";
 
 import { HardhatUserConfig, task } from "hardhat/config";
+import type { HardhatRuntimeEnvironment } from "hardhat/types";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@typechain/hardhat";
@@ -26,6 +27,7 @@ import { HardhatPluginError } from "hardhat/plugins";
 
 import generateTsAbis from "./scripts/generateTsAbis";
 import { NO_DEPLOYER_KEY, RUNTIME_KEY_ENV } from "./utils/deployerAccount";
+import { hashscanContractUrl, hederaNetworkOf, mirrorContractUrl } from "./utils/hederaLinks";
 
 // Endpoint the in-process `hardhat` network forks (the `chain` and `test` scripts, and a deploy without --network).
 // The live networks below keep their own URLs.
@@ -89,7 +91,7 @@ const config: HardhatUserConfig = {
 };
 
 // Extend the deploy task: refuse a network that has no signer (a direct `hardhat deploy` bypasses the
-// wrapper script's own check), then generate TypeScript ABIs after deployment.
+// wrapper script's own check), generate TypeScript ABIs, then print where each deployment can be read.
 task("deploy").setAction(async (args, hre, runSuper) => {
   const { accounts } = hre.network.config;
   if (Array.isArray(accounts) && accounts.length === 0) {
@@ -97,6 +99,18 @@ task("deploy").setAction(async (args, hre, runSuper) => {
   }
   await runSuper(args);
   await generateTsAbis(hre);
+  await printDeploymentLinks(hre);
 });
+
+/** One mirror-node URL and one Hashscan URL per deployment, on the Hedera networks this project knows. */
+async function printDeploymentLinks(hre: HardhatRuntimeEnvironment): Promise<void> {
+  const network = hederaNetworkOf(hre.network.config.chainId ?? 0);
+  if (network === undefined) return;
+  for (const [name, deployment] of Object.entries(await hre.deployments.all())) {
+    console.log(`${name} ${deployment.address}`);
+    console.log(`  mirror node: ${mirrorContractUrl(network, deployment.address)}`);
+    console.log(`  Hashscan:    ${hashscanContractUrl(network, deployment.address)}`);
+  }
+}
 
 export default config;
