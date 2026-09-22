@@ -151,7 +151,7 @@ Always:
 - keep keys out of files: the deployer key lives encrypted in `packages/hardhat/.env`, or in the shell for one command.
 
 Ask first:
-- adding or upgrading a dependency: it changes the lockfile, and an install under `CI=true` fails when the committed lockfile would have to change;
+- adding or upgrading a dependency: it changes the lockfile, and an install under `CI=true` fails when the committed lockfile would have to change. The Vite that Vitest runs on is held at 6.4.3 by a resolution recorded in the lockfile only, not in a `package.json`: a lockfile generated again resolves Vite 7, which declares Node.js 20.19 or later, above this project's floor. An npm-mode install never reads that lockfile; it gets one Vite 6 because the direct `vite` devDependency of `packages/nextjs` also satisfies Vitest's range;
 - renaming or removing a root script: the gate calls `lint:strict`, `typecheck`, `build`, `test`, `serve`, `probe:routes` and `check:docs`, and the closing message of `template.json` names others;
 - changing `template.json`, a workflow, or `.gitleaks.toml`;
 - anything that deploys, signs or spends on a live network.
