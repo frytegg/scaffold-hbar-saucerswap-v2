@@ -71,6 +71,13 @@ export const testnet = {
     checkedOn: CHECKED_ON,
   },
   sauce,
+  /** Holds the V2 liquidity positions. Its mint is the call no simulator prices: see gasRules.ts. */
+  positionManager: {
+    id: "0.0.1308184",
+    evmAddress: "0x000000000000000000000000000000000013F618",
+    source: SAUCERSWAP_DOCS,
+    checkedOn: CHECKED_ON,
+  },
   /** Checked as what the V2 factory (0.0.1197038) returns for getPool(WHBAR, SAUCE, 3000). */
   hbarSaucePool: {
     id: "0.0.2661057",
@@ -88,5 +95,6 @@ export const testnet = {
   whbar: TokenEntry;
   whbarContract: AddressBookEntry;
   sauce: TokenEntry;
+  positionManager: AddressBookEntry;
   hbarSaucePool: HbarPoolEntry;
 };
