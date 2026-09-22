@@ -4,6 +4,8 @@
 # scripts, and a production boot with no env file where every route of the build is requested once.
 # One log file and one exit code per step, a summary table at the end, exit 1 if any blocking step failed.
 # Runs on ubuntu runners and on Windows Git Bash (bash 4.4 or newer). README.md next to this file has the details.
+# The step_* functions are called by name through run_step, which ShellCheck cannot follow.
+# shellcheck disable=SC2317
 set -uo pipefail
 
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -181,6 +183,8 @@ step_rate_limit() {
     echo "rate_limit unreadable (curl failed): attribution of a failed scaffold is not possible from this run"
     return 0
   fi
+  # JavaScript source: ${...} is a template literal, not a shell expansion.
+  # shellcheck disable=SC2016
   printf '%s' "$body" | node -e '
     let text = "";
     process.stdin.on("data", chunk => (text += chunk)).on("end", () => {

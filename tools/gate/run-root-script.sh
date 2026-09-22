@@ -16,6 +16,8 @@ script_name=$2
 
 # The package-manager names stay in this .sh file on purpose: the CLI's npm-mode text rewrite skips .sh files,
 # so the detection below reads the same in both kinds of scaffold.
+# JavaScript source: ${...} is a template literal, not a shell expansion.
+# shellcheck disable=SC2016
 if ! manager=$(node -e '
   const fs = require("node:fs");
   const name = process.argv[1];

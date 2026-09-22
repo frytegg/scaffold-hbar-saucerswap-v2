@@ -35,3 +35,13 @@ jobs:
 
       - name: Type-check both packages
         run: yarn typecheck
+
+      - name: Formatting, types and tests of tools/checks and tools/gate
+        run: yarn check:tools
+
+      - name: Tests and types of the route probe
+        run: yarn probe:routes:check
+
+      # ShellCheck comes with the ubuntu runner image.
+      - name: ShellCheck on the gate scripts
+        run: shellcheck tools/gate/*.sh
