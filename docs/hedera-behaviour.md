@@ -1,0 +1,72 @@
+# Hedera-specific behaviour, handled and tested
+
+Two things that standard Ethereum tooling reports wrongly, or not at all, on Hedera. Both were executed on Hedera testnet, from a browser wallet and from scripts; every transaction below can be opened on the mirror node, which answers machine-readable JSON, and on Hashscan, which renders it for a person.
+
+Each section says what a developer sees, what the network really does, which transactions prove it, what the mistake costs in HBAR, which code protects against it and which test keeps that code honest.
+
+Versions everything below was observed on: Hedera testnet (chain 296), the hashio JSON-RPC relay at version relay/0.78.5, viem 2.39.0, MetaMask 13.48.0 on Chrome 152, 21 and 22 September 2026. These are dated observations of one network, not rules of Hedera: the keyless checks of `yarn check:live` re-assert them, and fail the day they stop being true.
+
+## The simulators approve a swap the network refuses
+
+**Symptom** — a token-input swap on SaucerSwap V2 needs an HTS allowance for the router. With no allowance, `eth_call` answers a normal result, `eth_estimateGas` answers a number, and the mirror node's own simulator accepts the call as well. The wallet has nothing to warn about: it displayed a network fee of 1.0912 HBAR, a Confirm button and no warning of any kind. The transaction then failed on the network, and the wallet's own history shows "Interaction failed" with no reason at all.
+
+**Real cause** — an allowance over an HTS token is held by the token service, below the EVM. A simulation runs EVM logic against ledger balances; the allowance is checked when the transaction reaches consensus, and the router's `exactInput` only then gets the response code 292, `SPENDER_DOES_NOT_HAVE_ALLOWANCE`, back from the token service at `0x167`. The simulators are not blind to the token service in general: the same three refuse a swap for more SAUCE than the sender holds (`INSUFFICIENT_TOKEN_BALANCE`) and a recipient that cannot receive the token (`TOKEN_NOT_ASSOCIATED_TO_ACCOUNT`). The miss is the allowance check. One more layer hides the reason afterwards: SaucerSwap's router inherits Uniswap's `multicall`, which drops a revert shorter than 68 bytes, so the mirror node's `error_message` for the failed swap is `0x` and the response code survives only in the transaction's `/actions` view and in its child records.
+
+**Proof** — four transactions of the same account, 0.0.10645914, on 21 and 22 September 2026:
+
+| what happened | transaction | outcome |
+| --- | --- | --- |
+| a swap sent from a browser wallet with the router's allowance at 0 | [0xdf368443…2352](https://hashscan.io/testnet/tx/0xdf368443228e69c4ed1a2a7192d0978b15a51f219981cdd2d5f63250d1582352) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xdf368443228e69c4ed1a2a7192d0978b15a51f219981cdd2d5f63250d1582352)) | `CONTRACT_REVERT_EXECUTED`, `error_message` `0x`, `RespCode(292)` at call depths 1 to 3 of `/actions`, child record `SPENDER_DOES_NOT_HAVE_ALLOWANCE` |
+| the remedy: approve 1 SAUCE for the router | [0xb4d6a119…5ce8](https://hashscan.io/testnet/tx/0xb4d6a11973ce08ad3acec3182b03533b824d711a0a4cb093ce5499ea8e355ce8) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xb4d6a11973ce08ad3acec3182b03533b824d711a0a4cb093ce5499ea8e355ce8)) | `SUCCESS`, the wallet read it as an ERC-20 spending cap |
+| the same swap again, allowance 1 SAUCE | [0xc4879076…fc9e](https://hashscan.io/testnet/tx/0xc487907642d242b37ecd8997719e6aec0b42a00e931c55ba67b9490c9ecefc9e) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xc487907642d242b37ecd8997719e6aec0b42a00e931c55ba67b9490c9ecefc9e)) | `SUCCESS`, the HBAR arrived natively |
+| the same miss from a script, allowance 10 SAUCE for an `amountIn` of 20 | [0x2eed251d…223c](https://hashscan.io/testnet/tx/0x2eed251d214cd7924e7f7f34dd36a83bd7a9de2fe33c73f0a92742bb23af223c) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x2eed251d214cd7924e7f7f34dd36a83bd7a9de2fe33c73f0a92742bb23af223c)) | `CONTRACT_REVERT_EXECUTED`, `RespCode(293)`, `AMOUNT_EXCEEDS_ALLOWANCE`: an allowance below the amount is missed too |
+
+**What it costs** — the failed swap burnt **0.13498778 HBAR** (123,842 gas at 109 tinybar per gas) and bought nothing: the pool had already paid out and called back before the router's own pull failed. The path that works cost **0.79222944 HBAR** for the approval and **0.98327156 HBAR** for the swap. The check that avoids the loss is one keyless read of `allowance(owner, router)`, which costs nothing and is answered in one round trip.
+
+**How the template protects** — `allowanceVerdict` and `checkAllowance` in `packages/nextjs/lib/hedera/preflight.ts` read that allowance before anything is signed and refuse the send when it is below `amountIn` — `>=`, never `> 0`, because of the second transaction above. The verdict carries the action `approve` and a sentence naming the amount to approve. If a swap fails anyway, `explainError` and `postMortem` in `packages/nextjs/lib/hedera/failure.ts` fetch `/actions` when `error_message` is `0x`, decode the `RespCode` the `multicall` erased and answer one sentence with the same action.
+
+**The test that keeps it fixed** — `yarn test:unit`: "the captured eth_call accepts a token -> HBAR swap with allowance 0, and the preflight refuses it" replays the captured simulator answer and the refusal, and "the token -> HBAR swap without allowance (0x756b…dabc): 0x on chain, RespCode(292) in /actions" replays the mirror node's answers for the script's own run of the same mistake. `yarn check:live` re-asserts, against the live network, that the three simulators still accept a swap with no allowance.
+
+## Some calls cannot be priced, and the wallet then cannot send them
+
+**Symptom** — opening a SaucerSwap V2 liquidity position is a `mint` on the position manager. Both `eth_call` and `eth_estimateGas` refuse it with `CONTRACT_REVERT_EXECUTED, INVALID_NFT_ID`, directly and through `multicall`, although the network executes the very same call. A wallet asks the relay for that estimate to price the transaction: MetaMask displayed "network fee unavailable" and the send failed. A dapp that lets the wallet estimate cannot open a position on Hedera today. Standard tooling reports this as an ordinary failure: before this template's decoder, the send came back as an empty revert with viem's "RPC endpoint returned HTTP client error", which tells a developer nothing.
+
+**Real cause** — the mint reads the position NFT that the call itself is about to create, and the answer of that read outside a real transaction is `INVALID_NFT_ID`. That it is an artefact of the simulators, not a property of the call, was shown by replaying two mints that had succeeded at the block before their own: both simulators refuse the calldata they had just executed, while a swap and a `decreaseLiquidity` replay cleanly. It is not a general rule of the position manager either: `increaseLiquidity`, `collect`, `decreaseLiquidity` and `burn` are priced normally, which is recorded with its method in `packages/nextjs/lib/hedera/gasRules.ts`.
+
+**Proof** — the same call, twice, on 22 September 2026, from the same browser wallet:
+
+| what happened | transaction | outcome |
+| --- | --- | --- |
+| `multicall[mint, refundETH]` with a gas limit of 2,500,000 supplied by the page, while both simulators refused it | [0x87a4940c…937e](https://hashscan.io/testnet/tx/0x87a4940c26dba471e1c73b19520bbc38d78cfbf015fbb523de5635d6c12a937e) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x87a4940c26dba471e1c73b19520bbc38d78cfbf015fbb523de5635d6c12a937e)) | `SUCCESS`, 759,459 gas used, position NFT serial 360 minted |
+| the same call with no gas limit | nothing was sent | the wallet had no fee to show and refused: "network fee unavailable" |
+| the same call from a script the day before, gas limit 2,500,000 | [0xa35920e3…7b0b](https://hashscan.io/testnet/tx/0xa35920e369373313f7510d9e01d79d3814fa4f4d158aa01de72decefc4ac7b0b) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xa35920e369373313f7510d9e01d79d3814fa4f4d158aa01de72decefc4ac7b0b)) | `SUCCESS`, 761,459 gas used, serial 359 |
+
+The refusal itself is captured, so it is checked offline on every run: `packages/nextjs/lib/hedera/__tests__/fixtures/rpc/call-mint-not-estimable.json` and `packages/nextjs/lib/hedera/__tests__/fixtures/rpc/estimate-mint-not-estimable.json` are the answers the relay gave on 22 September 2026, and `packages/nextjs/lib/hedera/__tests__/fixtures/rpc/call-multicall-mint-not-estimable.json` the same answer through `multicall`.
+
+**What it costs** — nothing is lost when the wallet refuses, because nothing is sent; what is lost is the feature. The call that did go through cost **0.82781031 HBAR** of gas plus the position manager's own mint fee of 0.64079561 HBAR, converted from 500,000,000 tinycent through the exchange-rate system contract at `0x168`. The limit itself has a price, in what the wallet announces: MetaMask prices the gas **limit** at the current gas price, while the network charges the gas **used** at a lower effective price. Seven transactions of that session, with the figures the mirror node gives and the figures the wallet displayed (all of them in `packages/nextjs/lib/hedera/__tests__/fixtures/wallet/metamask-fee-display.json`):
+
+| call | gas limit | gas used | the wallet announced | the network charged |
+| --- | --- | --- | --- | --- |
+| mint a position, limit supplied by the page | 2,500,000 | 759,459 | 2.85 HBAR | 0.82781031 HBAR |
+| the swap refused for a missing allowance | 957,153 | 123,842 | 1.0912 HBAR | 0.13498778 HBAR |
+| collect the position as native HBAR | 943,608 | 888,485 | 1.0757 HBAR | 0.96844865 HBAR |
+| approve 1 SAUCE for the router | 782,570 | 726,816 | 0.8921 HBAR | 0.79222944 HBAR |
+| swap HBAR for SAUCE, limit supplied by the page | 428,994 | 200,044 | 0.4891 HBAR | 0.21804796 HBAR |
+| decrease the position's liquidity to zero | 203,994 | 169,995 | 0.2326 HBAR | 0.18529455 HBAR |
+| burn the position NFT | 85,207 | 77,921 | 0.0971 HBAR | 0.08493389 HBAR |
+
+Every announced figure is the gas limit at 114 tinybar per gas, and every charge is the gas used at 109. A generous limit therefore costs nothing but a frightening number in the wallet, which is why the limit this template supplies is the smallest one the measurements support rather than the 2,500,000 that was executed.
+
+**How the template protects** — `packages/nextjs/lib/hedera/gasRules.ts` holds the list of calls the network will not price, the limit to send each one with, and the executed transactions the limit is derived from: 1,000,000 for the position mint, a third above the largest of the two executions above. `withGasLimit` refuses to build such a call when the caller supplies no limit, and says which answer the simulators give and where the limits live. On the error path, `explainError` in `packages/nextjs/lib/hedera/failure.ts` answers `not-estimable` with the action `supply-gas` — for the simulators' own `INVALID_NFT_ID` and for the sentence a wallet wraps its refusal in — and its message points at the same module. An empty revert stays an empty revert with its mirror post-mortem: the two are never confused. The cost preview follows the same rule: `checkCost` in `packages/nextjs/lib/hedera/preflight.ts` estimates a call the relay prices and takes the rule's limit for a call it does not, says "up to" either way, and carries `WALLET_FEE_NOTE`, the sentence that explains why the wallet announces more.
+
+```ts
+import { type BuiltCall, gasRuleFor, withGasLimit } from "~~/lib/hedera";
+
+/** The call, ready to send: the limit is explicit, and building it without one throws instead of failing in a wallet. */
+export function readyToSend(call: BuiltCall): BuiltCall & { gas?: bigint } {
+  const functions = ["mint", "refundETH"];
+  return withGasLimit(call, { functions, gas: gasRuleFor(call.address, functions)?.gasLimit });
+}
+```
+
+**The test that keeps it fixed** — `yarn test:unit`: "withGasLimit refuses to build a call nothing can price without one" checks the refusal, its code and the limit it names; "eth_call refuses the mint with INVALID_NFT_ID: the answer is that it cannot be priced" and "eth_estimateGas refuses it the same way" replay the captured answers through the pinned viem; "the wallet's own refusal, when it could not price the call, says the same thing" replays what the wallet gave back; "an empty revert through multicall stays an empty revert, with the mirror post-mortem to read" is the control that keeps the two apart; and "the fee a wallet displays against the fee the network charges" checks the formatter against all seven pairs above, both halves of each.
