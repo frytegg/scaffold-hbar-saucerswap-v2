@@ -88,8 +88,12 @@ export const SwapStation = () => {
   const ready = status === "connected" && browserWallet && onTestnet && account !== null && client !== undefined;
   const accountId = accountState?.account?.accountId ?? null;
 
-  // The panel's lines and the age of the quote, computed here because the send handler decides on them too.
-  const checks = plan === null ? [] : facadeCheck === null ? plan.checks : [facadeCheck, ...plan.checks];
+  // The panel's lines and the age of the quote, computed here because the send handler decides on them too. The
+  // lines are memoised: the handler depends on them, and a new array every render would rebuild it every second.
+  const checks = useMemo(
+    () => (plan === null ? [] : facadeCheck === null ? plan.checks : [facadeCheck, ...plan.checks]),
+    [plan, facadeCheck],
+  );
   const freshness = plan === null ? null : quoteFreshness(plan.quotedAt, Math.max(now, plan.quotedAt));
 
   useEffect(() => {
