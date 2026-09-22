@@ -38,7 +38,7 @@ Foundry (`forge`) is not needed: every command here passes `-s hardhat`. No key,
 - Name the project in lowercase, as a single path segment. With `--yes` the CLI replaces a name it rejects, one with a capital letter for instance, by `my-hedera-dapp` and still exits 0.
 - `--yes` accepts every default: the default package manager, and the Hedera Skills install, which adds agent skills under `.agents/`, `.claude/`, `agent/` and `skills-lock.json`. The repository checks and formatters leave those paths alone.
 - To scaffold for npm, end the command with `--package-manager "npm"`. The CLI then rewrites the new project's docs and scripts for npm, commands included.
-- Git Bash on Windows: when a `package.json` in a parent folder pins another package manager, Corepack refuses to run the default one outside a project, and the CLI reports it as not installed. Prefix the scaffold command with `COREPACK_ENABLE_STRICT=0`. Git Bash also turns an argument that starts with `/` into a Windows path: set `MSYS_NO_PATHCONV=1` before passing a route such as `/debug` to the scripts under `tools/`.
+- Git Bash on Windows: when a `package.json` in a parent folder pins another package manager, Corepack refuses to run the default one outside a project, and the CLI reports it as not installed. Prefix the scaffold command with `COREPACK_ENABLE_STRICT=0`. Git Bash also turns an argument that starts with `/` into a Windows path: prefix a command that passes a route such as `/debug` to a script under `tools/` with `MSYS_NO_PATHCONV=1`, rather than exporting it, since Corepack's shims need the conversion.
 
 ## Develop
 
