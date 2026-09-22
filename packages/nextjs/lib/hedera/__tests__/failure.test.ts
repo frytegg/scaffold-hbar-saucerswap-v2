@@ -1,12 +1,13 @@
 import { swapRevertAbi, swapRouterAbi } from "../abi";
 import { testnet } from "../addresses";
+import type { EvmAddress } from "../evmAddress";
 import { explainContractResult, explainError, explainResponseCode, postMortem } from "../failure";
 import { MirrorError, createMirrorClient } from "../mirror";
 import { mirrorPaths } from "../mirrorPaths";
 import { SwapBuildError, buildHbarToTokenSwap, minimumOut, quoteExactInput, swapPath } from "../swap";
 import { UnitError, assertJsonRpcValue, hbarToTinybar, tinybar } from "../units";
 import { mirrorBody, mirrorFixture, replayClient, replayFetch, replayMirror, rpcFixture } from "./replay";
-import { type Address, createWalletClient, encodeErrorResult, http } from "viem";
+import { createWalletClient, encodeErrorResult, http } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { hederaTestnet } from "viem/chains";
 import { describe, expect, it } from "vitest";
@@ -27,7 +28,7 @@ async function thrownBy(run: () => Promise<unknown>): Promise<unknown> {
 }
 
 /** Simulates from SENDER a direct exactInput of 1 HBAR to `recipient`, as the captured eth_call did. */
-async function simulateDirect(fixture: string, recipient: Address, value: bigint): Promise<unknown> {
+async function simulateDirect(fixture: string, recipient: EvmAddress, value: bigint): Promise<unknown> {
   const client = replayClient([rpcFixture(fixture)]);
   return thrownBy(() =>
     client.simulateContract({

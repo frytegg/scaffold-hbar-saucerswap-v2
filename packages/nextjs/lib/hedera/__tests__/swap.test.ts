@@ -1,4 +1,5 @@
 import { testnet } from "../addresses";
+import type { EvmAddress } from "../evmAddress";
 import {
   SwapBuildError,
   type SwapBuildErrorCode,
@@ -15,7 +16,9 @@ import { mirrorBody, readFixture, replayClient } from "./replay";
 import { encodeFunctionData } from "viem";
 import { describe, expect, it } from "vitest";
 
-const MAIN = "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01";
+// Annotated: in a request object built before the call, an unannotated constant widens to string, which is not an
+// address, and the builders refuse it.
+const MAIN: EvmAddress = "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01";
 
 function buildErrorOf(run: () => unknown): SwapBuildErrorCode {
   try {

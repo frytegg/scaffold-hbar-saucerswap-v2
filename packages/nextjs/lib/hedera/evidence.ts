@@ -1,10 +1,11 @@
 import type { EntityId } from "./addresses";
+import { type EvmAddress, isEvmAddress } from "./evmAddress";
 import type { MirrorClient, MirrorContractResult, MirrorTransaction } from "./mirror";
 import { mirrorPaths } from "./mirrorPaths";
 import { approvalGranted, swapAmountOut } from "./swap";
 import { netTransfer, networkFee } from "./transfers";
 import { type Tinybar, formatHbar } from "./units";
-import { type Address, type Hex, isAddress, isHex } from "viem";
+import { type Hex, isHex } from "viem";
 
 // A file of docs/evidence/ records one swap that the signed evidence run made on Hedera testnet: what was asked, what
 // the network did, and the software that did it. Nothing in it is private. checkEvidence re-reads every figure from
@@ -44,7 +45,7 @@ export type EvidenceSwap = {
   slippageBps: number;
   amountOutMinimum: string;
   deadline: string;
-  recipient: Address;
+  recipient: EvmAddress;
   /** exactInput's return value, decoded from the swap's call_result. */
   amountOut: string;
   /** The same two amounts with their unit, for reading. */
@@ -59,7 +60,7 @@ export type EvidenceRecord = {
   network: "testnet";
   chainId: number;
   recordedAt: string;
-  sender: { evmAddress: Address; accountId: EntityId };
+  sender: { evmAddress: EvmAddress; accountId: EntityId };
   software: { viem: string; relay: string; node: string };
   /** What the pre-flight checks said before anything was signed. */
   preflight: EvidencePreflight[];
@@ -88,7 +89,6 @@ const isString = (value: unknown): value is string => typeof value === "string" 
 const isInteger = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value);
 const isIntegerString = (value: unknown): value is string => typeof value === "string" && /^-?\d+$/.test(value);
 const isEntityId = (value: unknown): value is EntityId => typeof value === "string" && /^\d+\.\d+\.\d+$/.test(value);
-const isEvmAddress = (value: unknown): value is Address => typeof value === "string" && isAddress(value);
 const isHash = (value: unknown): value is Hex => typeof value === "string" && isHex(value) && value.length === 66;
 const oneOf =
   <T extends string>(...allowed: T[]) =>

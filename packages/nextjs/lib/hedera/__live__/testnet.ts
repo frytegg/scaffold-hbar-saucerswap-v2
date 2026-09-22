@@ -1,9 +1,10 @@
 import { type EvidenceRecord, parseEvidence } from "../evidence";
+import type { EvmAddress } from "../evmAddress";
 import { type MirrorClient, createMirrorClient, directMirrorTransport } from "../mirror";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { type Address, type Hex, type PublicClient, createPublicClient, http } from "viem";
+import { type Hex, type PublicClient, createPublicClient, http } from "viem";
 import { hederaTestnet } from "viem/chains";
 import { jsonRpcUrl, mirrorNodeUrl } from "~~/services/hedera/upstreams";
 
@@ -40,8 +41,8 @@ export async function mirrorCallAccepts({
   to,
   data,
 }: {
-  from: Address;
-  to: Address;
+  from: EvmAddress;
+  to: EvmAddress;
   data: Hex;
 }): Promise<boolean> {
   const response = await fetch(`${mirrorBaseUrl}/api/v1/contracts/call`, {

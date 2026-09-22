@@ -9,6 +9,7 @@ import {
   evidenceFileName,
   evidenceTransaction,
 } from "../evidence";
+import { type EvmAddress, toEvmAddress } from "../evmAddress";
 import { type HbarInputContext, explainError, postMortem } from "../failure";
 import type { MirrorAccount, MirrorContractResult, MirrorTransaction } from "../mirror";
 import { type PreflightVerdict, checkAllowance, checkCost, checkRecipient, readAllowance } from "../preflight";
@@ -35,7 +36,7 @@ import {
 import { EVIDENCE_DIR, mirrorBaseUrl, testnetClient, testnetMirror } from "./testnet";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { type Hex, type Transport, type WalletClient, createWalletClient, getAddress, http } from "viem";
+import { type Hex, type Transport, type WalletClient, createWalletClient, http } from "viem";
 import { type PrivateKeyAccount, privateKeyToAccount } from "viem/accounts";
 import { hederaTestnet } from "viem/chains";
 import viemPackage from "viem/package.json";
@@ -67,6 +68,8 @@ const title = KEY
 
 describe.skipIf(!KEY)(title, () => {
   let account: PrivateKeyAccount;
+  /** The signer's address as this library types an address: viem types its own as the project registers it. */
+  let signer: EvmAddress;
   let wallet: WalletClient<Transport, typeof hederaTestnet, PrivateKeyAccount>;
   let sender: MirrorAccount;
   let relay: string;
@@ -132,7 +135,7 @@ describe.skipIf(!KEY)(title, () => {
       network: "testnet",
       chainId: testnet.chainId,
       recordedAt: new Date().toISOString(),
-      sender: { evmAddress: getAddress(sender.evmAddress), accountId: sender.accountId },
+      sender: { evmAddress: toEvmAddress(sender.evmAddress), accountId: sender.accountId },
       software: { viem: viemPackage.version, relay, node: process.version },
       preflight,
       swap,
@@ -147,9 +150,10 @@ describe.skipIf(!KEY)(title, () => {
 
   beforeAll(async () => {
     account = privateKeyToAccount(privateKeyOf(KEY ?? ""));
+    signer = toEvmAddress(account.address);
     wallet = createWalletClient({ account, chain: hederaTestnet, transport: http(jsonRpcUrl("testnet")) });
     assertTestnet(await testnetClient.getChainId());
-    sender = signingAccount(await testnetMirror.getAccount(account.address), account.address);
+    sender = signingAccount(await testnetMirror.getAccount(signer), signer);
     relay = await testnetClient.request({ method: "web3_clientVersion" });
     startBalance = await balance();
     console.info(`signing as ${account.address} (${sender.accountId}), balance ${formatHbar(startBalance)}, ${relay}`);
@@ -172,7 +176,7 @@ describe.skipIf(!KEY)(title, () => {
     });
     const cost = await checkCost(testnetClient, {
       call,
-      account: account.address,
+      account: signer,
       autoAssociates: recipient.autoAssociates,
       token: sauce,
     });
@@ -201,7 +205,7 @@ describe.skipIf(!KEY)(title, () => {
         slippageBps: SLIPPAGE_BPS,
         amountOutMinimum: minimumOut(quoted, SLIPPAGE_BPS).toString(),
         deadline: deadline.toString(),
-        recipient: getAddress(sender.evmAddress),
+        recipient: toEvmAddress(sender.evmAddress),
         amountOut: amountOut.toString(),
         summary: `${formatHbar(HBAR_IN)} -> ${formatTokenAmount(amountOut, sauce)}`,
       },
@@ -215,13 +219,13 @@ describe.skipIf(!KEY)(title, () => {
     const quoted = tinybar(await quoteExactInput(testnetClient, swapPath(sauce, pool.fee, testnet.whbar), SAUCE_IN));
     const transactions: EvidenceTransaction[] = [];
 
-    const allowance = await checkAllowance(testnetClient, { token: sauce, owner: account.address, amountIn: SAUCE_IN });
+    const allowance = await checkAllowance(testnetClient, { token: sauce, owner: signer, amountIn: SAUCE_IN });
     const preflight = [report(allowance)];
     if (allowance.status === "fail") {
       const approve = buildApproveCall(sauce, SAUCE_IN);
       const approveCost = await checkCost(testnetClient, {
         call: approve,
-        account: account.address,
+        account: signer,
         autoAssociates: false,
         token: sauce,
       });
@@ -232,7 +236,7 @@ describe.skipIf(!KEY)(title, () => {
       const approval = await entry("approve", approved, approveCost.fee);
       expect(BigInt(approval.senderNetTinybar)).toBe(-BigInt(approval.feeTinybar));
       transactions.push(approval);
-      await expect.poll(() => readAllowance(testnetClient, sauce, account.address), { timeout: 30_000 }).toBe(SAUCE_IN);
+      await expect.poll(() => readAllowance(testnetClient, sauce, signer), { timeout: 30_000 }).toBe(SAUCE_IN);
     }
 
     const deadline = swapDeadline(DEADLINE_SECONDS);
@@ -246,7 +250,7 @@ describe.skipIf(!KEY)(title, () => {
     });
     const cost = await checkCost(testnetClient, {
       call,
-      account: account.address,
+      account: signer,
       autoAssociates: false,
       token: sauce,
       hbarOut: quoted,
@@ -277,7 +281,7 @@ describe.skipIf(!KEY)(title, () => {
         slippageBps: SLIPPAGE_BPS,
         amountOutMinimum: minimumOut(quoted, SLIPPAGE_BPS).toString(),
         deadline: deadline.toString(),
-        recipient: getAddress(sender.evmAddress),
+        recipient: toEvmAddress(sender.evmAddress),
         amountOut: amountOut.toString(),
         summary: `${formatTokenAmount(SAUCE_IN, sauce)} -> ${formatHbar(tinybar(amountOut))}`,
       },

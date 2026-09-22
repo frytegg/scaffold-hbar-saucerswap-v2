@@ -1,11 +1,11 @@
-import type { Address } from "viem";
+import type { EvmAddress } from "./evmAddress";
 
 /** A Hedera entity id, `shard.realm.num`. */
 export type EntityId = `${number}.${number}.${number}`;
 
 export type AddressBookEntry = {
   readonly id: EntityId;
-  readonly evmAddress: Address;
+  readonly evmAddress: EvmAddress;
   /** Where the id is published. */
   readonly source: string;
   /** UTC date of the last check on the testnet mirror node: EVM address, bytecode or token metadata, not deleted. */

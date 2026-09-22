@@ -11,6 +11,8 @@ export {
   evidenceTransaction,
   parseEvidence,
 } from "./evidence";
+export type { EvmAddress } from "./evmAddress";
+export { isEvmAddress, toEvmAddress } from "./evmAddress";
 export type { FailureAction, FailureKind, HbarInputContext, HederaFailure } from "./failure";
 export { explainContractResult, explainError, explainResponseCode, postMortem } from "./failure";
 export type {

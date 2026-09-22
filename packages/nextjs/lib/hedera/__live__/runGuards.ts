@@ -1,8 +1,9 @@
 import { type TokenEntry, testnet } from "../addresses";
+import type { EvmAddress } from "../evmAddress";
 import type { MirrorAccount, MirrorContractResult } from "../mirror";
 import { approvalGranted } from "../swap";
 import { type Tinybar, formatHbar, formatTokenAmount } from "../units";
-import type { Address, Hex } from "viem";
+import type { Hex } from "viem";
 
 // The refusals of the signed evidence run (swaps.signed.ts), kept pure so that the offline tier fails each one and
 // checks its message. Each throws before the send it guards.
@@ -31,7 +32,7 @@ export function assertTestnet(chainId: number): void {
 }
 
 /** The mirror node's account for the key's address: the run looks it up by the EVM address the key derives. */
-export function signingAccount(found: MirrorAccount | null, address: Address): MirrorAccount {
+export function signingAccount(found: MirrorAccount | null, address: EvmAddress): MirrorAccount {
   if (found === null) {
     throw new EvidenceRunRefusal(
       `No Hedera testnet account has the EVM address ${address}, the one this key derives: fund that address ` +

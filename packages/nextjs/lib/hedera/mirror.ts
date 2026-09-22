@@ -1,9 +1,10 @@
 import type { EntityId } from "./addresses";
+import { type EvmAddress, isEvmAddress } from "./evmAddress";
 import { MIRROR_RELAY_ROUTE, mirrorPaths } from "./mirrorPaths";
 import { type Tinybar, tinybar } from "./units";
-import { type Address, type Hex, isAddress, isHex } from "viem";
+import { type Hex, isHex } from "viem";
 
-type AccountRef = EntityId | Address;
+type AccountRef = EntityId | EvmAddress;
 
 /** One answer of the mirror node: its HTTP status and its JSON body (null when the body was not JSON). */
 export type MirrorResponse = { status: number; body: unknown };
@@ -38,7 +39,7 @@ export type MirrorContractResult = {
   errorMessage: string | null;
   callResult: Hex | null;
   /** The sender in long-zero form, even for an account with an EVM address of its own: compare account ids. */
-  from: Address;
+  from: EvmAddress;
   gasUsed: bigint;
   amount: Tinybar;
   blockNumber: bigint;
@@ -61,7 +62,7 @@ export type MirrorContractAction = {
 export type MirrorAccount = {
   accountId: EntityId;
   /** The account's own EVM address when it has one, its long-zero address otherwise: pass this as a recipient. */
-  evmAddress: Address;
+  evmAddress: EvmAddress;
   /** -1 for unlimited automatic associations, 0 for none. */
   maxAutomaticTokenAssociations: number;
   balance: Tinybar;
@@ -134,9 +135,9 @@ function optionalHexAt(object: JsonObject, key: string, path: string): Hex | nul
   return object[key] === null || object[key] === undefined ? null : hexAt(object, key, path);
 }
 
-function addressAt(object: JsonObject, key: string, path: string): Address {
+function addressAt(object: JsonObject, key: string, path: string): EvmAddress {
   const value = object[key];
-  if (typeof value !== "string" || !isAddress(value, { strict: false })) throw unexpected(path, key);
+  if (!isEvmAddress(value, { strict: false })) throw unexpected(path, key);
   return value;
 }
 

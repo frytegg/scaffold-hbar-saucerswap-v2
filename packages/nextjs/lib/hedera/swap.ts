@@ -1,15 +1,8 @@
 import { htsTokenAbi, quoterV2Abi, swapRouterAbi } from "./abi";
 import { type HbarPoolEntry, type TokenEntry, testnet } from "./addresses";
+import type { EvmAddress } from "./evmAddress";
 import { type Tinybar, type Weibar, payable, tinybar } from "./units";
-import {
-  type Abi,
-  type Address,
-  type Hex,
-  type PublicClient,
-  decodeFunctionResult,
-  encodeFunctionData,
-  encodePacked,
-} from "viem";
+import { type Abi, type Hex, type PublicClient, decodeFunctionResult, encodeFunctionData, encodePacked } from "viem";
 
 export type SwapBuildErrorCode = "invalid-slippage" | "zero-minimum-out" | "amount-out-of-range";
 
@@ -25,7 +18,7 @@ export class SwapBuildError extends Error {
 
 /** A router `multicall`, ready for viem's `simulateContract` / `writeContract` or wagmi's hooks. */
 export type SwapCall = {
-  readonly address: Address;
+  readonly address: EvmAddress;
   readonly abi: typeof swapRouterAbi;
   readonly functionName: "multicall";
   readonly args: readonly [readonly Hex[]];
@@ -33,10 +26,10 @@ export type SwapCall = {
 };
 
 export type ApproveCall = {
-  readonly address: Address;
+  readonly address: EvmAddress;
   readonly abi: typeof htsTokenAbi;
   readonly functionName: "approve";
-  readonly args: readonly [Address, bigint];
+  readonly args: readonly [EvmAddress, bigint];
 };
 
 /**
@@ -44,7 +37,7 @@ export type ApproveCall = {
  * the same way. The types above are what check a call's arguments, where the builders create it.
  */
 export type BuiltCall = {
-  readonly address: Address;
+  readonly address: EvmAddress;
   readonly abi: Abi;
   readonly functionName: string;
   readonly args: readonly unknown[];
@@ -54,7 +47,7 @@ export type BuiltCall = {
 type SwapRequest = {
   pool: HbarPoolEntry;
   /** The account that receives the output: its `evm_address` from the mirror node, never its long-zero form. */
-  recipient: Address;
+  recipient: EvmAddress;
   slippageBps: number;
   /** Unix time in seconds after which the router refuses the swap ("Transaction too old"). */
   deadline: bigint;

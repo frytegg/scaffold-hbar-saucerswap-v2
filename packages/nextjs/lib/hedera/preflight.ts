@@ -1,12 +1,13 @@
 import { htsTokenAbi } from "./abi";
 import { isLongZeroAddress } from "./addressForms";
 import { type TokenEntry, testnet } from "./addresses";
+import type { EvmAddress } from "./evmAddress";
 import { type FailureAction, explainResponseCode } from "./failure";
 import type { MirrorAccount, MirrorClient, MirrorTokenRelationship } from "./mirror";
 import { SUCCESS_CODE } from "./responseCodes";
 import type { BuiltCall } from "./swap";
 import { type Tinybar, WEIBAR_PER_TINYBAR, formatHbar, formatTokenAmount, tinybar } from "./units";
-import type { Address, PublicClient } from "viem";
+import type { PublicClient } from "viem";
 
 // Checks for what a simulation passes wrongly or does not show, run before the wallet is asked to sign. "fail" blocks
 // the send, "warn" lets it go with the message shown.
@@ -54,7 +55,7 @@ export function allowanceVerdict(allowance: bigint, amountIn: bigint, token: Tok
   };
 }
 
-export async function readAllowance(client: PublicClient, token: TokenEntry, owner: Address): Promise<bigint> {
+export async function readAllowance(client: PublicClient, token: TokenEntry, owner: EvmAddress): Promise<bigint> {
   return client.readContract({
     address: token.evmAddress,
     abi: htsTokenAbi,
@@ -65,7 +66,7 @@ export async function readAllowance(client: PublicClient, token: TokenEntry, own
 
 export async function checkAllowance(
   client: PublicClient,
-  { token, owner, amountIn }: { token: TokenEntry; owner: Address; amountIn: bigint },
+  { token, owner, amountIn }: { token: TokenEntry; owner: EvmAddress; amountIn: bigint },
 ): Promise<PreflightVerdict> {
   return allowanceVerdict(await readAllowance(client, token, owner), amountIn, token);
 }
@@ -75,7 +76,7 @@ export async function checkAllowance(
  * associated with the token or have a free automatic association slot. Without a slot the swap reverts on chain.
  */
 export function recipientVerdict(
-  recipient: Address,
+  recipient: EvmAddress,
   account: MirrorAccount | null,
   relationship: MirrorTokenRelationship | null,
   token: TokenEntry,
@@ -141,7 +142,7 @@ export function recipientVerdict(
 
 export async function checkRecipient(
   mirror: MirrorClient,
-  { recipient, token }: { recipient: Address; token: TokenEntry },
+  { recipient, token }: { recipient: EvmAddress; token: TokenEntry },
 ): Promise<RecipientVerdict> {
   const account = await mirror.getAccount(recipient);
   const relationship = account === null ? null : await mirror.getTokenRelationship(account.accountId, token.id);
@@ -209,7 +210,7 @@ export async function checkCost(
     autoAssociates,
     token,
     hbarOut,
-  }: { call: BuiltCall; account: Address; autoAssociates: boolean; token: TokenEntry; hbarOut?: Tinybar },
+  }: { call: BuiltCall; account: EvmAddress; autoAssociates: boolean; token: TokenEntry; hbarOut?: Tinybar },
 ): Promise<CostVerdict> {
   const [gas, gasPrice] = await Promise.all([client.estimateContractGas({ ...call, account }), client.getGasPrice()]);
   return costVerdict({ gas, gasPrice, autoAssociates, token, hbarOut });

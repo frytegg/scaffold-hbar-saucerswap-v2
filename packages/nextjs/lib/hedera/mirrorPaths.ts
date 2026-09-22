@@ -1,7 +1,8 @@
 import type { EntityId } from "./addresses";
-import type { Address, Hex } from "viem";
+import type { EvmAddress } from "./evmAddress";
+import type { Hex } from "viem";
 
-type AccountRef = EntityId | Address;
+type AccountRef = EntityId | EvmAddress;
 
 /** The mirror node REST paths this library reads, and the only ones the app's same-origin relay forwards. */
 export const mirrorPaths = {
