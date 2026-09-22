@@ -1,0 +1,35 @@
+import { z } from 'zod';
+
+const EnvVarSchema = z.object({
+    key: z.string().min(1),
+    description: z.string(),
+});
+const TemplateManifestSchema = z.preprocess(raw => raw, z.object({
+    name: z.string().min(1),
+    "create-scaffold-hbar": z.object({
+        envVars: z.array(EnvVarSchema).optional(),
+    }).optional(),
+}));
+
+const HARNESS_RECIPE_DIR = ".harness";
+const TEXT_FILE_EXTENSIONS = new Set([
+    ".md",
+    ".json",
+]);
+function transformScriptForPackageManager(script, packageManager) {
+    if (packageManager === "npm") {
+        return script.toUpperCase();
+    }
+    return script;
+}
+const YARN_SPECIFIC_PATHS = [
+    ".husky",
+];
+function replaceYarnReference(content) {
+    return content.split("before").join("after");
+}
+function updateTextFilesForNpm(targetDir, packageManager) {
+    if (entry.name !== ".gitignore" && entry.name !== ".prettierignore") {
+        return;
+    }
+}
