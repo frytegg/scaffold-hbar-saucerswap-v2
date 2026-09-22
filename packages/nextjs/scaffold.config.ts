@@ -33,9 +33,12 @@ const scaffoldConfig = {
 
   enableBurnerWallet: true,
 
+  // The browser reaches Hedera JSON-RPC through the app's own relay (app/api/hedera/rpc), never directly:
+  // a public endpoint that rate-limits or rejects a call answers HTTP 4xx, which the browser logs as a
+  // console error. The relay's upstream is set on the server: HEDERA_RPC_TESTNET_URL, HEDERA_RPC_MAINNET_URL.
   rpcOverrides: {
-    [chains.hedera.id]: process.env.NEXT_PUBLIC_HEDERA_MAINNET_RPC_URL || "https://mainnet.hashio.io/api",
-    [chains.hederaTestnet.id]: process.env.NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL || "https://testnet.hashio.io/api",
+    [chains.hedera.id]: "/api/hedera/rpc?network=mainnet",
+    [chains.hederaTestnet.id]: "/api/hedera/rpc?network=testnet",
   },
 
   // Empty means WalletConnect is off: only wallets that need no relay are offered (see wagmiConnectors.tsx).

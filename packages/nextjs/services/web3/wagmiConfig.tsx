@@ -1,5 +1,5 @@
 import { wagmiConnectors } from "./wagmiConnectors";
-import { createClient, fallback, http } from "viem";
+import { createClient, http } from "viem";
 import { createConfig } from "wagmi";
 import scaffoldConfig, { ScaffoldConfig } from "~~/scaffold.config";
 
@@ -12,19 +12,13 @@ export const wagmiConfig = createConfig({
   connectors: wagmiConnectors(),
   ssr: true,
   client({ chain }) {
-    const rpcFallbacks = [];
-
+    // No fallback to the chain's public endpoint: it would route around the relay the moment the relay
+    // reports an upstream failure. A chain without an override (the local fork) uses its own default URL.
     const rpcOverrideUrl = (scaffoldConfig.rpcOverrides as ScaffoldConfig["rpcOverrides"])?.[chain.id];
-    if (rpcOverrideUrl) {
-      rpcFallbacks.push(http(rpcOverrideUrl));
-    }
-
-    // Default public RPC for the chain (e.g. Hedera testnet hashio)
-    rpcFallbacks.push(http());
 
     return createClient({
       chain,
-      transport: fallback(rpcFallbacks),
+      transport: http(rpcOverrideUrl),
       pollingInterval: scaffoldConfig.pollingInterval,
     });
   },

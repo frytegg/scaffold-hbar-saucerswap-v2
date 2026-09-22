@@ -17,6 +17,12 @@ function baseUrl(variable: string, value: string | undefined, fallback: string):
   return url.replace(/\/+$/, "");
 }
 
+export function jsonRpcUrl(network: HederaNetwork): string {
+  return network === "mainnet"
+    ? baseUrl("HEDERA_RPC_MAINNET_URL", process.env.HEDERA_RPC_MAINNET_URL, "https://mainnet.hashio.io/api")
+    : baseUrl("HEDERA_RPC_TESTNET_URL", process.env.HEDERA_RPC_TESTNET_URL, "https://testnet.hashio.io/api");
+}
+
 export function mirrorNodeUrl(network: HederaNetwork): string {
   return network === "mainnet"
     ? baseUrl(
