@@ -1,12 +1,14 @@
 import { htsTokenAbi } from "./abi";
 import { isLongZeroAddress } from "./addressForms";
 import { type TokenEntry, testnet } from "./addresses";
+import { type CostSource, WALLET_FEE_NOTE, feeForGas } from "./cost";
 import type { EvmAddress } from "./evmAddress";
 import { type FailureAction, explainResponseCode } from "./failure";
+import { gasRuleFor } from "./gasRules";
 import type { MirrorAccount, MirrorClient, MirrorTokenRelationship } from "./mirror";
 import { SUCCESS_CODE } from "./responseCodes";
 import type { BuiltCall } from "./swap";
-import { type Tinybar, WEIBAR_PER_TINYBAR, formatHbar, formatTokenAmount, tinybar } from "./units";
+import { type Tinybar, formatHbar, formatTokenAmount } from "./units";
 import type { PublicClient } from "viem";
 
 // Checks for what a simulation passes wrongly or does not show, run before the wallet is asked to sign. "fail" blocks
@@ -26,7 +28,13 @@ export type RecipientVerdict = PreflightVerdict & {
   autoAssociates: boolean;
 };
 
-export type CostVerdict = PreflightVerdict & { gas: bigint; fee: Tinybar };
+export type CostVerdict = PreflightVerdict & {
+  gas: bigint;
+  fee: Tinybar;
+  source: CostSource;
+  /** Why the wallet's own figure is this same upper bound, and the network's charge is not. */
+  walletNote: string;
+};
 
 /**
  * The router's allowance must cover the whole input amount. Without it the network rejects the swap (292, or 293 when
@@ -168,8 +176,9 @@ export function facadeResultVerdict(responseCode: bigint): PreflightVerdict {
 }
 
 /**
- * An upper bound of the fee: gas estimated for this sender and recipient, at the current gas price. The estimate
- * includes an automatic association when the swap makes one, which is why it is never a constant.
+ * An upper bound of the fee, always said as "up to": the gas is an estimate for this sender and these arguments, or
+ * the limit of a gas rule when no simulator prices the call, and the network charges the gas the call really uses.
+ * The estimate includes an automatic association when the swap makes one, which is why it is never a constant.
  */
 export function costVerdict({
   gas,
@@ -177,6 +186,7 @@ export function costVerdict({
   autoAssociates,
   token,
   hbarOut,
+  source = "estimate",
 }: {
   gas: bigint;
   /** eth_gasPrice, in weibar per gas. */
@@ -185,23 +195,27 @@ export function costVerdict({
   token: TokenEntry;
   /** The quoted HBAR output of a token → HBAR swap, to warn when the fee is larger. */
   hbarOut?: Tinybar;
+  source?: CostSource;
 }): CostVerdict {
-  const fee = tinybar((gas * gasPrice + WEIBAR_PER_TINYBAR - 1n) / WEIBAR_PER_TINYBAR);
+  const fee = feeForGas(gas, gasPrice);
   const association = autoAssociates ? `, including the recipient's one-time association with ${token.symbol}` : "";
-  const message = `Network fee: up to ${formatHbar(fee)}${association}.`;
+  const limit = source === "gas-rule" ? ", the gas limit this template supplies for a call no simulator prices" : "";
+  const message = `Network fee: up to ${formatHbar(fee)}${association}${limit}.`;
+  const verdict = { check: "cost" as const, action: "none" as const, gas, fee, source, walletNote: WALLET_FEE_NOTE };
   if (hbarOut !== undefined && fee >= hbarOut) {
     return {
-      check: "cost",
+      ...verdict,
       status: "warn",
-      action: "none",
-      gas,
-      fee,
       message: `${message} The swap returns ${formatHbar(hbarOut)}, less than that fee.`,
     };
   }
-  return { check: "cost", status: "pass", action: "none", gas, fee, message };
+  return { ...verdict, status: "pass", message };
 }
 
+/**
+ * The preview for a built call. A call named by a gas rule is never estimated: the relay refuses to price it, and
+ * the rule's limit is what the transaction will carry.
+ */
 export async function checkCost(
   client: PublicClient,
   {
@@ -210,8 +224,28 @@ export async function checkCost(
     autoAssociates,
     token,
     hbarOut,
-  }: { call: BuiltCall; account: EvmAddress; autoAssociates: boolean; token: TokenEntry; hbarOut?: Tinybar },
+    functions,
+  }: {
+    call: BuiltCall;
+    account: EvmAddress;
+    autoAssociates: boolean;
+    token: TokenEntry;
+    hbarOut?: Tinybar;
+    /** The functions the call runs, the inner ones of a multicall included; its own by default. */
+    functions?: readonly string[];
+  },
 ): Promise<CostVerdict> {
-  const [gas, gasPrice] = await Promise.all([client.estimateContractGas({ ...call, account }), client.getGasPrice()]);
-  return costVerdict({ gas, gasPrice, autoAssociates, token, hbarOut });
+  const rule = gasRuleFor(call.address, functions ?? [call.functionName]);
+  const [gas, gasPrice] = await Promise.all([
+    rule === null ? client.estimateContractGas({ ...call, account }) : Promise.resolve(rule.gasLimit),
+    client.getGasPrice(),
+  ]);
+  return costVerdict({
+    gas,
+    gasPrice,
+    autoAssociates,
+    token,
+    hbarOut,
+    source: rule === null ? "estimate" : "gas-rule",
+  });
 }

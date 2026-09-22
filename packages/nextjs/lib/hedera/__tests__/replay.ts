@@ -29,6 +29,31 @@ export function readFixture(name: string): WireFixture {
   return { ...fixture, request: { ...fixture.request, params: [withoutSender, ...rest] } };
 }
 
+/** What a browser wallet displayed for a transaction, next to what the mirror node says it cost. */
+export type WalletFeeDisplay = {
+  readonly gasPriceTinybarPerGas: number;
+  readonly effectiveGasPriceTinybarPerGas: number;
+  readonly rows: readonly {
+    readonly label: string;
+    readonly hash: string;
+    readonly gasLimit: number;
+    readonly gasUsed: number;
+    readonly feeTinybar: number;
+    readonly walletShownHbar: string;
+  }[];
+};
+
+/** An error a browser wallet handed back to the page, as the session report copied it. */
+export type WalletErrorRecord = { readonly error: { readonly message: string } };
+
+export function walletFeeDisplay(): WalletFeeDisplay {
+  return JSON.parse(readFileSync(fixtureUrl("wallet/metamask-fee-display"), "utf8")) as WalletFeeDisplay;
+}
+
+export function walletErrorRecord(name: string): WalletErrorRecord {
+  return JSON.parse(readFileSync(fixtureUrl(`wallet/${name}`), "utf8")) as WalletErrorRecord;
+}
+
 export function mirrorFixture(name: string): MirrorResponse {
   return JSON.parse(readFileSync(fixtureUrl(`mirror/${name}`), "utf8")) as MirrorResponse;
 }

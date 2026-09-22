@@ -1,0 +1,10 @@
+{
+  "recordedIn": "the builder's MetaMask session of 2026-09-22, step 3c of the spike page (branch spike/metamask)",
+  "wallet": "MetaMask 13.48.0 on Chrome 152, Hedera testnet (chain 296)",
+  "call": "multicall[mint, refundETH] on the position manager 0.0.1308184, the same call as 0x87a4940c26dba471e1c73b19520bbc38d78cfbf015fbb523de5635d6c12a937e, sent again with no gas limit",
+  "display": "MetaMask showed \"Frais de reseau : Non disponible\" (network fee unavailable) and the send failed; nothing reached the network",
+  "note": "The session report copied back the sentence the wallet wrapped the refusal in, not the object viem built around it, so the fixture carries that sentence the way the wallet hands it to the page.",
+  "error": {
+    "message": "RPC 0x128 Custom eth_sendRawTransaction: RPC endpoint returned HTTP client error."
+  }
+}
