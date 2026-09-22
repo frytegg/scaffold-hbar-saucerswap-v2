@@ -1,59 +1,46 @@
-# Hardhat package (Hedera)
+# Hardhat package
 
-Hardhat config, contracts, deploy scripts, and tests for this monorepo.
+Contracts, deploy scripts and tests of this project, on Hardhat 2.22.19 with hardhat-deploy. Run the commands from the repository root.
 
-## Local development
+## Local fork
 
-From the repo root, use the explicit `hardhat:*` scripts for this package. Inside `packages/hardhat`, use the unprefixed package-local scripts.
-
-1. **Start the local chain** (terminal 1, from repo root):
+1. Start a fork of Hedera testnet (terminal 1):
    ```bash
    yarn hardhat:chain
    ```
-   This starts `hardhat node` with **Hedera testnet forking** (`HEDERA_FORKING=true` and `@hashgraph/system-contracts-forking`). JSON-RPC is served at **http://127.0.0.1:8545**.
-
-2. **Deploy to the running fork** (terminal 2):
+   This is `hardhat node` with `HEDERA_FORKING=true`, so that `@hashgraph/system-contracts-forking` emulates the token service. JSON-RPC is served on http://127.0.0.1:8545.
+2. Deploy the sample contracts to it (terminal 2):
    ```bash
-   yarn hardhat:deploy --network localhost
+   yarn hardhat:deploy:localhost
    ```
-   Use **`localhost`** so Hardhat connects to the long-running node on port 8545.
-
-   **`yarn hardhat:deploy` without `--network localhost`** uses the default network `hardhat`, which is the **in-process ephemeral** Hardhat network—**not** the same process as `yarn hardhat:chain`. For deploys against the forked node you started in step 1, always pass **`--network localhost`** while that node is running.
-
-3. **Run contract tests** (from repo root; tests use `HEDERA_FORKING=true` and can run against the fork or standalone):
+   `hardhat:deploy` without a network deploys to the in-process network instead: a separate network, without token-service emulation, where the HTS step (`02_create_hts_token.ts`) stops with `invalid opcode`.
+3. Run the tests:
    ```bash
-   yarn hardhat:test
+   yarn test
    ```
+   They start their own in-process fork, which reads Hedera testnet through hashio: they need the network.
 
-## Deploy on Hedera testnet/mainnet
+## Hedera testnet
 
-You need a deployer account with HBAR on the target network. Without funds, deploy will fail with "Sender account not found".
-
-1. **Generate or import an account** (from the repo root):
+1. Create a deployer key, stored encrypted as `DEPLOYER_PRIVATE_KEY_ENCRYPTED` in `packages/hardhat/.env`:
    ```bash
    yarn hardhat:account:generate
    ```
-   or
+   `yarn hardhat:account:import` stores an existing key the same way.
+2. Fund its address from the [Hedera Portal faucet](https://portal.hedera.com/faucet). `yarn hardhat:account` asks for the password and prints the address and its balances.
+3. Deploy; the script asks for the key's password:
    ```bash
-   yarn hardhat:account:import
+   yarn hardhat:deploy:testnet
    ```
-   The encrypted key is stored in `packages/hardhat/.env`.
+   Without a stored key it stops with exit code 1 before deploying anything. For a non-interactive deploy, set `__RUNTIME_DEPLOYER_PRIVATE_KEY` in the shell for that one command: no other variable is read, and there is no fallback key.
 
-2. **Fund the account on testnet:**  
-   Use the [Hedera Portal faucet](https://portal.hedera.com/faucet) to receive testnet HBAR.
-
-3. **Deploy to Hedera testnet** (from repo root):
-   ```bash
-   yarn hardhat:deploy --network hederaTestnet
-   ```
-   You will be prompted to enter the password to decrypt your deployer key.
+After each deploy, the deploy task writes the addresses and ABIs to `packages/nextjs/contracts/deployedContracts.ts`.
 
 ## Layout
 
-- `contracts/` — Solidity sources
-- `deploy/` — hardhat-deploy scripts (e.g. `00_deploy_hedera_token.ts`)
-- `scripts/` — deployer account scripts, the deploy wrapper, TypeScript ABI generation
-- `test/` — contract tests
-- `hardhat.config.ts` — networks (`hardhat`, `localhost` for RPC at 127.0.0.1:8545, `hederaTestnet`, `hederaMainnet`)
-
-Network and RPC URLs are in `hardhat.config.ts`. Deployer key is read from `.env` (encrypted) and decrypted at deploy time for live networks.
+- `contracts/`: `HederaToken.sol`, an ERC-20 whose `mint` is `onlyOwner`, and `HtsTokenCreator.sol`, which creates and mints an HTS token through the system contract at `0x167` (`createToken` is payable: the HTS fee comes from `msg.value`)
+- `deploy/`: hardhat-deploy scripts, run in file-name order
+- `scripts/`: the deployer-account scripts, the deploy wrapper `runHardhatDeployWithPK.ts`, the ABI generation for the frontend
+- `test/`: Mocha and Chai tests
+- `utils/`: the deployer-key variable names and messages, the gas-price helper
+- `hardhat.config.ts`: the networks `hardhat` (in-process fork), `localhost` (http://127.0.0.1:8545), `hederaTestnet` (chain id 296) and `hederaMainnet` (295), and the guard that stops a deploy to a network without a signer
