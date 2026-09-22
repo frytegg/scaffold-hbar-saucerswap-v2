@@ -44,7 +44,7 @@ Steps, in order. Each one has its own log file under `<work-dir>/logs/` and its 
 | `boot` | the production server (`--serve-script`, default `serve`) listens on `--port` (default 3103) with every `NEXT_PUBLIC_*` and `HEDERA_*` variable removed from its environment; every page answers below 400 with at least 20 characters of visible text; every route handler answers a bare GET below 500; the port is free again afterwards |
 | `cleanup` | removes the dependency trees and the build output, unless `--keep` |
 
-Routes are read from the build (`app-path-routes-manifest.json`), so a new page is covered without editing a list. A dynamic page is requested once per prerendered instance; one without any instance fails the step until a concrete path is passed with `--route`. Use `--route` as well for a handler that needs a query string.
+Routes are read from the build (`packages/nextjs/.next/app-path-routes-manifest.json`), so a new page is covered without editing a list. A dynamic page is requested once per prerendered instance; one without any instance fails the step until a concrete path is passed with `--route`. Use `--route` as well for a handler that needs a query string.
 
 The run exits 1 when any step is `FAIL`. `--soft <step>` reports a failure as `soft-fail` without failing the run; the workflows use it for `test` only, because that script forks a public testnet endpoint. On GitHub the summary table is also written to the job summary.
 
@@ -63,6 +63,11 @@ The run exits 1 when any step is `FAIL`. `--soft <step>` reports a failure as `s
 - When a parent folder's `package.json` pins another package manager through Corepack, export `COREPACK_ENABLE_STRICT=0` first; the CLI otherwise reports that the default package manager is not installed.
 - `secret-scan.sh` downloads gitleaks on Linux x64 only; elsewhere pass `--gitleaks <binary>` (release 8.30.1).
 - A leg installs well over 1 GB under `--work-dir`; `cleanup` gives it back.
+
+<!-- checks:allow
+paths: <work-dir>/logs template.json packages/foundry
+symbols: COREPACK_ENABLE_STRICT
+-->
 
 ## Not covered here
 

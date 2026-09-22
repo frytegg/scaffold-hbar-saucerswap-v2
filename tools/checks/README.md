@@ -17,7 +17,7 @@ Exit codes are the same for every command: 0 when the check passes or has nothin
 
 ## What each check refuses
 
-The docs are the README and AGENTS.md files of the root and of each workspace package, and the Markdown files under `docs/`. Every other text file is covered by `check-rewrite.mjs`.
+The docs are every README.md and AGENTS.md of the repository, these tool READMEs included, and the Markdown files under a top-level docs folder. Every other text file is covered by `check-rewrite.mjs`.
 
 | Check | Refuses |
 | --- | --- |
@@ -39,6 +39,10 @@ Without network access both checks end with exit 2. With `--allow-offline` they 
 - `check-symbols.mjs` and `check-snippets.mjs` load TypeScript from the workspace they inspect: install the dependencies first.
 - `check-hygiene.mjs` walks the whole history. In GitHub Actions, check out with `fetch-depth: 0`.
 - The hosts' agent kit (`.agents/`, `.claude/`), what the skills step adds to it (`agent/`, `skills-lock.json`) and the vendored package-manager release are not judged, except for dotenv files and personal tool settings.
+
+<!-- checks:allow
+paths: agent skills-lock.json
+-->
 
 ## Deliberate exceptions
 

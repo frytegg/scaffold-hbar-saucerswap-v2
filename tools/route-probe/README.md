@@ -23,7 +23,7 @@ A load fails on any of:
 - fewer than 20 characters of body text
 - **any request to a third-party host, in any mode.** A request that succeeds today is the console error
   of the day its host is slow. Pages get outside data through the app's own route handlers
-  (`app/api/hedera/*`), which answer 200 with a typed error body when their upstream fails.
+  (`packages/nextjs/app/api/hedera/`), which answer 200 with a typed error body when their upstream fails.
 
 After network idle the page is watched for 12 more seconds, long enough to see the first 10-second RPC poll.
 The report ends with every third-party host contacted, per route and mode; it must read `none`.
@@ -99,3 +99,7 @@ npm run check-types --prefix tools/route-probe
 ```
 
 Tests run on `node:test`; the sources are plain ES modules type-checked through JSDoc under `strict`.
+
+<!-- checks:allow
+paths: app/token/[id]/page.tsx .invalid
+-->

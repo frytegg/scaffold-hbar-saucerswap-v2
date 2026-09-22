@@ -81,15 +81,12 @@ function isInScope(file) {
 
 /**
  * @param {string[]} tracked
- * @returns {string[]} what a developer reads: the README and AGENTS.md of the root and of each workspace package,
- * and the Markdown files under `docs/`
+ * @returns {string[]} what a developer reads: every README.md and AGENTS.md of the repository, the tools' own
+ * included, and the Markdown files under `docs/`
  */
 export function listDocs(tracked) {
-  const packageDirs = new Set([".", ...listWorkspaceDirs(tracked)]);
   return tracked.filter(
-    file =>
-      (/(^|\/)(?:README|AGENTS)\.md$/.test(file) && packageDirs.has(path.posix.dirname(file))) ||
-      /^docs\/.+\.md$/.test(file),
+    file => isInScope(file) && (/(^|\/)(?:README|AGENTS)\.md$/.test(file) || /^docs\/.+\.md$/.test(file)),
   );
 }
 
