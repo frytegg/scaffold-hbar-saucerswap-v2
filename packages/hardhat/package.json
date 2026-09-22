@@ -8,13 +8,16 @@
     "account:reveal-pk": "hardhat run scripts/revealPK.ts",
     "chain": "cross-env HEDERA_FORKING=true hardhat node --network hardhat --no-deploy",
     "check-types": "hardhat compile --quiet && tsc --noEmit --incremental",
+    "check-types:tools": "tsc -p ../../tools/checks",
     "compile": "hardhat compile",
     "clean": "hardhat clean",
     "deploy": "ts-node scripts/runHardhatDeployWithPK.ts",
     "flatten": "hardhat flatten",
     "format": "prettier --write \"./**/*.(ts|sol)\"",
+    "format:tools": "prettier --write \"../../tools/**/*.{mjs,json}\"",
     "lint": "eslint",
     "lint-staged": "eslint",
+    "lint:tools": "prettier --check \"../../tools/**/*.{mjs,json}\"",
     "test": "cross-env HEDERA_FORKING=true hardhat test"
   },
   "devDependencies": {
