@@ -1,7 +1,7 @@
 // @ts-check
 import path from "node:path";
 import { loadPublishedCli, sliceCliBundle } from "./lib/cli-bundle.mjs";
-import { YARN } from "./lib/package-manager.mjs";
+import { YARN, takeNpmPrefix } from "./lib/package-manager.mjs";
 import { isMainModule, resultFrom, runCli, skipped } from "./lib/report.mjs";
 import { isHostKit, listTrackedFiles, readJson, readRootScripts, readText } from "./lib/repo.mjs";
 
@@ -136,10 +136,18 @@ export function inspectTextRewrite({ file, before, after, scripts }) {
  * @param {any} input.manifest
  * @param {boolean} input.convertsScripts false for the manifests whose scripts only get the text rewrite
  * @param {Map<string, Set<string>>} input.workspaceScripts scripts of each workspace, by package name
+ * @param {Map<string, Set<string>>} [input.scriptsByDir] scripts of each package, by directory, for `--prefix <dir>`
  * @param {Rewriter} input.rewriter
  * @returns {Finding[]}
  */
-export function inspectPackageManifest({ file, manifest, convertsScripts, workspaceScripts, rewriter }) {
+export function inspectPackageManifest({
+  file,
+  manifest,
+  convertsScripts,
+  workspaceScripts,
+  scriptsByDir = new Map(),
+  rewriter,
+}) {
   /** @type {Finding[]} */
   const findings = [];
   const { scripts = {}, ...rest } = manifest;
@@ -163,9 +171,15 @@ export function inspectPackageManifest({ file, manifest, convertsScripts, worksp
       });
     }
     for (const [, name, tail] of final.matchAll(NPM_RUN)) {
-      const args = tail.split(/[ \t]+/).filter(Boolean);
+      const { packageDir, rest: args } = takeNpmPrefix(tail.split(/[ \t]+/).filter(Boolean));
       const workspace = args[0] === "-w" ? args[1] : undefined;
-      const known = workspace === undefined ? ownScripts : workspaceScripts.get(workspace);
+      // A script runs where its package.json is, so a prefix is relative to that directory.
+      const prefixed = packageDir && path.posix.normalize(path.posix.join(path.posix.dirname(file), packageDir));
+      const known = prefixed
+        ? scriptsByDir.get(prefixed)
+        : workspace === undefined
+          ? ownScripts
+          : workspaceScripts.get(workspace);
       if (!known?.has(name)) {
         findings.push({ file, message: `script "${key}" becomes "${final}", and "${name}" is not a script there` });
       }
@@ -196,12 +210,16 @@ export const check = {
       return slices.textExtensions.has(path.extname(file)) || slices.extraFileNames.includes(path.basename(file));
     });
     const manifests = files.filter(file => path.posix.basename(file) === "package.json");
-    const workspaceScripts = new Map(
-      manifests.map(file => {
-        const manifest = readJson(repoRoot, file);
-        return [String(manifest.name), new Set(Object.keys(manifest.scripts ?? {}))];
-      }),
-    );
+    const packages = manifests.map(file => {
+      const manifest = readJson(repoRoot, file);
+      return {
+        dir: path.posix.dirname(file),
+        name: String(manifest.name),
+        scripts: new Set(Object.keys(manifest.scripts ?? {})),
+      };
+    });
+    const workspaceScripts = new Map(packages.map(({ name, scripts }) => [name, scripts]));
+    const scriptsByDir = new Map(packages.map(({ dir, scripts }) => [dir, scripts]));
     const scripts = readRootScripts(repoRoot);
 
     const findings = files.flatMap(file => {
@@ -211,6 +229,7 @@ export const check = {
           manifest: readJson(repoRoot, file),
           convertsScripts: SCRIPT_CONVERTED_MANIFESTS.has(file),
           workspaceScripts,
+          scriptsByDir,
           rewriter: slices,
         });
       }

@@ -20,21 +20,28 @@ const FLAG = /^-{1,2}[A-Za-z]/;
 /**
  * @param {import("./lib/markdown.mjs").MarkdownDoc} doc
  * @param {Set<string>} rootScripts
+ * @param {(dir: string) => Set<string> | undefined} [scriptsIn] the scripts of the package in a directory of the
+ * repository, for `npm run … --prefix <dir>`; undefined when that directory holds no tracked `package.json`
  * @returns {DocCommands}
  */
-export function inspectDocCommands(doc, rootScripts) {
+export function inspectDocCommands(doc, rootScripts, scriptsIn = () => undefined) {
   /** @type {DocCommands} */
   const result = { findings: [], shownWithArguments: new Map() };
   for (const { line, text } of codeLines(doc)) {
     for (const command of findScriptCommands(text)) {
       if (isSharedBuiltin(command)) continue;
+      /** @param {string} message */
+      const report = message => result.findings.push({ file: doc.file, line, message });
       const shown = [command.script, ...command.flags, ...command.positionals].join(" ");
-      if (!rootScripts.has(command.script)) {
-        result.findings.push({ file: doc.file, line, message: `"${command.script}" is not a root script` });
+      const scripts = command.packageDir === undefined ? rootScripts : scriptsIn(command.packageDir);
+      const owner = command.packageDir === undefined ? "a root" : `a ${command.packageDir}`;
+      if (scripts === undefined) {
+        report(`"${command.packageDir}" holds no tracked package.json for "${command.script}" to run in`);
+      } else if (!scripts.has(command.script)) {
+        report(`"${command.script}" is not ${owner} script`);
       } else if (command.flags.length > 0) {
-        const message = `"${shown}" carries a flag, which npm-mode drops: document a flag-free alias script`;
-        result.findings.push({ file: doc.file, line, message });
-      } else if (command.positionals.length > 0) {
+        report(`"${shown}" carries a flag, which npm-mode drops: document a flag-free alias script`);
+      } else if (command.positionals.length > 0 && command.packageDir === undefined) {
         result.shownWithArguments.set(command.script, `${doc.file}:${line}`);
       }
     }
@@ -98,8 +105,15 @@ export const check = {
   name: "check-scripts",
   run({ repoRoot }) {
     const rootScripts = readRootScripts(repoRoot);
-    const docs = listDocs(listTrackedFiles(repoRoot)).map(file => parseMarkdown(file, readText(repoRoot, file)));
-    const inspected = docs.map(doc => inspectDocCommands(doc, rootScripts));
+    const tracked = listTrackedFiles(repoRoot);
+    /** @param {string} dir */
+    const scriptsIn = dir => {
+      const manifest = path.posix.join(path.posix.normalize(dir), "package.json");
+      if (!tracked.includes(manifest)) return undefined;
+      return new Set(Object.keys(readJson(repoRoot, manifest).scripts ?? {}));
+    };
+    const docs = listDocs(tracked).map(file => parseMarkdown(file, readText(repoRoot, file)));
+    const inspected = docs.map(doc => inspectDocCommands(doc, rootScripts, scriptsIn));
     const findings = inspected.flatMap(result => result.findings);
     const shownWithArguments = new Map(inspected.flatMap(result => [...result.shownWithArguments]));
 

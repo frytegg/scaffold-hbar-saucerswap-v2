@@ -117,6 +117,34 @@ test("a converted package script is refused when it calls a script its target do
   assert.match(findings[0].message, /script "build".*"hardhat" is not a script there/);
 });
 
+test("a script run with npm's --prefix is looked up in that package, and the option is not a swallowed flag", () => {
+  const manifest = {
+    name: "root",
+    scripts: {
+      probe: "npm ci --prefix tools/probe && npm run browsers --prefix tools/probe && node tools/probe/cli.mjs",
+      typo: "npm run browser --prefix tools/probe",
+      nowhere: "npm run browsers --prefix=tools/missing",
+      flagged: "npm run browsers --prefix tools/probe --with-deps",
+    },
+  };
+  const findings = inspectPackageManifest({
+    file: "package.json",
+    manifest,
+    convertsScripts: true,
+    workspaceScripts: new Map(),
+    scriptsByDir: new Map([["tools/probe", new Set(["browsers"])]]),
+    rewriter: identity,
+  });
+  assert.deepEqual(
+    findings.map(finding => finding.message.replace(/ becomes .*?"(,|:)/, "$1")),
+    [
+      'script "typo", and "browser" is not a script there',
+      'script "nowhere", and "browsers" is not a script there',
+      'script "flagged": --with-deps never reaches the script',
+    ],
+  );
+});
+
 test("a manifest whose scripts the CLI leaves alone keeps its package-manager field in view of the text rewrite", () => {
   const rewriter = {
     rewriteText: (/** @type {string} */ text) => text.replaceAll(`${YARN}@`, "npm@"),

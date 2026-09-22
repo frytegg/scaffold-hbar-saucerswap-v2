@@ -18,14 +18,31 @@ const SHARED_BUILTINS = new Set(["install"]);
 /**
  * @typedef {object} ScriptCommand
  * @property {string} script the word after the package manager
+ * @property {string | undefined} packageDir the directory `npm run … --prefix <dir>` runs the script in; the root when absent
  * @property {string[]} flags arguments that start with a dash
  * @property {string[]} positionals every other argument
  */
 
 const COMMAND = new RegExp(
-  String.raw`(?:^|[\s;&|(])(?:${YARN}|npm run)[ \t]+([A-Za-z0-9][\w:.-]*)((?:[ \t]+[^\s#;&|]+)*)`,
+  String.raw`(?:^|[\s;&|(])(${YARN}|npm run)[ \t]+([A-Za-z0-9][\w:.-]*)((?:[ \t]+[^\s#;&|]+)*)`,
   "g",
 );
+
+/**
+ * `--prefix <dir>` is one of npm's own options wherever it stands on the line: it picks the package whose script
+ * runs and never reaches the script, so it is neither a swallowed flag nor an argument.
+ * @param {string[]} args the words after `npm run <script>`
+ * @returns {{ packageDir: string | undefined, rest: string[] }}
+ */
+export function takeNpmPrefix(args) {
+  const joined = args.findIndex(arg => arg.startsWith("--prefix="));
+  if (joined >= 0) {
+    return { packageDir: args[joined].slice("--prefix=".length), rest: args.filter((_, index) => index !== joined) };
+  }
+  const spaced = args.indexOf("--prefix");
+  if (spaced < 0 || spaced + 1 >= args.length) return { packageDir: undefined, rest: args };
+  return { packageDir: args[spaced + 1], rest: args.filter((_, index) => index !== spaced && index !== spaced + 1) };
+}
 
 /**
  * Finds the package-manager script invocations in one line of shell text.
@@ -33,12 +50,14 @@ const COMMAND = new RegExp(
  * @returns {ScriptCommand[]}
  */
 export function findScriptCommands(text) {
-  return [...text.matchAll(COMMAND)].map(match => {
-    const args = match[2].split(/[ \t]+/).filter(Boolean);
+  return [...text.matchAll(COMMAND)].map(([, runner, script, tail]) => {
+    const args = tail.split(/[ \t]+/).filter(Boolean);
+    const { packageDir, rest } = runner === "npm run" ? takeNpmPrefix(args) : { packageDir: undefined, rest: args };
     return {
-      script: match[1],
-      flags: args.filter(arg => arg.startsWith("-")),
-      positionals: args.filter(arg => !arg.startsWith("-")),
+      script,
+      packageDir,
+      flags: rest.filter(arg => arg.startsWith("-")),
+      positionals: rest.filter(arg => !arg.startsWith("-")),
     };
   });
 }

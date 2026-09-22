@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { inspectDocCommands, inspectManifest } from "../check-scripts.mjs";
+import { parseMarkdown } from "../lib/markdown.mjs";
 import { fixtureDoc, linesOf } from "./support.mjs";
 
 const ROOT_SCRIPTS = new Set(["dev", "lint:strict", "deploy", "verify", "hardhat:compile"]);
@@ -32,6 +33,33 @@ test("a documented command is refused when no root script has that name", () => 
 test("bare scripts and the install command, with or without its lockfile flag, pass", () => {
   const { findings } = inspectDocCommands(fixtureDoc("commands.markdown"), ROOT_SCRIPTS);
   assert.deepEqual(linesOf(findings), [7, 8, 10]);
+});
+
+test("npm's --prefix picks the package a documented script must belong to, and is not a swallowed flag", () => {
+  const doc = parseMarkdown(
+    "README.md",
+    [
+      "```bash",
+      "npm run browsers --prefix tools/probe",
+      "npm run test --prefix=tools/probe",
+      "npm run dev --prefix tools/probe",
+      "npm run browsers --prefix tools/nothing",
+      "npm run browsers --prefix tools/probe --with-deps",
+      "```",
+    ].join("\n"),
+  );
+  /** @param {string} dir */
+  const scriptsIn = dir => (dir === "tools/probe" ? new Set(["browsers", "test"]) : undefined);
+  const { findings, shownWithArguments } = inspectDocCommands(doc, ROOT_SCRIPTS, scriptsIn);
+  assert.deepEqual(
+    findings.map(({ line, message }) => [line, message]),
+    [
+      [4, '"dev" is not a tools/probe script'],
+      [5, '"tools/nothing" holds no tracked package.json for "browsers" to run in'],
+      [6, '"browsers --with-deps" carries a flag, which npm-mode drops: document a flag-free alias script'],
+    ],
+  );
+  assert.equal(shownWithArguments.size, 0);
 });
 
 test("a placeholder needs a root script, framework placeholders included", () => {
