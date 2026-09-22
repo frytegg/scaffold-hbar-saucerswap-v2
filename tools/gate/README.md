@@ -7,6 +7,7 @@ Checks that this template still scaffolds through the published `create-scaffold
 | file | role |
 | --- | --- |
 | `scaffold-and-check.sh` | one gate leg: scaffold, assert, run the root scripts, boot, print a summary table |
+| `local.sh` | one leg on your machine against the committed HEAD (exported with `git archive`, never the working tree); the root script `yarn gate:local` runs it |
 | `run-root-script.sh` | runs one root script of a project with the package manager that project was scaffolded for; a script that is not defined is exit 3, never a skip |
 | `boot-check.mjs`, `routes.mjs` | boots the production server on a given port with no env file and requests every route of the build once |
 | `routes.test.mjs` | tests of the route rules: `node --test tools/gate/routes.test.mjs` |
@@ -16,14 +17,14 @@ Checks that this template still scaffolds through the published `create-scaffold
 ## One leg
 
 ```bash
-# this checkout, through the CLI's local-template seam (works for a private repository)
-bash tools/gate/scaffold-and-check.sh --template-dir . --solidity-framework hardhat --work-dir ../gate-work
+# the committed HEAD of this checkout, through the CLI's local-template seam (works for a private repository)
+bash tools/gate/local.sh --work-dir ../gate-work
 
 # a published template, through the path a judge uses
 bash tools/gate/scaffold-and-check.sh --template owner/repo --work-dir ../gate-work
 ```
 
-`--work-dir` has to be outside the template tree. `--help` lists every option; each one maps to a switch of the CLI (`-s`, `--yes` or `--ci`, the package manager, the skills install, the directory argument) or of the environment (`CI` unset).
+`--template-dir` takes a clean template tree such as a fresh checkout: apart from git's own folder, `node_modules`, the Next.js build output, `.env` and the package manager's cache, the seam copies every file it finds, untracked ones included. `--work-dir` has to be outside the template tree. `--help` lists every option; each one maps to a switch of the CLI (`-s`, `--yes` or `--ci`, the package manager, the skills install, the directory argument) or of the environment (`CI` unset).
 
 With `--template-dir` the seam replaces the download only: the CLI still reads its capabilities from a built-in entry whose default framework is Foundry, so `--solidity-framework` is mandatory there. The "no `-s`" case can only be proven through `--template`, against a public repository.
 

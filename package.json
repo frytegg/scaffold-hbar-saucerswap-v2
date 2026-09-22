@@ -15,6 +15,7 @@
     "check:tools": "yarn hardhat:lint:tools && yarn hardhat:check-types:tools && node tools/checks/run-tests.mjs && node --test tools/gate/routes.test.mjs",
     "dev": "yarn next:dev",
     "format": "yarn next:format && yarn hardhat:format && yarn hardhat:format:tools",
+    "gate:local": "bash tools/gate/local.sh",
     "hardhat:account": "yarn workspace @sh/hardhat account",
     "hardhat:account:generate": "yarn workspace @sh/hardhat account:generate",
     "hardhat:account:import": "yarn workspace @sh/hardhat account:import",
