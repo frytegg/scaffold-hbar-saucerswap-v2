@@ -26,7 +26,7 @@ export function readEvidence(): { file: string; record: EvidenceRecord }[] {
     .filter(name => name.endsWith(".json"))
     .sort()
     .map(name => {
-      const file = path.join("docs", "evidence", name);
+      const file = `docs/evidence/${name}`;
       return { file, record: parseEvidence(JSON.parse(readFileSync(path.join(EVIDENCE_DIR, name), "utf8")), file) };
     });
 }

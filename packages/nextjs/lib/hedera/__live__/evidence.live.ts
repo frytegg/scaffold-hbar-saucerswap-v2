@@ -9,7 +9,10 @@ describe("every file of docs/evidence/ matches the mirror node", () => {
     expect(recorded.length).toBeGreaterThan(0);
   });
 
-  it.each(recorded)("$file: SUCCESS, sent by the recorded account, same figures", async ({ record }) => {
-    expect(await checkEvidence(record, testnetMirror)).toEqual([]);
-  });
+  it.each(recorded.map(({ file, record }) => [file, record] as const))(
+    "%s: SUCCESS, sent by the recorded account, same figures",
+    async (_file, record) => {
+      expect(await checkEvidence(record, testnetMirror)).toEqual([]);
+    },
+  );
 });
