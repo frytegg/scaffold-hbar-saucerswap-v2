@@ -42,6 +42,9 @@ jobs:
       - name: Offline unit tests of packages/nextjs, no network and no key
         run: yarn test:unit
 
+      - name: Offline mock tier of packages/hardhat, no network and no key
+        run: yarn test:mock
+
       - name: Formatting, types and tests of tools/checks and tools/gate
         run: yarn check:tools
 
