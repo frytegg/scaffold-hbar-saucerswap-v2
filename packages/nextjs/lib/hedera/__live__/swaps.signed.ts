@@ -14,7 +14,6 @@ import type { MirrorAccount, MirrorContractResult, MirrorTransaction } from "../
 import { type PreflightVerdict, checkAllowance, checkCost, checkRecipient, readAllowance } from "../preflight";
 import {
   type BuiltCall,
-  approvalGranted,
   buildApproveCall,
   buildHbarToTokenSwap,
   buildTokenToHbarSwap,
@@ -25,6 +24,14 @@ import {
   swapPath,
 } from "../swap";
 import { type Tinybar, formatHbar, formatTokenAmount, hbarToTinybar, tinybar, toTinybar } from "../units";
+import {
+  assertApprovalGranted,
+  assertHolds,
+  assertTestnet,
+  assertWithinCeiling,
+  privateKeyOf,
+  signingAccount,
+} from "./runGuards";
 import { EVIDENCE_DIR, mirrorBaseUrl, testnetClient, testnetMirror } from "./testnet";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -49,14 +56,6 @@ const SAUCE_IN = 1_000_000n;
 const pool = testnet.hbarSaucePool;
 const sauce = testnet.sauce;
 
-function privateKeyOf(value: string): Hex {
-  const key = value.startsWith("0x") ? value : `0x${value}`;
-  if (!/^0x[0-9a-fA-F]{64}$/.test(key)) {
-    throw new Error("__RUNTIME_DEPLOYER_PRIVATE_KEY is not a 32-byte private key in hexadecimal.");
-  }
-  return key as Hex;
-}
-
 function report(verdict: PreflightVerdict): EvidencePreflight {
   console.info(`pre-flight ${verdict.check}: ${verdict.status}. ${verdict.message}`);
   return { check: verdict.check, status: verdict.status, message: verdict.message };
@@ -75,14 +74,8 @@ describe.skipIf(!KEY)(title, () => {
 
   const balance = async (): Promise<Tinybar> => toTinybar(await testnetClient.getBalance({ address: account.address }));
 
-  async function assertWithinCeiling(upTo: Tinybar, what: string): Promise<void> {
-    const spent = startBalance - (await balance());
-    if (spent + upTo > RUN_CEILING) {
-      throw new Error(
-        `${what} may cost up to ${formatHbar(upTo)}, and this run has already spent ${spent} tinybar: that could ` +
-          `go over the run's ceiling of ${formatHbar(RUN_CEILING)}. Nothing was sent.`,
-      );
-    }
+  async function withinCeiling(upTo: Tinybar, what: string): Promise<void> {
+    assertWithinCeiling({ spent: startBalance - (await balance()), upTo, ceiling: RUN_CEILING, what });
   }
 
   /** Simulates, signs with viem's default flow, then reads the outcome from the mirror node's DETAIL view. */
@@ -155,15 +148,8 @@ describe.skipIf(!KEY)(title, () => {
   beforeAll(async () => {
     account = privateKeyToAccount(privateKeyOf(KEY ?? ""));
     wallet = createWalletClient({ account, chain: hederaTestnet, transport: http(jsonRpcUrl("testnet")) });
-    const chainId = await testnetClient.getChainId();
-    if (chainId !== testnet.chainId) {
-      throw new Error(
-        `The JSON-RPC relay serves chain ${chainId}, not Hedera testnet (${testnet.chainId}). Nothing was signed.`,
-      );
-    }
-    const found = await testnetMirror.getAccount(account.address);
-    if (found === null) throw new Error(`No Hedera testnet account has the address ${account.address}: fund it first.`);
-    sender = found;
+    assertTestnet(await testnetClient.getChainId());
+    sender = signingAccount(await testnetMirror.getAccount(account.address), account.address);
     relay = await testnetClient.request({ method: "web3_clientVersion" });
     startBalance = await balance();
     console.info(`signing as ${account.address} (${sender.accountId}), balance ${formatHbar(startBalance)}, ${relay}`);
@@ -191,7 +177,7 @@ describe.skipIf(!KEY)(title, () => {
       token: sauce,
     });
     preflight.push(report(cost));
-    await assertWithinCeiling(tinybar(cost.fee + HBAR_IN), "The swap");
+    await withinCeiling(tinybar(cost.fee + HBAR_IN), "The swap");
 
     const result = await send(call, { value: call.value, amountIn: HBAR_IN });
     const amountOut = amountOutOf(result);
@@ -225,11 +211,7 @@ describe.skipIf(!KEY)(title, () => {
 
   it("SAUCE -> HBAR: allowance pre-flight, exact approval, swap, native HBAR received", async () => {
     const held = (await testnetMirror.getTokenRelationship(sender.accountId, sauce.id))?.balance ?? 0n;
-    if (held < SAUCE_IN) {
-      throw new Error(
-        `${sender.accountId} holds ${formatTokenAmount(held, sauce)}; this swap needs ${formatTokenAmount(SAUCE_IN, sauce)}.`,
-      );
-    }
+    assertHolds({ account: sender.accountId, held, needed: SAUCE_IN, token: sauce });
     const quoted = tinybar(await quoteExactInput(testnetClient, swapPath(sauce, pool.fee, testnet.whbar), SAUCE_IN));
     const transactions: EvidenceTransaction[] = [];
 
@@ -244,11 +226,9 @@ describe.skipIf(!KEY)(title, () => {
         token: sauce,
       });
       preflight.push(report(approveCost));
-      await assertWithinCeiling(approveCost.fee, "The approval");
+      await withinCeiling(approveCost.fee, "The approval");
       const approved = await send(approve);
-      if (approved.callResult === null || !approvalGranted(approved.callResult)) {
-        throw new Error(`${approved.hash} succeeded but the token's approve did not return true.`);
-      }
+      assertApprovalGranted(approved);
       const approval = await entry("approve", approved, approveCost.fee);
       expect(BigInt(approval.senderNetTinybar)).toBe(-BigInt(approval.feeTinybar));
       transactions.push(approval);
@@ -272,7 +252,7 @@ describe.skipIf(!KEY)(title, () => {
       hbarOut: quoted,
     });
     preflight.push(report(cost));
-    await assertWithinCeiling(cost.fee, "The swap");
+    await withinCeiling(cost.fee, "The swap");
 
     const result = await send(call);
     const amountOut = amountOutOf(result);
