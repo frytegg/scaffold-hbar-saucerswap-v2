@@ -5,7 +5,7 @@ import Link from "next/link";
 import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
-import { BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { ArrowsRightLeftIcon, BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 
@@ -80,6 +80,23 @@ const Home: NextPage = () => {
         </div>
 
         <div className="w-full max-w-4xl mx-auto px-5 mt-8 pb-16">
+          <div className="bg-base-100 rounded-2xl shadow-md p-8 border border-base-300 flex flex-col items-start gap-3 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center shrink-0">
+                <ArrowsRightLeftIcon className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="font-bold text-lg m-0">Swap on SaucerSwap V2</h3>
+            </div>
+            <p className="text-base-content/70 text-sm m-0">
+              HBAR for an HTS token and back, on Hedera testnet. The page reads what the network checks below the EVM
+              before your wallet opens, and refuses the swaps a simulator accepts and the network then rejects while
+              keeping the gas.
+            </p>
+            <Link href="/swap" passHref className="btn btn-primary btn-sm">
+              Open the swap route
+            </Link>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-base-100 rounded-2xl shadow-md p-8 text-center flex flex-col items-center hover:shadow-lg transition-shadow border border-base-300">
               <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center mb-4">
