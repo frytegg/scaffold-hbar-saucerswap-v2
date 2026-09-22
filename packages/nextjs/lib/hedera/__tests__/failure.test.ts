@@ -243,10 +243,18 @@ describe("a call no simulator prices is not an empty revert", () => {
     statusName: "INVALID_NFT_ID",
     action: "supply-gas",
   };
+  // What the caller tells the decoder about the call: the mint a rule covers, and a call of the same contract that
+  // no rule covers. The answer to the same error differs between the two, which is the whole point of the rule.
+  const MINT = { address: testnet.positionManager.evmAddress, functions: ["mint"] };
+  const MINT_MULTICALL = { address: testnet.positionManager.evmAddress, functions: ["mint", "refundETH"] };
+  const BURN = { address: testnet.positionManager.evmAddress, functions: ["burn"] };
+  const SWAP = { address: testnet.swapRouter.evmAddress, functions: ["exactInput", "unwrapWHBAR"] };
+  /** 226 read as what it says. The kind names where the status came from, the revert data or the relay's sentence. */
+  const missingNft = { code: 226, statusName: "INVALID_NFT_ID", action: "none" };
 
   it("eth_call refuses the mint with INVALID_NFT_ID: the answer is that it cannot be priced", async () => {
     const client = replayClient([rpcFixture("call-mint-not-estimable")]);
-    const failure = explainError(await thrownBy(() => client.simulateContract(mintCall)));
+    const failure = explainError(await thrownBy(() => client.simulateContract(mintCall)), MINT);
     expect(failure).toMatchObject(supplyGas);
     expect(failure.message).toContain("the dapp must supply a gas limit");
     expect(failure.message).toContain("lib/hedera/gasRules.ts");
@@ -254,7 +262,7 @@ describe("a call no simulator prices is not an empty revert", () => {
 
   it("eth_estimateGas refuses it the same way", async () => {
     const client = replayClient([rpcFixture("estimate-mint-not-estimable")]);
-    expect(explainError(await thrownBy(() => client.estimateContractGas(mintCall)))).toMatchObject(supplyGas);
+    expect(explainError(await thrownBy(() => client.estimateContractGas(mintCall)), MINT)).toMatchObject(supplyGas);
   });
 
   it("through multicall too, which is the shape a position mint is sent in", async () => {
@@ -265,12 +273,13 @@ describe("a call no simulator prices is not an empty revert", () => {
     ];
     const failure = explainError(
       await thrownBy(() => client.simulateContract({ ...mintCall, functionName: "multicall", args: [inner] })),
+      MINT_MULTICALL,
     );
     expect(failure).toMatchObject(supplyGas);
   });
 
   it("the wallet's own refusal, when it could not price the call, says the same thing", () => {
-    const failure = explainError(walletErrorRecord("metamask-send-refused-no-gas-limit").error);
+    const failure = explainError(walletErrorRecord("metamask-send-refused-no-gas-limit").error, MINT_MULTICALL);
     expect(failure).toMatchObject({ kind: "not-estimable", action: "supply-gas", statusName: null });
     expect(failure.via).toBe("the wallet could not price the call and refused to send it");
   });
@@ -278,8 +287,18 @@ describe("a call no simulator prices is not an empty revert", () => {
   it("and still says it wrapped in a viem error, or carrying a JSON-RPC code of its own", () => {
     const { message } = walletErrorRecord("metamask-send-refused-no-gas-limit").error;
     const wrapped = new Error(`An internal error was received.\n\nDetails: ${message}\nVersion: viem@2.39.0`);
-    expect(explainError(wrapped).kind).toBe("not-estimable");
-    expect(explainError({ code: -32603, message }).kind).toBe("not-estimable");
+    expect(explainError(wrapped, MINT_MULTICALL).kind).toBe("not-estimable");
+    expect(explainError({ code: -32603, message }, MINT_MULTICALL).kind).toBe("not-estimable");
+  });
+
+  it("the same sentence for a call a rule does not cover names the refusal instead of asking for a limit", () => {
+    const { message } = walletErrorRecord("metamask-send-refused-no-gas-limit").error;
+    for (const context of [undefined, SWAP, BURN]) {
+      const failure = explainError({ message }, context);
+      expect(failure).toMatchObject({ kind: "rpc-refusal", action: "none" });
+      expect(failure.message).toContain("refused the request with an HTTP error and gave no reason");
+      expect(failure.message).not.toContain("gas limit");
+    }
   });
 
   it("an empty revert through multicall stays an empty revert, with the mirror post-mortem to read", () => {
@@ -288,14 +307,18 @@ describe("a call no simulator prices is not an empty revert", () => {
     expect(failure.message).not.toContain("gas limit");
   });
 
-  it("a simulator's 226 asks for a gas limit; the same status met on the network is a missing NFT", () => {
-    const failure = explainError({ code: 3, message: "execution reverted: CONTRACT_REVERT_EXECUTED, INVALID_NFT_ID" });
-    expect(failure.kind).toBe("not-estimable");
-    expect(explainResponseCode(226, "positions()")).toMatchObject({
-      kind: "hts-response-code",
-      statusName: "INVALID_NFT_ID",
-      action: "none",
-    });
+  it("a mint that no simulator prices asks for a limit; a burn of a serial that does not exist does not", () => {
+    const refused = { code: 3, message: "execution reverted: CONTRACT_REVERT_EXECUTED, INVALID_NFT_ID" };
+    expect(explainError(refused, MINT_MULTICALL)).toMatchObject(supplyGas);
+    for (const context of [undefined, BURN]) {
+      const failure = explainError(refused, context);
+      expect(failure).toMatchObject({ ...missingNft, kind: "hedera-status-text" });
+      expect(failure.message).toContain("the position NFT this call names does not exist");
+    }
+  });
+
+  it("the same status met on the network is a missing NFT, whatever the call was", () => {
+    expect(explainResponseCode(226, "positions()")).toMatchObject({ ...missingNft, kind: "hts-response-code" });
   });
 
   it("the library's own refusal to build the call without a limit asks for one too", () => {

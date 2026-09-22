@@ -1,5 +1,6 @@
 import { swapRevertAbi } from "./abi";
-import { GAS_RULES_MODULE, GasRuleError } from "./gasRules";
+import type { EvmAddress } from "./evmAddress";
+import { GAS_RULES_MODULE, GasRuleError, gasRuleFor } from "./gasRules";
 import { type MirrorClient, type MirrorContractAction, type MirrorContractResult, MirrorError } from "./mirror";
 import { type StatusName, failureStatusIn, statusNameOf } from "./responseCodes";
 import { extractRpcError } from "./rpcError";
@@ -52,8 +53,19 @@ export type HederaFailure = {
   via: string;
 };
 
-/** The value and amountIn of an HBAR-input call, which turn a misleading INSUFFICIENT_TOKEN_BALANCE into its cause. */
-export type HbarInputContext = { value: Weibar; amountIn: Tinybar };
+/**
+ * What the caller knows about the call that failed. Every field is optional, and each one buys one answer the error
+ * alone does not carry: `value` with `amountIn` turns a misleading INSUFFICIENT_TOKEN_BALANCE into the unit mistake
+ * it is, and `address` with `functions` says whether a gas rule covers the call, which is the difference between
+ * "no simulator prices this" and a refusal that named no cause at all.
+ */
+export type FailureContext = {
+  value?: Weibar;
+  amountIn?: Tinybar;
+  address?: EvmAddress;
+  /** The functions the call runs, the inner ones of a multicall included, as `withGasLimit` takes them. */
+  functions?: readonly string[];
+};
 
 type Advice = { action: FailureAction; message: string };
 
@@ -77,8 +89,8 @@ const STATUS_ADVICE: Record<Exclude<StatusName, "SUCCESS" | "CONTRACT_REVERT_EXE
     message:
       "The recipient has no automatic association slot left. Associate the token from the recipient's account first.",
   },
-  // This is what a transaction that reached the network means by 226. Before a send, the same answer is how both
-  // simulators refuse a call they cannot price, and explainError reads it as that instead.
+  // This is what 226 means wherever the call is not one of gasRules.ts's: on the network, and at simulation for any
+  // other call. For a call a rule names, explainError reads the same answer as "no simulator prices this" instead.
   INVALID_NFT_ID: {
     action: "none",
     message: "The network answered INVALID_NFT_ID: the position NFT this call names does not exist.",
@@ -113,9 +125,15 @@ const NOT_ESTIMABLE_MESSAGE =
   `call will not send it. The limits this template supplies, and where each number comes from, are in ${GAS_RULES_MODULE}.`;
 
 // What MetaMask 13.48.0 (Chrome 152, Hedera testnet, 22 Sept 2026) wrapped the relay's refusal in when it could not
-// price a position mint: it displayed no fee at all and the send failed. The method name keeps the pattern narrow.
-const WALLET_REFUSED_TO_PRICE = /RPC endpoint returned HTTP client error/i;
-const PRICED_METHOD = /eth_(?:sendRawTransaction|sendTransaction|estimateGas)\b/;
+// price a position mint: it displayed no fee at all and the send failed. The sentence names no cause, and this relay
+// answers every JSON-RPC error with HTTP 400, so it stands for a nonce, a balance or a rate limit just as well: only
+// a gas rule covering the call says which of them it was.
+const WALLET_REFUSED = /RPC endpoint returned HTTP client error/i;
+const SENDING_METHOD = /eth_(?:sendRawTransaction|sendTransaction|estimateGas)\b/;
+const WALLET_REFUSED_MESSAGE =
+  "The wallet's JSON-RPC endpoint refused the request with an HTTP error and gave no reason: this relay answers " +
+  "every JSON-RPC error that way, so the cause is not in the message. Check the sender's HBAR balance, and read the " +
+  "transaction on the mirror node if the wallet returned a hash.";
 
 const EMPTY_REVERT_SIMULATED =
   "The call reverted without data. SaucerSwap's multicall drops its custom errors, which are too short to pass " +
@@ -204,6 +222,15 @@ function notEstimable(code: number | null, statusName: StatusName | null, via: s
   return { kind: "not-estimable", code, statusName, message: NOT_ESTIMABLE_MESSAGE, action: "supply-gas", via };
 }
 
+/**
+ * Whether a gas rule covers the call the caller named. Told nothing about the call, the answer is no: advising a gas
+ * limit for a call that has no rule sends a transaction the network refuses, and it is charged for it.
+ */
+function ruleCovers(context: FailureContext | undefined): boolean {
+  if (context?.address === undefined || context.functions === undefined) return false;
+  return gasRuleFor(context.address, context.functions) !== null;
+}
+
 /** The error's own text, for the shapes a browser wallet wraps a refusal in and gives no JSON-RPC code. */
 function textOf(error: unknown): string {
   if (typeof error === "string") return error;
@@ -213,10 +240,11 @@ function textOf(error: unknown): string {
 }
 
 /**
- * Explains a failed request, simulation or send. Pass `context` for an HBAR-input call: without it an unscaled value
- * reads as INSUFFICIENT_TOKEN_BALANCE, and the advice would be to fund the account.
+ * Explains a failed request, simulation or send. Pass what is known about the call: without `value` and `amountIn`
+ * an unscaled value reads as INSUFFICIENT_TOKEN_BALANCE and the advice would be to fund the account, and without
+ * `address` and `functions` a refusal that names no cause is reported as that, never as a missing gas limit.
  */
-export function explainError(error: unknown, context?: HbarInputContext): HederaFailure {
+export function explainError(error: unknown, context?: FailureContext): HederaFailure {
   if (error instanceof UnitError || error instanceof SwapBuildError || error instanceof GasRuleError) {
     return fromLibraryError(error);
   }
@@ -247,19 +275,28 @@ export function explainError(error: unknown, context?: HbarInputContext): Hedera
     };
   }
 
-  // A wallet that could not price the call: it has no revert data to show, only its own wrapper of the refusal.
-  if (rpc.data === null && WALLET_REFUSED_TO_PRICE.test(walletText) && PRICED_METHOD.test(walletText)) {
-    return notEstimable(rpc.code, null, "the wallet could not price the call and refused to send it");
+  // A wallet that refused a send: it has no revert data to show, only its own wrapper, which names no cause. It is
+  // the wallet failing to price the call when a rule says the call is one the network will not price, and an
+  // unexplained HTTP error otherwise — a nonce, an empty account, a rate limit, all of them wear this same sentence.
+  if (rpc.data === null && WALLET_REFUSED.test(walletText) && SENDING_METHOD.test(walletText)) {
+    return ruleCovers(context)
+      ? notEstimable(rpc.code, null, "the wallet could not price the call and refused to send it")
+      : failureOf("rpc-refusal", rpc.code, WALLET_REFUSED_MESSAGE, "none", "the wallet's RPC endpoint, HTTP error");
   }
 
   if (rpc.code === 3 || rpc.data !== null) {
     const failure = explainRevert(rpc.data ?? "0x", rpc.message, EMPTY_REVERT_SIMULATED, "revert");
-    // Both simulators refuse a position mint with this status although the network executes it: it is the answer
-    // of a call that cannot be priced, not of a missing NFT. A transaction that reached the network keeps 226.
-    if (failure.statusName === "INVALID_NFT_ID") {
+    // Both simulators refuse a position mint with this status although the network executes it: for the calls a gas
+    // rule names, it is the answer of a call that cannot be priced. For every other call, and for a transaction that
+    // reached the network, 226 means what it says — the NFT does not exist — and asking for a gas limit there would
+    // send a transaction the network refuses and charges for.
+    if (failure.statusName === "INVALID_NFT_ID" && ruleCovers(context)) {
       return notEstimable(failure.code, failure.statusName, `${failure.via}, refused at simulation`);
     }
-    const shortfall = context === undefined ? null : valueShortfall(context.value, context.amountIn);
+    const shortfall =
+      context?.value === undefined || context.amountIn === undefined
+        ? null
+        : valueShortfall(context.value, context.amountIn);
     if (failure.statusName === "INSUFFICIENT_TOKEN_BALANCE" && shortfall !== null) {
       return { ...failure, kind: "unscaled-value", message: shortfall.message, action: "scale-value" };
     }

@@ -15,6 +15,7 @@ import {
   type BuiltCall,
   type CostVerdict,
   type EvmAddress,
+  type FailureContext,
   type HbarPoolEntry,
   type MirrorClient,
   type PreflightVerdict,
@@ -75,6 +76,8 @@ export type SwapPlan = {
   readonly amountOutMinimum: bigint;
   readonly slippageBps: number;
   readonly call: SwapCall & { readonly gas?: bigint };
+  /** The functions the call runs, the multicall's inner ones: what a gas rule and the decoder are matched on. */
+  readonly functions: readonly string[];
   /** Every pre-flight answer, in the order the panel shows them; one failing answer blocks the send. */
   readonly checks: readonly PanelCheck[];
   /** What the router needs an allowance for, when the allowance check refused the swap. */
@@ -112,11 +115,11 @@ const COST: Stage = { id: "cost", label: "Network fee" };
  * A stage that threw, as the line the panel shows: the library's own sentence, never viem's. An integration that
  * did not answer is named as that, because nothing about the swap itself is known then.
  */
-function refusalOf({ id, label }: Stage, error: unknown): Refusal {
+function refusalOf({ id, label }: Stage, error: unknown, context?: FailureContext): Refusal {
   if (error instanceof SwapFormError) {
     return { check: checkOfRefusal(id, label, { message: error.message, action: "none" }), headline: label };
   }
-  const failure = explainError(error);
+  const failure = explainError(error, context);
   return {
     check: checkOfRefusal(id, label, failure),
     headline: headlineFor(failure, { refused: label, unavailable: SAUCERSWAP_UNAVAILABLE }),
@@ -124,8 +127,8 @@ function refusalOf({ id, label }: Stage, error: unknown): Refusal {
 }
 
 /** The same refusal as one line of the panel, headed by what went wrong rather than by the stage's name. */
-function refusalLine(stage: Stage, error: unknown): PanelCheck {
-  const { check, headline } = refusalOf(stage, error);
+function refusalLine(stage: Stage, error: unknown, context: FailureContext): PanelCheck {
+  const { check, headline } = refusalOf(stage, error, context);
   return { ...check, label: headline };
 }
 
@@ -156,6 +159,7 @@ export async function buildSwapPlan(input: PlanInput): Promise<PlanResult> {
     return { ok: false, ...refusalOf(QUOTE, error) };
   }
 
+  const functions = innerFunctions(toHbar);
   let call: SwapCall & { readonly gas?: bigint };
   let amountOutMinimum: bigint;
   try {
@@ -164,10 +168,12 @@ export async function buildSwapPlan(input: PlanInput): Promise<PlanResult> {
       ? buildTokenToHbarSwap({ ...request, amountIn, quotedAmountOut: tinybar(quotedAmountOut) })
       : buildHbarToTokenSwap({ ...request, amountIn: tinybar(amountIn), quotedAmountOut });
     amountOutMinimum = minimumOut(quotedAmountOut, slippageBps);
-    call = withGasLimit(built, { functions: innerFunctions(toHbar) });
+    call = withGasLimit(built, { functions });
   } catch (error: unknown) {
     return { ok: false, ...refusalOf(BUILD, error) };
   }
+  // From here the call is known, so a failure that names no cause can be answered from what the call is.
+  const failureContext: FailureContext = { address: call.address, functions };
 
   const checks: PanelCheck[] = [];
   let approveAmount: bigint | null = null;
@@ -184,7 +190,7 @@ export async function buildSwapPlan(input: PlanInput): Promise<PlanResult> {
       checks.push(checkOf(PREFLIGHT_ID, `${token.symbol} can reach your account`, verdict));
     }
   } catch (error: unknown) {
-    checks.push(refusalLine(PREFLIGHT, error));
+    checks.push(refusalLine(PREFLIGHT, error, failureContext));
   }
 
   if (!checks.some(check => check.status === "fail")) {
@@ -195,11 +201,11 @@ export async function buildSwapPlan(input: PlanInput): Promise<PlanResult> {
         autoAssociates,
         token,
         hbarOut: toHbar ? tinybar(quotedAmountOut) : undefined,
-        functions: innerFunctions(toHbar),
+        functions,
       });
       checks.push(checkOf(COST.id, COST.label, { ...cost, message: `${cost.message} ${cost.walletNote}` }));
     } catch (error: unknown) {
-      checks.push(refusalLine(COST, error));
+      checks.push(refusalLine(COST, error, failureContext));
     }
   }
 
@@ -212,6 +218,7 @@ export async function buildSwapPlan(input: PlanInput): Promise<PlanResult> {
       amountOutMinimum,
       slippageBps,
       call,
+      functions,
       checks,
       approveAmount,
       quotedAt: now,

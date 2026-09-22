@@ -186,7 +186,7 @@ export const SwapStation = () => {
       setOutcome(await trackTransaction(mirror, hash, accountId));
       setRefreshKey(key => key + 1);
     } catch (error: unknown) {
-      setSendFailure(explainError(error));
+      setSendFailure(explainError(error, { address: plan.call.address, functions: plan.functions }));
     } finally {
       setSending(false);
     }

@@ -10,7 +10,7 @@ import {
   evidenceTransaction,
 } from "../evidence";
 import { type EvmAddress, toEvmAddress } from "../evmAddress";
-import { type HbarInputContext, explainError, postMortem } from "../failure";
+import { type FailureContext, explainError, postMortem } from "../failure";
 import type { MirrorAccount, MirrorContractResult, MirrorTransaction } from "../mirror";
 import { type PreflightVerdict, checkAllowance, checkCost, checkRecipient, readAllowance } from "../preflight";
 import {
@@ -82,7 +82,7 @@ describe.skipIf(!KEY)(title, () => {
   }
 
   /** Simulates, signs with viem's default flow, then reads the outcome from the mirror node's DETAIL view. */
-  async function send(call: BuiltCall, context?: HbarInputContext): Promise<MirrorContractResult> {
+  async function send(call: BuiltCall, context?: FailureContext): Promise<MirrorContractResult> {
     let hash: Hex;
     try {
       const { request } = await testnetClient.simulateContract({ ...call, account });

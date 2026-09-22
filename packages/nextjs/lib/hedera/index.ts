@@ -15,7 +15,7 @@ export {
 } from "./evidence";
 export type { EvmAddress } from "./evmAddress";
 export { isEvmAddress, toEvmAddress } from "./evmAddress";
-export type { FailureAction, FailureKind, HbarInputContext, HederaFailure } from "./failure";
+export type { FailureAction, FailureContext, FailureKind, HederaFailure } from "./failure";
 export { explainContractResult, explainError, explainResponseCode, postMortem } from "./failure";
 export type { GasMeasurement, GasRule, GasRuleErrorCode } from "./gasRules";
 export { GAS_RULES_MODULE, GasRuleError, gasRuleFor, gasRules, largestMeasuredGas, withGasLimit } from "./gasRules";
