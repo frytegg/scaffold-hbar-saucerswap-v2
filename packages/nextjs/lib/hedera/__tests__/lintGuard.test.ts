@@ -27,8 +27,17 @@ describe("the transaction-value lint guard", () => {
       { ruleId: "no-restricted-imports", line: importLine },
       { ruleId: "no-restricted-syntax", line: lineOf("value: 100_000_000n") },
       { ruleId: "no-restricted-syntax", line: lineOf('value: parseEther("1")') },
+      { ruleId: "no-restricted-syntax", line: lineOf("wallet.deployContract(") },
+      { ruleId: "no-restricted-syntax", line: lineOf("wallet.prepareTransactionRequest(") },
+      { ruleId: "no-restricted-syntax", line: lineOf("client.call(") },
+      { ruleId: "no-restricted-syntax", line: lineOf("wallet.sendCalls(") },
     ]);
     expect(messages.map(message => message.line)).not.toContain(lineOf("...payable("));
+  }, 60_000);
+
+  it("does not see a value set on an object built before the call, which is why review still matters", async () => {
+    const messages = await guardMessagesAt(path.join(NEXTJS_ROOT, "hooks", "plantedValueViolations.ts"));
+    expect(messages.map(message => message.line)).not.toContain(lineOf("value: 5n"));
   }, 60_000);
 
   it("does not apply inside lib/hedera, the one place that owns the conversion", async () => {
