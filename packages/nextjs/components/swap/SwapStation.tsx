@@ -17,6 +17,7 @@ import {
   facadeReturnVerdict,
   headlineFor,
   quoteFreshness,
+  sendIsBlocked,
   unitsOf,
 } from "./swapPresentation";
 import { type TransactionOutcome, succeeded, trackTransaction } from "./transactionOutcome";
@@ -86,6 +87,10 @@ export const SwapStation = () => {
   const onTestnet = chainId === testnet.chainId;
   const ready = status === "connected" && browserWallet && onTestnet && account !== null && client !== undefined;
   const accountId = accountState?.account?.accountId ?? null;
+
+  // The panel's lines and the age of the quote, computed here because the send handler decides on them too.
+  const checks = plan === null ? [] : facadeCheck === null ? plan.checks : [facadeCheck, ...plan.checks];
+  const freshness = plan === null ? null : quoteFreshness(plan.quotedAt, Math.max(now, plan.quotedAt));
 
   useEffect(() => {
     if (!ready || client === undefined || account === null) {
@@ -177,7 +182,9 @@ export const SwapStation = () => {
   }, [plan, config, mirror, accountId, runQuote]);
 
   const onSend = useCallback(async (): Promise<void> => {
-    if (plan === null) return;
+    // The button is disabled on the same answer. Asking it again here is what keeps a blocked check or a quote
+    // nobody has looked at since from reaching a wallet through any other path into this handler.
+    if (plan === null || freshness === null || sendIsBlocked({ checks, freshness, sendBusy: sending })) return;
     setSending(true);
     setSendFailure(null);
     setOutcome(null);
@@ -190,7 +197,7 @@ export const SwapStation = () => {
     } finally {
       setSending(false);
     }
-  }, [plan, config, mirror, accountId]);
+  }, [plan, checks, freshness, sending, config, mirror, accountId]);
 
   const onSwitch = useCallback(async (): Promise<void> => {
     setSwitchFailure(null);
@@ -303,12 +310,12 @@ export const SwapStation = () => {
             </section>
           )}
 
-          {plan !== null && (
+          {plan !== null && freshness !== null && (
             <PreflightPanel
               plan={plan}
               token={TOKEN}
-              freshness={quoteFreshness(plan.quotedAt, Math.max(now, plan.quotedAt))}
-              facadeCheck={facadeCheck}
+              checks={checks}
+              freshness={freshness}
               approveAction={approveAction}
               sendBusy={sending}
               onSend={() => void onSend()}

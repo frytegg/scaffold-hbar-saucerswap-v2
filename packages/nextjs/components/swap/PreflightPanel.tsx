@@ -2,7 +2,7 @@
 
 import { type CheckAction, CheckLine, Row } from "./atoms";
 import type { SwapPlan } from "./swapPlan";
-import { type PanelCheck, type QuoteFreshness, blocks, unitsOf } from "./swapPresentation";
+import { type PanelCheck, type QuoteFreshness, blocks, sendIsBlocked, unitsOf } from "./swapPresentation";
 import { type TokenEntry, formatTokenAmount } from "~~/lib/hedera";
 
 // The checks the network would otherwise answer only after the swap was signed, paid for and rejected. A failing
@@ -11,23 +11,22 @@ import { type TokenEntry, formatTokenAmount } from "~~/lib/hedera";
 export const PreflightPanel = ({
   plan,
   token,
+  checks,
   freshness,
-  facadeCheck,
   approveAction,
   sendBusy,
   onSend,
 }: {
   plan: SwapPlan;
   token: TokenEntry;
+  /** The plan's own answers, behind what the token facade answered to an approval sent from this panel. */
+  checks: readonly PanelCheck[];
   freshness: QuoteFreshness;
-  /** What the token facade answered after an approval sent from this panel. */
-  facadeCheck: PanelCheck | null;
   approveAction: CheckAction | null;
   sendBusy: boolean;
   onSend: () => void;
 }) => {
   const { input, output } = unitsOf(plan.direction, token);
-  const checks = facadeCheck === null ? plan.checks : [facadeCheck, ...plan.checks];
   const blocked = blocks(checks);
   const amountIn = formatTokenAmount(plan.amountIn, input);
   const least = formatTokenAmount(plan.amountOutMinimum, output);
@@ -49,7 +48,11 @@ export const PreflightPanel = ({
           />
         ))}
       </ul>
-      <button className="btn btn-primary w-fit" disabled={blocked || freshness.stale || sendBusy} onClick={onSend}>
+      <button
+        className="btn btn-primary w-fit"
+        disabled={sendIsBlocked({ checks, freshness, sendBusy })}
+        onClick={onSend}
+      >
         {sendBusy ? "Waiting for the wallet…" : `Swap ${amountIn} for at least ${least}`}
       </button>
       {blocked && (

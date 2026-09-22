@@ -169,6 +169,23 @@ export function blocks(checks: readonly PanelCheck[]): boolean {
   return checks.some(check => check.status === "fail");
 }
 
+/**
+ * Whether the send may not happen. This is the safety property of the route: a failing check is a refusal the
+ * network would otherwise answer after taking the gas, and a stale quote carries a minimum output nobody has looked
+ * at since. The button is disabled on this answer and the handler asks it again, so the rule lives in one place.
+ */
+export function sendIsBlocked({
+  checks,
+  freshness,
+  sendBusy,
+}: {
+  checks: readonly PanelCheck[];
+  freshness: QuoteFreshness;
+  sendBusy: boolean;
+}): boolean {
+  return blocks(checks) || freshness.stale || sendBusy;
+}
+
 export const SAUCERSWAP_UNAVAILABLE = "SaucerSwap testnet unavailable";
 export const MIRROR_UNAVAILABLE = "Hedera testnet unavailable";
 

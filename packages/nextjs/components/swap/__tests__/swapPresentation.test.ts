@@ -15,6 +15,7 @@ import {
   parseAmountInput,
   parseSlippagePercent,
   quoteFreshness,
+  sendIsBlocked,
   unitsOf,
 } from "../swapPresentation";
 import { describe, expect, it } from "vitest";
@@ -155,6 +156,23 @@ describe("how old a quote is", () => {
     expect(freshness.stale).toBe(true);
     expect(freshness.message).toContain("65 seconds old");
     expect(freshness.message).toContain("Get a new quote.");
+  });
+});
+
+describe("whether the send may happen at all", () => {
+  const fresh = quoteFreshness(1_000, 1_000);
+  const stale = quoteFreshness(1_000, 1_000 + QUOTE_TTL_MS + 1);
+  const passing = checkOf("preflight", "Allowance", allowanceVerdict(5n, 5n, SAUCE));
+  const failing = checkOf("preflight", "Allowance", allowanceVerdict(0n, 5n, SAUCE));
+
+  it("lets a fresh quote whose checks all pass through", () => {
+    expect(sendIsBlocked({ checks: [passing], freshness: fresh, sendBusy: false })).toBe(false);
+  });
+
+  it("is blocked by a failing check, by a stale quote, and while the wallet is already open", () => {
+    expect(sendIsBlocked({ checks: [passing, failing], freshness: fresh, sendBusy: false })).toBe(true);
+    expect(sendIsBlocked({ checks: [passing], freshness: stale, sendBusy: false })).toBe(true);
+    expect(sendIsBlocked({ checks: [passing], freshness: fresh, sendBusy: true })).toBe(true);
   });
 });
 
