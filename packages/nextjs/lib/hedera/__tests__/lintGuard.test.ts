@@ -21,23 +21,31 @@ async function guardMessagesAt(filePath: string): Promise<Pick<Linter.LintMessag
 describe("the transaction-value lint guard", () => {
   it("fails a planted value: and the ether helpers in hooks/, and nothing else", async () => {
     const messages = await guardMessagesAt(path.join(NEXTJS_ROOT, "hooks", "plantedValueViolations.ts"));
-    const importLine = lineOf('from "viem"');
     expect(messages).toEqual([
-      { ruleId: "no-restricted-imports", line: importLine },
-      { ruleId: "no-restricted-imports", line: importLine },
+      { ruleId: "no-restricted-imports", line: lineOf("formatEther,") },
+      { ruleId: "no-restricted-imports", line: lineOf("parseEther,") },
       { ruleId: "no-restricted-syntax", line: lineOf("value: 100_000_000n") },
       { ruleId: "no-restricted-syntax", line: lineOf('value: parseEther("1")') },
       { ruleId: "no-restricted-syntax", line: lineOf("wallet.deployContract(") },
       { ruleId: "no-restricted-syntax", line: lineOf("wallet.prepareTransactionRequest(") },
       { ruleId: "no-restricted-syntax", line: lineOf("client.call(") },
       { ruleId: "no-restricted-syntax", line: lineOf("wallet.sendCalls(") },
+      { ruleId: "no-restricted-syntax", line: lineOf("value: 5n") },
+      { ruleId: "no-restricted-syntax", line: lineOf("value: 6n") },
+      { ruleId: "no-restricted-syntax", line: lineOf('parseUnits("1", 18)') },
     ]);
     expect(messages.map(message => message.line)).not.toContain(lineOf("...payable("));
   }, 60_000);
 
-  it("does not see a value set on an object built before the call, which is why review still matters", async () => {
+  it("sees a value set on a request object built before the call, asserted or not", async () => {
     const messages = await guardMessagesAt(path.join(NEXTJS_ROOT, "hooks", "plantedValueViolations.ts"));
-    expect(messages.map(message => message.line)).not.toContain(lineOf("value: 5n"));
+    expect(messages).toContainEqual({ ruleId: "no-restricted-syntax", line: lineOf("value: 5n") });
+    expect(messages).toContainEqual({ ruleId: "no-restricted-syntax", line: lineOf("value: 6n") });
+  }, 60_000);
+
+  it("leaves a value that is an ordinary property of an object nothing sends", async () => {
+    const messages = await guardMessagesAt(path.join(NEXTJS_ROOT, "hooks", "plantedValueViolations.ts"));
+    expect(messages.map(message => message.line)).not.toContain(lineOf('label: "slippage"'));
   }, 60_000);
 
   it("does not apply inside lib/hedera, the one place that owns the conversion", async () => {

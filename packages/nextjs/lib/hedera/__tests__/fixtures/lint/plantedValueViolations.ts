@@ -1,7 +1,16 @@
 // Planted violations of the transaction-value guard in eslint.config.mjs. lintGuard.test.ts lints this text as a file
 // of hooks/, where the guard applies; at this path, inside lib/hedera, it does not apply.
 import { hbarToTinybar, payable } from "../../../units";
-import { type Address, type Hex, type PublicClient, type WalletClient, formatEther, parseAbi, parseEther } from "viem";
+import {
+  type Address,
+  type Hex,
+  type PublicClient,
+  type WalletClient,
+  formatEther,
+  parseAbi,
+  parseEther,
+  parseUnits,
+} from "viem";
 
 const depositAbi = parseAbi(["function deposit() payable"]);
 
@@ -36,7 +45,22 @@ export async function scaledValue(wallet: WalletClient, account: Address, to: Ad
 }
 
 export async function valueSetBeforeTheCall(wallet: WalletClient, account: Address, to: Address): Promise<void> {
-  // Not reported: the guard reads the object written in the call, and this one is built first.
+  // Reported by the request-object selector: the object carries `to`, so it is a transaction request.
   const request = { account, chain: null, to, value: 5n };
   await wallet.sendTransaction(request);
+}
+
+export async function valueSetOnAnAssertedRequest(wallet: WalletClient, account: Address, to: Address): Promise<void> {
+  const request = { account, chain: null, to, value: 6n } as const;
+  await wallet.sendTransaction(request);
+}
+
+export function amountScaledLikeEther(): bigint {
+  // 18 decimals is the ether scaling: an HBAR amount has 8, and a transaction value is that amount times 10^10.
+  return parseUnits("1", 18);
+}
+
+export function anObjectThatIsNotACall(): { label: string; value: bigint } {
+  // Not reported: no key of a transaction request, so `value` is an ordinary property name.
+  return { label: "slippage", value: 50n };
 }
