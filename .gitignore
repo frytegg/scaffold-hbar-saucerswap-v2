@@ -22,4 +22,7 @@ node_modules
 # cli
 dist
 
+# env files: every local variant, in every package; only the examples are tracked
 .env
+.env.*
+!.env.example
