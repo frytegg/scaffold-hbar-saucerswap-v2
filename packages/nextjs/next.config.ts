@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
       }),
     );
     // The UI kit's Balance and HbarInput fetch a USD price from CoinGecko in the browser and call
-    // console.error when that fails. The kit offers no switch, so its price module is swapped for
+    // console.error when that fails. The kit offers no switch, so its price module is replaced with
     // one that reports "price unknown": no route contacts CoinGecko.
     config.plugins.push(
       new webpack.NormalModuleReplacementPlugin(/^\.\/hbarPrice$/, (resource: { context: string; request: string }) => {
