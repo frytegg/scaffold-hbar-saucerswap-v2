@@ -18,12 +18,12 @@
         "description": "packages/nextjs/.env.local, optional. WalletConnect project id. Empty: only browser-injected wallets and the burner wallet are offered."
       },
       {
-        "key": "NEXT_PUBLIC_HEDERA_TESTNET_RPC_URL",
-        "description": "packages/nextjs/.env.local, optional. JSON-RPC URL the frontend uses for Hedera testnet (default https://testnet.hashio.io/api)."
+        "key": "HEDERA_RPC_TESTNET_URL",
+        "description": "packages/nextjs/.env.local, optional. JSON-RPC upstream of the app's /api/hedera/rpc relay on testnet, read on the server (default https://testnet.hashio.io/api)."
       },
       {
-        "key": "NEXT_PUBLIC_HEDERA_MAINNET_RPC_URL",
-        "description": "packages/nextjs/.env.local, optional. JSON-RPC URL the frontend uses for Hedera mainnet (default https://mainnet.hashio.io/api)."
+        "key": "HEDERA_RPC_MAINNET_URL",
+        "description": "packages/nextjs/.env.local, optional. JSON-RPC upstream of the app's /api/hedera/rpc relay on mainnet, read on the server (default https://mainnet.hashio.io/api)."
       },
       {
         "key": "HEDERA_MIRROR_TESTNET_URL",
