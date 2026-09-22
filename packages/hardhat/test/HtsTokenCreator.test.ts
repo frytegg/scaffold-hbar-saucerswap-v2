@@ -13,8 +13,8 @@ describe("HtsTokenCreator", function () {
   // HTS uses int64 for supply; max is 2^63-1. Use 6 decimals so 10000 tokens = 1e10 fits.
   const DECIMALS = 6;
   const parseHtsUnits = (amount: string, decimals: number = DECIMALS) => ethers.parseUnits(amount, decimals);
-  // HTS createToken requires HBAR for creation fee; send 1 HBAR (10^8 tinybars/wei) in tests.
-  const HTS_CREATE_VALUE = 100_000_000n;
+  // 1 HBAR as a transaction value (18 decimals). The fork's emulated token service only requires a non-zero value.
+  const HTS_CREATE_VALUE = ethers.parseUnits("1", 18);
 
   describe("createToken", function () {
     it("should create a fungible HTS token and return non-zero address", async function () {

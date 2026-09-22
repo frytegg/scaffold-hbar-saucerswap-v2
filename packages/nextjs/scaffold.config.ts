@@ -14,9 +14,8 @@ const hederaLocalFork = {
   nativeCurrency: {
     name: "HBAR",
     symbol: "HBAR",
-    // Note: HBAR has 8 protocol decimals (tinybar),
-    // but JSON-RPC msg.value & gasPrice use 18 decimals for EVM compatibility.
-    // We keep 18 here so tx.value formatting matches what viem/hardhat return.
+    // HBAR has 8 decimals (tinybar), and a contract on Hedera reads msg.value in tinybar. A transaction's
+    // value and gas price use 18 (weibar, 10^10 per tinybar) over JSON-RPC, which is what viem and Hardhat format.
     decimals: 18,
   },
 } as const satisfies chains.Chain;

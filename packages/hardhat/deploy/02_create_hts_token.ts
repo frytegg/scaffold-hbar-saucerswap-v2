@@ -24,10 +24,12 @@ const createHtsToken: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const symbol = "HTST";
   const initialSupply = hre.ethers.parseUnits("10000", 6);
   const decimals = 6;
-  const hbarValue = 100_000_000n; // 1 HBAR (10^8 tinybars) for creation fee
+  // 1 HBAR: a transaction value has 18 decimals, where a contract on Hedera reads msg.value in tinybar (8).
+  // The fork's emulated token service only requires a non-zero value.
+  const creationValue = hre.ethers.parseUnits("1", 18);
 
   const tx = await contract.createToken(name, symbol, initialSupply, decimals, {
-    value: hbarValue,
+    value: creationValue,
   });
   const receipt = await tx.wait();
 
