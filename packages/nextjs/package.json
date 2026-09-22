@@ -7,6 +7,7 @@
     "check-types": "tsc --noEmit --incremental",
     "check:live": "vitest run --config vitest.live.config.ts",
     "dev": "next dev",
+    "evidence": "vitest run --config vitest.evidence.config.ts",
     "evidence:check": "vitest run --config vitest.live.config.ts evidence",
     "format": "prettier --write . \"!(node_modules|.next|contracts)/**/*\"",
     "lint": "next lint",
