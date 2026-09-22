@@ -63,6 +63,13 @@ jobs:
           --keep
           ${{ matrix.pm == 'npm' && '--package-manager npm' || '' }}
 
+      # probe:routes downloads Chromium only; browsers:ci also installs the system libraries Chromium needs, which the
+      # runner image is not guaranteed to have.
+      - name: Chromium and its system libraries for the route probe
+        if: ${{ !cancelled() }}
+        working-directory: ${{ runner.temp }}/gate/gateapp
+        run: npm ci --omit=dev --prefix tools/route-probe && npm run browsers:ci --prefix tools/route-probe
+
       # The two steps below run root scripts of the scaffolded project. A script that does not exist fails the step.
       - name: Route console probe
         if: ${{ !cancelled() }}
