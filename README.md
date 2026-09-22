@@ -4,7 +4,7 @@ A Hedera dApp starting point with one Solidity framework, Hardhat, and a Next.js
 It is the blank template of Scaffold-HBAR as `create-scaffold-hbar` scaffolds it, minus its default keys, dead scripts and Foundry leftovers, plus the checks that keep it that way: repository checks for the docs and the manifest, a browser probe of every route, and a gate that scaffolds the template through the published CLI on every push.
 It ships no product of its own: templates are built on top of it.
 
-## Scaffold a project
+## Quick start
 
 ```bash
 npx create-scaffold-hbar@latest my-app --template OWNER/REPO -s hardhat
@@ -23,7 +23,7 @@ cd my-app
 yarn dev    # http://localhost:3000
 ```
 
-### Prerequisites
+## Prerequisites
 
 | Needed | Why |
 | --- | --- |
@@ -33,7 +33,7 @@ yarn dev    # http://localhost:3000
 
 Foundry (`forge`) is not needed: every command here passes `-s hardhat`. No key, account or env file is needed to scaffold, lint, build, serve or test.
 
-### Scaffolding notes
+## Scaffolding notes
 
 - Name the project in lowercase, as a single path segment. With `--yes` the CLI replaces a name it rejects, one with a capital letter for instance, by `my-hedera-dapp` and still exits 0.
 - `--yes` accepts every default: the default package manager, and the Hedera Skills install, which adds agent skills under `.agents/`, `.claude/`, `agent/` and `skills-lock.json`. The repository checks and formatters leave those paths alone.
@@ -80,6 +80,10 @@ After `yarn build`, `yarn probe:routes` loads every page route in Chromium three
 
 `yarn gate:local` scaffolds the committed HEAD through the published CLI into a temporary folder, installs it, and runs `lint:strict`, `typecheck`, `build` and `test` in the new project, then boots it with no env file and requests every route. It needs well over 1 GB of disk while it runs. `.github/workflows/gate.yml` runs the same leg on every push to the template repository, then the route probe, the docs checks and a secret scan of the tree and the history.
 
+## Working with a coding agent
+
+`AGENTS.md` is the briefing for coding agents: the commands, the checks to run before stopping, the invariants a change has to keep, and what to ask about first. Claude Code reads it through `CLAUDE.md`.
+
 ## Scripts
 
 | Script | What it does |
@@ -122,7 +126,7 @@ Nothing needs to be set: the app, the build and the tests run with no env file. 
 | `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | `packages/hardhat/.env` | for a live deploy | none; written by `hardhat:account:generate` or `hardhat:account:import` | the deploy script, which asks for its password |
 | `__RUNTIME_DEPLOYER_PRIVATE_KEY` | never a file: the shell, for one command | no | none | `packages/hardhat/hardhat.config.ts`, the only key live networks sign with; the deploy script sets it from the encrypted key |
 
-## Layout
+## Architecture
 
 ```mermaid
 flowchart LR
