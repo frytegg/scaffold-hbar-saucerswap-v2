@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "skipLibCheck": true,
+    "paths": {
+      "@fixture/ui": ["./ui/index.ts"]
+    }
+  },
+  "include": ["ui/**/*.ts"]
+}
