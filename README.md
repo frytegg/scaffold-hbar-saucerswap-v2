@@ -104,6 +104,7 @@ unset __RUNTIME_DEPLOYER_PRIVATE_KEY
 
 It stops before signing when the JSON-RPC relay does not serve chain 296, and it refuses any send that could take the run above 5 HBAR. Then it swaps 0.1 HBAR for SAUCE, and 1 SAUCE back to native HBAR, through `packages/nextjs/lib/hedera`: quote, pre-flight checks (recipient, allowance, cost preview), builders, viem's default flow on the pinned 2.39.0, the outcome read from the mirror node's DETAIL view. When the allowance check fails it first approves exactly 1 SAUCE and checks that the approval returned `true`. Each record is re-checked the way `yarn evidence:check` does before it is written to `docs/evidence/`, one file per scenario, named after the date and the scenario.
 
+<!-- checks:evidence -->
 What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-22-hbar-to-sauce.json` and `docs/evidence/2026-09-22-sauce-to-hbar.json`):
 
 | transaction | network fee | cost preview shown before signing | outcome |
@@ -112,7 +113,10 @@ What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.
 | approve 1 SAUCE for the router | 0.79222944 HBAR | up to 0.8921298 HBAR | returned `true` |
 | swap 1 SAUCE for HBAR | 0.99717124 HBAR | up to 1.10563584 HBAR | 0.0214075 HBAR, native |
 
-2.00744864 HBAR of fees in all; the account's HBAR balance fell by 2.08604114 HBAR, the fees plus the 0.1 HBAR swapped minus the 0.0214075 HBAR received. On testnet a 1 SAUCE swap returns far less HBAR than it costs: the cost check says so before signing, and the run goes on.
+2.00744864 HBAR of fees in all; the account's HBAR balance fell by 2.08604114 HBAR, the fees plus the 0.1 HBAR swapped minus the 0.0214075 HBAR received.
+<!-- /checks:evidence -->
+
+On testnet a 1 SAUCE swap returns far less HBAR than it costs: the cost check says so before signing, and the run goes on. `yarn check:docs` compares every figure above with the files it names, and fails once a newer record of either scenario exists.
 
 Each file holds no key and nothing private: the scenario's `name`, `network` and `chainId`; the sender's EVM address and account id, both public on the network; the versions of viem, of the relay (its `web3_clientVersion`) and of Node.js; what each pre-flight check said; the input parameters (router, pool and fee tier, tokens, `amountIn`, `quotedAmountOut`, `slippageBps`, `amountOutMinimum`, `deadline`, `recipient`) and the `amountOut` the swap returned; and per transaction its `hash`, its `mirrorUrl` (the mirror node's DETAIL view), `result`, `consensusTimestamp`, `blockNumber`, `gasUsed`, the cost preview, the fee read from the transaction record's HBAR transfer list and the sender's net HBAR movement. Amounts are integers in the smallest unit (tinybar for HBAR, 10^-6 for SAUCE).
 
@@ -136,7 +140,7 @@ To verify a file without a key, run `yarn evidence:check`, or open its `mirrorUr
 | `yarn test` | Hardhat tests |
 | `yarn test:unit` | Vitest tests of `packages/nextjs/lib/hedera` and of the mirror relay, on captured testnet answers |
 | `yarn check:tools` | formatting of `tools/`, types and unit tests of `tools/checks` and `tools/gate` |
-| `yarn check:docs` | the repository checks of `tools/checks`: docs, manifest, npm-mode rewrite, hygiene |
+| `yarn check:docs` | the repository checks of `tools/checks`: docs, manifest, npm-mode rewrite, evidence figures, hygiene |
 | `yarn check:all` | `lint:strict`, `typecheck`, `check:tools`, `probe:routes:check`, `check:docs` |
 | `yarn check:live` | keyless reads of Hedera testnet: the address book, a quote, a dated simulator observation, then `evidence:check` |
 | `yarn evidence:check` | re-reads every file of `docs/evidence/` from the mirror node, without a key |

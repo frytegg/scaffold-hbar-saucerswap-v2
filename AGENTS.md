@@ -17,7 +17,7 @@ yarn test:unit                  # Vitest tests of packages/nextjs/lib/hedera and
 yarn test                       # Hardhat tests on a fork of Hedera testnet: needs the network
 yarn format                     # Prettier on both packages and on tools/
 yarn check:tools                # formatting of tools/, types and tests of tools/checks and tools/gate; no network
-yarn check:docs                 # docs, manifest, npm-mode rewrite and hygiene checks (tools/checks)
+yarn check:docs                 # docs, manifest, npm-mode rewrite, evidence figures and hygiene checks (tools/checks)
 yarn check:all                  # lint:strict, typecheck, check:tools, probe:routes:check, check:docs; needs the registry
 yarn probe:routes               # every page route in Chromium, three network modes; after build, port 3000
 yarn gate:local                 # scaffold HEAD through the published CLI and check the result; slow, over 1 GB
@@ -139,7 +139,7 @@ UI components come from `@scaffold-hbar-ui/components`: `Address`, `Balance`, `H
 - `yarn test:unit` runs Vitest on `packages/nextjs/lib/hedera/__tests__/` and `packages/nextjs/services/hedera/__tests__/`. The fixtures are answers captured from Hedera testnet and replayed through viem's own transport, so the error objects are those viem 2.39.0 builds; `packages/nextjs/lib/hedera/__tests__/fixtures/README.md` says where each came from. No network, no key, a few seconds.
 - `yarn check:live` runs the files of `packages/nextjs/lib/hedera/__live__/` that end in .live.ts, through `packages/nextjs/vitest.live.config.ts`: keyless reads of Hedera testnet (the address book against the router, the factory and the token facades; a quote; the dated observation that three simulators accept a SAUCE to HBAR swap with no allowance) and `yarn evidence:check`. A failure there can be hashio's or the mirror node's: run it again before you debug. `.github/workflows/gate.yml` runs it nightly, never blocking.
 - `yarn evidence` runs `packages/nextjs/lib/hedera/__live__/swaps.signed.ts` through `packages/nextjs/vitest.evidence.config.ts`. It signs with `__RUNTIME_DEPLOYER_PRIVATE_KEY` from the shell, writes one file per scenario to `docs/evidence/`, and is skipped, exit 0, when the variable is not set. A new scenario re-checks its record with `checkEvidence` before writing it, as the two existing ones do.
-- The files of `docs/evidence/` are produced by `yarn evidence` only: never write or edit one by hand. `yarn evidence:check` fails on any figure that differs from the mirror node.
+- The files of `docs/evidence/` are produced by `yarn evidence` only: never write or edit one by hand. `yarn evidence:check` fails on any figure that differs from the mirror node. A doc quotes their figures only inside a `checks:evidence` block, which `yarn check:docs` renders from the files the block names and compares line by line; it also fails when a doc names an older record of a scenario than the newest one.
 - Pages and components have no unit tests. `yarn probe:routes` is their check: each page route, three network modes, zero console errors, zero third-party requests. A new page is probed without any change; a new dynamic route needs a sample in `tools/route-probe/probe.config.json`.
 - A test name states the rule it enforces. A check proves that it can fail: the route probe runs six loads that must fail on every invocation, and the repository checks are tested against fixtures that must fail.
 

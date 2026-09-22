@@ -1,6 +1,6 @@
 # Repository checks
 
-Nine checks that compare what the docs and the template manifest say with what the repository holds, and one runner.
+Ten checks that compare what the docs and the template manifest say with what the repository holds, and one runner.
 They are plain Node ESM modules whose JSDoc types `tsc` checks in strict mode through `tools/checks/tsconfig.json`: `node` alone runs them on Node 20.18.3, before any install or build, and they add no dependency.
 
 ## Run
@@ -12,7 +12,7 @@ node tools/checks/check-paths.mjs --repo ../another-checkout
 node tools/checks/run-tests.mjs
 ```
 
-From the repository root, `yarn check:docs` runs the nine checks, and `yarn check:tools` runs their tests with the other tools' checks.
+From the repository root, `yarn check:docs` runs the ten checks, and `yarn check:tools` runs their tests with the other tools' checks.
 The runner prints the findings of each check that did not pass, then one table.
 Exit codes are the same for every command: 0 when the check passes or has nothing to judge, 1 when it has findings, 2 when it reached no verdict (registry unreachable, dependencies not installed, shallow clone, or a published CLI whose code no longer matches what the checks cut out of it).
 
@@ -27,6 +27,7 @@ The docs are every README.md and AGENTS.md of the repository, these tool READMEs
 | `check-symbols.mjs` | a code identifier in backticks that is neither in the tracked source nor exported by a dependency named on the same line |
 | `check-snippets.mjs` | a TypeScript fence that does not type-check inside `packages/nextjs`, or inside the workspace its info string names |
 | `check-env.mjs` | a variable that the code, the `.env.example` files, the docs and the manifest do not all know; a variable called required although the code has a default for it |
+| `check-evidence.mjs` | a doc that names a record of `docs/evidence/` when a newer record of the same scenario exists; between `<!-- checks:evidence -->` and `<!-- /checks:evidence -->`, any line that differs from the cost table and totals the named records give |
 | `check-rewrite.mjs` | any line that the CLI's npm-mode rewrite turns into something other than a clean script conversion; a changed line count; a converted command that keeps a flag; any change to a source file |
 | `check-manifest.mjs` | a template manifest that the CLI's schema rejects or silently trims, as committed and after the rewrite |
 | `check-vocab.mjs` | wording the Hedera docs avoid; a package manager named anywhere but in an exact script command |
@@ -44,6 +45,10 @@ Without network access both checks end with exit 2. With `--allow-offline` they 
 <!-- checks:allow
 paths: agent skills-lock.json
 -->
+
+## Evidence blocks
+
+A doc quotes the figures of an evidence run between `<!-- checks:evidence -->` and `<!-- /checks:evidence -->`, each on a line of its own. `check-evidence.mjs` renders what the block must say from the records its first line names: the cost table, fees and previews from the tinybar fields, the totals from their sums. After a new evidence run, name the new records in that first line; the check then reports each line to replace, with the text the records give.
 
 ## Deliberate exceptions
 
