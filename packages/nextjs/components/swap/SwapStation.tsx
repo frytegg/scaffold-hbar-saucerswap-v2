@@ -229,8 +229,11 @@ export const SwapStation = () => {
         <p className="m-0">
           HBAR to {TOKEN.symbol} and back, on Hedera testnet. Before your wallet opens, this page reads what the network
           checks below the EVM — the router&apos;s allowance, whether the token can reach your account — and refuses the
-          swap itself when one of them would fail. A simulator accepts those swaps; the network does not, and it keeps
-          the gas.
+          swap itself when one of them would fail. One of the two is a simulator&apos;s blind spot:{" "}
+          <code>eth_call</code>, <code>eth_estimateGas</code> and the mirror node all accepted a swap the router had no
+          allowance for, the network rejected it, and the gas was gone. A token that cannot reach the recipient reverts
+          on the network, and that is charged too. Those transactions, with their dates, are in{" "}
+          <code>docs/hedera-behaviour.md</code>.
         </p>
       </header>
 
