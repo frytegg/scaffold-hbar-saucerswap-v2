@@ -4,7 +4,8 @@ name: Gate (real path)
 #   npx create-scaffold-hbar@latest <dir> --template <this repository>
 # with one switch changed against the baseline leg, plus the pairs of switches that interact, then runs strict
 # lint, types, production build and a boot with no env file. Each leg prints the runner's unauthenticated GitHub
-# rate limit first: a failed leg next to an exhausted quota is the runner's, not the template's.
+# rate limit first: a failed leg next to an exhausted quota is the runner's, not the template's. A separate job
+# runs the secret scan over the skeleton's tree and history.
 # No secret is used anywhere. tools/gate/README.md describes each step.
 
 on:
@@ -112,6 +113,21 @@ jobs:
           name: real-path-logs-${{ matrix.leg }}
           path: ${{ runner.temp }}/gate/logs
           if-no-files-found: warn
+
+  secret-scan:
+    # BLOCKING. The skeleton is public: its tree and every commit are scanned like the template repository's.
+    if: github.repository == 'frytegg/hbar-template-gate-skeleton'
+    name: secret scan, tree and history
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout with full history (the scan reads every commit)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Secret scan, tree and history
+        run: bash tools/gate/secret-scan.sh
 
   literal-command-control:
     # Negative control for the command as the bounty brief prints it. It records and never fails the run.
