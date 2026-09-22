@@ -7,7 +7,7 @@ import {
   evidenceTransaction,
   parseEvidence,
 } from "../evidence";
-import { type MirrorContractResult, type MirrorTransaction, type MirrorTransfer, createMirrorClient } from "../mirror";
+import { type MirrorContractResult, type MirrorTransaction, createMirrorClient } from "../mirror";
 import { mirrorPaths } from "../mirrorPaths";
 import { approvalGranted, swapAmountOut } from "../swap";
 import { netTransfer, networkFee } from "../transfers";
@@ -33,6 +33,7 @@ const mirror = createMirrorClient({
     [mirrorPaths.transaction("1790023815.578594660")]: mirrorFixture("transaction-approve-success"),
     [mirrorPaths.transaction("1790023842.760213408")]: mirrorFixture("transaction-token-to-hbar-success"),
     [mirrorPaths.transaction("1790023599.459077954")]: mirrorFixture("transaction-hbar-to-token-success"),
+    [mirrorPaths.transaction("1790092634.789133757")]: mirrorFixture("transaction-staking-reward-in-record"),
   }),
 });
 
@@ -110,14 +111,12 @@ describe("fees and HBAR movements come from the transaction record's transfer li
     expect(netTransfer(list, testnet.whbarContract.id)).toBe(-21_407_548n);
   });
 
-  it("a staking reward paid out of 0.0.800 is not a fee: only what system accounts receive counts", () => {
-    // Constructed: the list of an approval whose sender also collected a pending staking reward of 5,000 tinybar.
-    const list: MirrorTransfer[] = [
-      { account: "0.0.802", amount: 79_222_944n },
-      { account: "0.0.800", amount: -5_000n },
-      { account: MAIN.accountId, amount: -79_217_944n },
-    ];
-    expect(networkFee(list)).toBe(79_222_944n);
+  it("a staking reward that the record pays out of 0.0.800 is not a fee: only credits to system accounts count", async () => {
+    // The template's own 0.1 HBAR swap of 22 Sept 2026: its record also paid 0.0.14208 a pending staking reward.
+    const list = await transfers("1790092634.789133757");
+    expect(netTransfer(list, "0.0.800")).toBe(-1_204_975_275n);
+    expect(networkFee(list)).toBe(21_804_796n);
+    expect(netTransfer(list, MAIN.accountId)).toBe(-(10_000_000n + 21_804_796n));
   });
 
   it("an account that is not in the list moved nothing", async () => {
