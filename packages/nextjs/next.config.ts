@@ -5,12 +5,6 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   reactStrictMode: true,
   devIndicators: false,
-  typescript: {
-    ignoreBuildErrors: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
-  },
-  eslint: {
-    ignoreDuringBuilds: process.env.NEXT_PUBLIC_IGNORE_BUILD_ERROR === "true",
-  },
   // RainbowKit → wagmi → @base-org/account → @coinbase/cdp-sdk. From 1.53 the
   // SDK lazy-imports optional @x402/* peers; webpack still resolves those
   // specifiers and the production build fails if they are not installed.
