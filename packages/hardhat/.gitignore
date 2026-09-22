@@ -28,3 +28,6 @@ deployments
 
 # other
 temp
+
+# hardhat-gas-reporter writes this report whenever CI is set
+gasReporterOutput.json
