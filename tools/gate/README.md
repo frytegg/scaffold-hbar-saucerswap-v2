@@ -7,7 +7,7 @@ Checks that this template still scaffolds through the published `create-scaffold
 | file | role |
 | --- | --- |
 | `scaffold-and-check.sh` | one gate leg: scaffold, assert, run the root scripts, boot, print a summary table |
-| `local.sh` | one leg on your machine against the committed HEAD (exported with `git archive`, never the working tree); the root script `yarn gate:local` runs it |
+| `local.sh` | one leg on your machine against the committed HEAD (exported with `git archive`, never the working tree); the root script `gate:local` runs it |
 | `run-root-script.sh` | runs one root script of a project with the package manager that project was scaffolded for; a script that is not defined is exit 3, never a skip |
 | `boot-check.mjs`, `routes.mjs` | boots the production server on a given port with no env file and requests every route of the build once |
 | `routes.test.mjs` | tests of the route rules: `node --test tools/gate/routes.test.mjs` |
