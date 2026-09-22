@@ -84,6 +84,27 @@ export function assertHolds({
   }
 }
 
+/**
+ * The consumer keeps the tokens it buys, and only its owner can take them out. A run signed by anyone else would
+ * spend that signer's HBAR on tokens they can never reach, so it stops before the swap.
+ */
+export function assertOwnedBySigner({
+  contract,
+  owner,
+  signer,
+}: {
+  contract: EvmAddress;
+  owner: EvmAddress;
+  signer: EvmAddress;
+}): void {
+  if (owner.toLowerCase() === signer.toLowerCase()) return;
+  throw new EvidenceRunRefusal(
+    `The consumer at ${contract} belongs to ${owner}, not to the signer ${signer}, and it keeps the tokens it ` +
+      "buys: only its owner can withdraw them. Deploy your own with yarn hardhat:deploy:consumer:testnet, which " +
+      "rewrites the frontend's contract list, then run this again. Nothing was sent.",
+  );
+}
+
 /** An HTS approve answers a bool: a successful transaction that returned false approved nothing. */
 export function assertApprovalGranted(result: MirrorContractResult): void {
   if (result.callResult === null || !approvalGranted(result.callResult)) {

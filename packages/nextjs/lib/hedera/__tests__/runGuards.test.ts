@@ -2,6 +2,7 @@ import {
   EvidenceRunRefusal,
   assertApprovalGranted,
   assertHolds,
+  assertOwnedBySigner,
   assertTestnet,
   assertWithinCeiling,
   privateKeyOf,
@@ -105,6 +106,22 @@ describe("the token swap's inputs", () => {
         assertHolds({ account: "0.0.10645914", held: 999_999n, needed: 1_000_000n, token: testnet.sauce }),
       ),
     ).toBe("0.0.10645914 holds 0.999999 SAUCE; this swap needs 1 SAUCE. Nothing was sent.");
+  });
+
+  it("refuses to swap through a consumer the signer does not own, whose tokens it could not take back", () => {
+    const consumer = "0x7E1a4337BEBB0cC8e231c6137Da17F04C7cd3409" as const;
+    const stranger = "0x82756b984e8c34C28C98A3Eb6977dF106e4B3aaC" as const;
+    expect(() => assertOwnedBySigner({ contract: consumer, owner: MAIN, signer: MAIN })).not.toThrow();
+    // The same address in the other case: an owner check that compared the strings as typed would pass here.
+    expect(() =>
+      assertOwnedBySigner({ contract: consumer, owner: MAIN.toLowerCase() as typeof MAIN, signer: MAIN }),
+    ).not.toThrow();
+
+    expect(refusalOf(() => assertOwnedBySigner({ contract: consumer, owner: stranger, signer: MAIN }))).toBe(
+      `The consumer at ${consumer} belongs to ${stranger}, not to the signer ${MAIN}, and it keeps the tokens it ` +
+        "buys: only its owner can withdraw them. Deploy your own with yarn hardhat:deploy:consumer:testnet, which " +
+        "rewrites the frontend's contract list, then run this again. Nothing was sent.",
+    );
   });
 
   it("refuses to go on after an approve that returned false or nothing", async () => {

@@ -14,7 +14,7 @@ import type { MirrorAccount, MirrorContractResult, MirrorTransaction } from "../
 import { type PreflightVerdict, checkCost, checkRecipient } from "../preflight";
 import { minimumOut, quoteExactInput, swapDeadline, swapPath } from "../swap";
 import { type Tinybar, formatHbar, formatTokenAmount, hbarToTinybar, payable, tinybar, toTinybar } from "../units";
-import { assertTestnet, assertWithinCeiling, privateKeyOf, signingAccount } from "./runGuards";
+import { assertOwnedBySigner, assertTestnet, assertWithinCeiling, privateKeyOf, signingAccount } from "./runGuards";
 import { EVIDENCE_DIR, mirrorBaseUrl, testnetClient, testnetMirror } from "./testnet";
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -26,6 +26,7 @@ import {
   createWalletClient,
   decodeAbiParameters,
   http,
+  parseAbi,
 } from "viem";
 import { type PrivateKeyAccount, privateKeyToAccount } from "viem/accounts";
 import { hederaTestnet } from "viem/chains";
@@ -50,6 +51,8 @@ const MARGIN = hbarToTinybar("0.01");
 const consumer = deployedContracts[testnet.chainId].SaucerSwapHbarConsumer;
 const pool = testnet.hbarSaucePool;
 const sauce = testnet.sauce;
+/** Read before anything is signed: the contract's own answer, not the address book's idea of who deployed it. */
+const OWNER_ABI = parseAbi(["function owner() view returns (address)"]);
 
 function report(verdict: PreflightVerdict): EvidencePreflight {
   console.info(`pre-flight ${verdict.check}: ${verdict.status}. ${verdict.message}`);
@@ -122,6 +125,10 @@ describe.skipIf(!KEY)(title, () => {
     wallet = createWalletClient({ account, chain: hederaTestnet, transport: http(jsonRpcUrl("testnet")) });
     assertTestnet(await testnetClient.getChainId());
     sender = signingAccount(await testnetMirror.getAccount(signer), signer);
+    // The address in the contract list is whoever deployed last. The swap below buys SAUCE into that contract, and
+    // the contract's owner is the only account that can take it out, so the run asks the contract who that is.
+    const owner = await testnetClient.readContract({ address, abi: OWNER_ABI, functionName: "owner" });
+    assertOwnedBySigner({ contract: address, owner: toEvmAddress(owner), signer });
     relay = await testnetClient.request({ method: "web3_clientVersion" });
     startBalance = toTinybar(await testnetClient.getBalance({ address: account.address }));
     console.info(`signing as ${account.address} (${sender.accountId}), balance ${formatHbar(startBalance)}, ${relay}`);
