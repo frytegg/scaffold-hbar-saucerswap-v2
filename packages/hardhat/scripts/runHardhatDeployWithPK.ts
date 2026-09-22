@@ -1,12 +1,9 @@
 import * as dotenv from "dotenv";
 dotenv.config();
-import { Wallet } from "ethers";
-import password from "@inquirer/password";
 import { spawn } from "child_process";
 import { config } from "hardhat";
-import { ENCRYPTED_KEY_ENV, NO_DEPLOYER_KEY, RUNTIME_KEY_ENV } from "../utils/deployerAccount";
-
-const LOCAL_NETWORKS = new Set(["localhost", "hardhat"]);
+import { ENCRYPTED_KEY_ENV, LOCAL_NETWORKS, NO_DEPLOYER_KEY, RUNTIME_KEY_ENV } from "../utils/deployerAccount";
+import { decryptDeployerKey } from "../utils/deployerKey";
 
 // Running Hardhat's CLI entry with the current Node binary needs no shell on any platform,
 // so user-supplied arguments are never concatenated into a command line.
@@ -26,17 +23,6 @@ function runHardhatDeploy(): void {
   hardhat.on("exit", code => process.exit(code ?? 1));
 }
 
-async function decryptDeployerKey(encryptedKey: string): Promise<string> {
-  const pass = await password({ message: "Enter password to decrypt private key:" });
-  try {
-    const wallet = await Wallet.fromEncryptedJson(encryptedKey, pass);
-    return wallet.privateKey;
-  } catch (error: unknown) {
-    const reason = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to decrypt ${ENCRYPTED_KEY_ENV}: ${reason}. Wrong password?`);
-  }
-}
-
 /**
  * Local networks deploy with Hardhat's own accounts. Live networks need a key:
  * one already present in the environment, or the encrypted one after a password prompt.
@@ -50,7 +36,7 @@ async function main(): Promise<void> {
     if (!encryptedKey) {
       throw new Error(NO_DEPLOYER_KEY);
     }
-    process.env[RUNTIME_KEY_ENV] = await decryptDeployerKey(encryptedKey);
+    process.env[RUNTIME_KEY_ENV] = (await decryptDeployerKey(encryptedKey)).privateKey;
   }
 
   runHardhatDeploy();

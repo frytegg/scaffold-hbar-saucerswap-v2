@@ -45,14 +45,15 @@ async function main() {
 
   const existingEnvConfig = parse(fs.readFileSync(envFilePath).toString());
   if (existingEnvConfig.DEPLOYER_PRIVATE_KEY_ENCRYPTED) {
-    console.log("⚠️ You already have a deployer account. Check the packages/hardhat/.env file");
-    return;
+    throw new Error(
+      "packages/hardhat/.env already holds a deployer key (DEPLOYER_PRIVATE_KEY_ENCRYPTED); nothing was changed.",
+    );
   }
 
   await setNewEnvConfig(existingEnvConfig);
 }
 
-main().catch(error => {
-  console.error(error);
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : error);
   process.exitCode = 1;
 });

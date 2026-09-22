@@ -1,10 +1,10 @@
 import * as dotenv from "dotenv";
 dotenv.config();
-import { ethers, Wallet } from "ethers";
+import { ethers } from "ethers";
 import QRCode from "qrcode";
 import { config } from "hardhat";
-import password from "@inquirer/password";
-import { ENCRYPTED_KEY_ENV, NO_ENCRYPTED_ACCOUNT } from "../utils/deployerAccount";
+import { ENCRYPTED_KEY_ENV, LOCAL_NETWORKS, NO_ENCRYPTED_ACCOUNT } from "../utils/deployerAccount";
+import { decryptDeployerKey } from "../utils/deployerKey";
 
 async function main() {
   const encryptedKey = process.env[ENCRYPTED_KEY_ENV];
@@ -13,36 +13,27 @@ async function main() {
     throw new Error(NO_ENCRYPTED_ACCOUNT);
   }
 
-  const pass = await password({ message: "Enter your password to decrypt the private key:" });
-  let wallet: Wallet;
-  try {
-    wallet = (await Wallet.fromEncryptedJson(encryptedKey, pass)) as Wallet;
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  } catch (e) {
-    console.log("❌ Failed to decrypt private key. Wrong password?");
-    return;
-  }
-
-  const address = wallet.address;
+  const { address } = await decryptDeployerKey(encryptedKey);
   console.log(await QRCode.toString(address, { type: "terminal", small: true }));
   console.log("Public address:", address, "\n");
 
-  // Balance on each network
-  const availableNetworks = config.networks;
-  for (const networkName in availableNetworks) {
+  const unreachable: string[] = [];
+  for (const [networkName, network] of Object.entries(config.networks)) {
+    if (LOCAL_NETWORKS.has(networkName) || !("url" in network)) continue;
     try {
-      const network = availableNetworks[networkName];
-      if (!("url" in network)) continue;
       const provider = new ethers.JsonRpcProvider(network.url);
       await provider._detectNetwork();
       const balance = await provider.getBalance(address);
       console.log("--", networkName, "-- 📡");
       console.log("   balance:", +ethers.formatEther(balance));
       console.log("   nonce:", +(await provider.getTransactionCount(address)));
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    } catch (e) {
-      console.log("Can't connect to network", networkName);
+    } catch (error: unknown) {
+      console.error(`Can't read ${networkName} at ${network.url}: ${error instanceof Error ? error.message : error}`);
+      unreachable.push(networkName);
     }
+  }
+  if (unreachable.length > 0) {
+    throw new Error(`Could not read the account on ${unreachable.join(", ")}: see above.`);
   }
 }
 
