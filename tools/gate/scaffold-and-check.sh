@@ -476,7 +476,12 @@ run_checks() {
     run_step "$script" 1800 bash "$HERE/run-root-script.sh" . "$script"
   done
   run_step tree-still-clean 0 step_tree_still_clean
-  run_step boot 0 step_boot
+  # A run whose root scripts do not build the project has nothing to boot, and that is not a finding: step_boot's
+  # missing-build failure stays for the runs that did ask for a build and got no output.
+  case " $ROOT_SCRIPTS " in
+    *" build "*) run_step boot 0 step_boot ;;
+    *) skip_step boot "build is not among this run's root scripts" ;;
+  esac
   if [ "$KEEP" = 0 ]; then run_step cleanup 0 step_cleanup; fi
 }
 

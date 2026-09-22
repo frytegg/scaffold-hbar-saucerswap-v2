@@ -116,3 +116,37 @@ jobs:
           name: gate-logs-${{ strategy.job-index }}
           path: ${{ runner.temp }}/gate/logs
           if-no-files-found: warn
+
+  npm-types:
+    # An npm-mode scaffold installs without a lockfile and hoists what it resolves to the project root, so its
+    # dependency tree is not the one the matrix leg above checks: a type that holds in the default project can fail
+    # there, and no push would say so until the nightly run. This leg scaffolds and type-checks, and stops there:
+    # about four minutes, against the fifteen a full leg with the second package manager costs.
+    if: github.event_name == 'push' && github.repository_owner == 'frytegg' && github.repository != 'frytegg/hbar-template-gate-skeleton'
+    name: npm-mode types, node 20.18.3
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.18.3
+
+      - name: Scaffold in npm-mode from this checkout and type-check the project
+        run: >
+          bash tools/gate/scaffold-and-check.sh
+          --template-dir "$GITHUB_WORKSPACE"
+          --work-dir "$RUNNER_TEMP/gate-npm"
+          --solidity-framework hardhat
+          --package-manager npm --root-scripts typecheck
+
+      - name: Upload the step logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-logs-npm-types
+          path: ${{ runner.temp }}/gate-npm/logs
+          if-no-files-found: warn
