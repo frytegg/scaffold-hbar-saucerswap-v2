@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "name": "sauce-to-hbar",
+  "network": "testnet",
+  "chainId": 296,
+  "recordedAt": "2026-09-22T15:57:30.887Z",
+  "sender": {
+    "evmAddress": "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01",
+    "accountId": "0.0.10645914"
+  },
+  "software": {
+    "viem": "2.39.0",
+    "relay": "relay/0.78.5",
+    "node": "v24.13.0"
+  },
+  "preflight": [
+    {
+      "check": "allowance",
+      "status": "fail",
+      "message": "The SaucerSwap router has no allowance to spend your SAUCE. Approve 1 SAUCE first: without it the network rejects the swap and still charges the gas."
+    },
+    {
+      "check": "cost",
+      "status": "pass",
+      "message": "Network fee: up to 0.8921298 HBAR."
+    },
+    {
+      "check": "cost",
+      "status": "warn",
+      "message": "Network fee: up to 1.10563584 HBAR. The swap returns 0.0214075 HBAR, less than that fee."
+    }
+  ],
+  "swap": {
+    "direction": "token-to-hbar",
+    "router": "0.0.1414040",
+    "pool": "0.0.2661057",
+    "poolFee": 3000,
+    "tokenIn": "SAUCE 0.0.1183558",
+    "tokenOut": "HBAR",
+    "amountIn": "1000000",
+    "quotedAmountOut": "2140750",
+    "slippageBps": 100,
+    "amountOutMinimum": "2119342",
+    "deadline": "1790092944",
+    "recipient": "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01",
+    "amountOut": "2140750",
+    "summary": "1 SAUCE -> 0.0214075 HBAR"
+  },
+  "transactions": [
+    {
+      "role": "approve",
+      "hash": "0x6d52c52cc8a8e15121fd666c223531bc04cabab83ca3925a9d42f2ebf5cbd9f1",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x6d52c52cc8a8e15121fd666c223531bc04cabab83ca3925a9d42f2ebf5cbd9f1",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1790092640.508257537",
+      "blockNumber": 40846054,
+      "gasUsed": 726816,
+      "previewFeeTinybar": "89212980",
+      "feeTinybar": "79222944",
+      "feeHbar": "0.79222944 HBAR",
+      "senderNetTinybar": "-79222944"
+    },
+    {
+      "role": "swap",
+      "hash": "0x71c08eabf61768476cd33a9c2b44c38a1b34d44406bdd66acbde85ecfafd3b20",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x71c08eabf61768476cd33a9c2b44c38a1b34d44406bdd66acbde85ecfafd3b20",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1790092646.855808414",
+      "blockNumber": 40846057,
+      "gasUsed": 914836,
+      "previewFeeTinybar": "110563584",
+      "feeTinybar": "99717124",
+      "feeHbar": "0.99717124 HBAR",
+      "senderNetTinybar": "-97576374"
+    }
+  ]
+}

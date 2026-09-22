@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "name": "hbar-to-sauce",
+  "network": "testnet",
+  "chainId": 296,
+  "recordedAt": "2026-09-22T15:57:17.843Z",
+  "sender": {
+    "evmAddress": "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01",
+    "accountId": "0.0.10645914"
+  },
+  "software": {
+    "viem": "2.39.0",
+    "relay": "relay/0.78.5",
+    "node": "v24.13.0"
+  },
+  "preflight": [
+    {
+      "check": "recipient",
+      "status": "pass",
+      "message": "0.0.10645914 is already associated with SAUCE."
+    },
+    {
+      "check": "cost",
+      "status": "pass",
+      "message": "Network fee: up to 0.24452658 HBAR."
+    }
+  ],
+  "swap": {
+    "direction": "hbar-to-token",
+    "router": "0.0.1414040",
+    "pool": "0.0.2661057",
+    "poolFee": 3000,
+    "tokenIn": "HBAR",
+    "tokenOut": "SAUCE 0.0.1183558",
+    "amountIn": "10000000",
+    "quotedAmountOut": "4643294",
+    "slippageBps": 100,
+    "amountOutMinimum": "4596861",
+    "deadline": "1790092930",
+    "recipient": "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01",
+    "amountOut": "4643294",
+    "summary": "0.1 HBAR -> 4.643294 SAUCE"
+  },
+  "transactions": [
+    {
+      "role": "swap",
+      "hash": "0x25c637ca7b28b39cb9964247d69cba2152b0e3d9aea07aa6303d107ed6093bfb",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x25c637ca7b28b39cb9964247d69cba2152b0e3d9aea07aa6303d107ed6093bfb",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1790092634.789133757",
+      "blockNumber": 40846051,
+      "gasUsed": 200044,
+      "previewFeeTinybar": "24452658",
+      "feeTinybar": "21804796",
+      "feeHbar": "0.21804796 HBAR",
+      "senderNetTinybar": "-31804796"
+    }
+  ]
+}
