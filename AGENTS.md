@@ -3,7 +3,7 @@
 Hardhat-only Scaffold-HBAR base: a Next.js app in `packages/nextjs`, a Hardhat package in `packages/hardhat`, and the tooling that checks both in `tools/`. Claude Code loads this file through `CLAUDE.md`.
 Run every command from the repository root. The commands below are spelled for the package manager this project was scaffolded with; the CLI rewrites them when it scaffolds for npm.
 
-Stack: Node.js 20.18.3 or later, TypeScript in strict mode, Next.js 15 (App Router), RainbowKit 2.2.9, wagmi 2.19.5, viem 2.39.0, DaisyUI 5, Hardhat 2.22.19 with hardhat-deploy, Solidity 0.8.28.
+Stack: Node.js 20.18.3 or later, TypeScript in strict mode, Next.js 15 (app directory), RainbowKit 2.2.9, wagmi 2.19.5, viem 2.39.0, DaisyUI 5, Hardhat 2.22.19 with hardhat-deploy, Solidity 0.8.28.
 
 ## Commands
 
