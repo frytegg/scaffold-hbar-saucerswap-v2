@@ -55,9 +55,9 @@ async function ask(url: string, init?: RequestInit): Promise<SourcifyAnswer> {
 
 const sleep = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms));
 
-/** The standard JSON input hardhat-deploy wrote for this deployment, by the hash it records. */
-function standardJsonInput(network: string, solcInputHash: string): unknown {
-  const file = path.join("deployments", network, "solcInputs", `${solcInputHash}.json`);
+/** The standard JSON input hardhat-deploy wrote for this deployment, under the Hardhat network's own name. */
+function standardJsonInput(solcInputHash: string): unknown {
+  const file = path.join("deployments", hre.network.name, "solcInputs", `${solcInputHash}.json`);
   return JSON.parse(readFileSync(file, "utf8"));
 }
 
@@ -73,8 +73,11 @@ async function waitForJob(verificationId: string): Promise<void> {
   );
 }
 
-/** @returns whether the deployed contract is a full match of the source in this repository. */
-async function verify(name: string, chainId: number, network: string): Promise<boolean> {
+/**
+ * @param explorerNetwork the network's name on Hashscan and the mirror node, which is not the Hardhat one.
+ * @returns whether the deployed contract is a full match of the source in this repository.
+ */
+async function verify(name: string, chainId: number, explorerNetwork: string): Promise<boolean> {
   const deployment = await hre.deployments.get(name);
   const metadata = JSON.parse(deployment.metadata ?? "{}");
   const [compilationTarget] = Object.entries(metadata.settings?.compilationTarget ?? {});
@@ -86,7 +89,7 @@ async function verify(name: string, chainId: number, network: string): Promise<b
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      stdJsonInput: standardJsonInput(network, deployment.solcInputHash),
+      stdJsonInput: standardJsonInput(deployment.solcInputHash),
       compilerVersion: metadata.compiler.version,
       contractIdentifier: `${compilationTarget[0]}:${compilationTarget[1]}`,
       creationTransactionHash: deployment.transactionHash,
@@ -101,7 +104,7 @@ async function verify(name: string, chainId: number, network: string): Promise<b
   const { body } = await ask(`${SOURCIFY_V2}/contract/${chainId}/${deployment.address}`);
   const match = body.match ?? "no match";
   console.log(`${name} ${deployment.address}: ${match} (creation ${body.creationMatch}, runtime ${body.runtimeMatch})`);
-  console.log(`  ${hashscanContractUrl(network, deployment.address)}`);
+  console.log(`  ${hashscanContractUrl(explorerNetwork, deployment.address)}`);
   return match === FULL_MATCH;
 }
 
