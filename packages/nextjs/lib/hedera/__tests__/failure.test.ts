@@ -153,6 +153,15 @@ describe("explainError before sending: simulation and estimation answers", () =>
     expect(failure.message).not.toContain("HTTP request failed");
   });
 
+  it("a -32602 for another reason is not a unit mistake: the relay's sentence is shown, with no advice", async () => {
+    const client = replayClient([rpcFixture("get-balance-invalid-address")]);
+    const failure = explainError(
+      await thrownBy(() => client.request({ method: "eth_getBalance", params: ["0x12", "latest"] })),
+    );
+    expect(failure).toMatchObject({ kind: "rpc-refusal", code: -32602, action: "none" });
+    expect(failure.message).toContain("Invalid parameter 0: Expected 0x prefixed string representing the address");
+  });
+
   it("an eth_getLogs span above 7 days", () => {
     const failure = explainError(rpcErrorOf("get-logs-span-over-7-days"));
     expect(failure).toMatchObject({ kind: "rpc-refusal", code: -32004, action: "none" });

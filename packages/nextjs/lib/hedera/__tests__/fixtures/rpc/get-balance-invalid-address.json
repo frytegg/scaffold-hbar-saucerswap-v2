@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "eth_getBalance",
+    "params": ["0x12", "latest"]
+  },
+  "status": 400,
+  "body": {
+    "error": {
+      "code": -32602,
+      "message": "[Request ID: 647ae432-8bdb-4a0d-9367-6f2b3c4231b4] Invalid parameter 0: Expected 0x prefixed string representing the address (20 bytes), value: 0x12"
+    },
+    "jsonrpc": "2.0",
+    "id": 1
+  }
+}

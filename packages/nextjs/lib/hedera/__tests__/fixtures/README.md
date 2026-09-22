@@ -29,6 +29,8 @@ In `mirror/`, each file holds the HTTP status and the JSON body that https://tes
 | `mirror/account-zero-slots-unassociated.json`               | /api/v1/accounts/0.0.10574825: no automatic association slot, no SAUCE                                                                                       |
 | `mirror/account-zero-slots-associated.json`                 | /api/v1/accounts/0.0.10650085: no slot, SAUCE associated explicitly                                                                                          |
 | `mirror/account-not-found.json`                             | /api/v1/accounts/ with an address no account has: 404                                                                                                        |
+| `mirror/account-without-evm-address.json`                   | /api/v1/accounts/0x…6f9bbc, captured at 16:49 UTC: 0.0.7314364, an ED25519 account whose only EVM address is its long-zero form                              |
+| `mirror/transaction-none-at-timestamp.json`                 | /api/v1/transactions?timestamp=1790092634.000000001, captured at 16:49 UTC: no transaction reached consensus then, an empty list                             |
 | `mirror/tokens-relation-explicit.json`                      | /api/v1/accounts/0.0.10650085/tokens?token.id=0.0.1183558                                                                                                    |
 | `mirror/tokens-relation-automatic.json`                     | /api/v1/accounts/0.0.10645914/tokens?token.id=0.0.1183558                                                                                                    |
 | `mirror/tokens-no-relation.json`                            | /api/v1/accounts/0.0.10574825/tokens?token.id=0.0.1183558: an empty list                                                                                     |
@@ -37,7 +39,7 @@ In `mirror/`, each file holds the HTTP status and the JSON body that https://tes
 
 ## JSON-RPC answers
 
-In `rpc/`, each file holds the method, the HTTP status and the body that https://testnet.hashio.io/api (relay/0.78.5) answered. The first twelve were captured on 22 Sept 2026 at 14:40 UTC by simulations from 0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01, which send nothing, and keep their params: `replay.ts` answers a test only when it sends that same request, and `readFixture` drops the recorded sender for the reads the library sends without one. The last five come from the logs of the research probes of 21 Sept 2026, which recorded the error object only: the jsonrpc and id fields around it were added, and any request with the same method gets their answer.
+In `rpc/`, each file holds the method, the HTTP status and the body that https://testnet.hashio.io/api (relay/0.78.5) answered. The first twelve were captured on 22 Sept 2026 at 14:40 UTC by simulations from 0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01, which send nothing, and the thirteenth by a read at 16:49 UTC; they keep their params: `replay.ts` answers a test only when it sends that same request, and `readFixture` drops the recorded sender for the reads the library sends without one. The last five come from the logs of the research probes of 21 Sept 2026, which recorded the error object only: the jsonrpc and id fields around it were added, and any request with the same method gets their answer.
 
 | file                                             | request, and what it shows                                                                                                |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
@@ -53,6 +55,7 @@ In `rpc/`, each file holds the method, the HTTP status and the body that https:/
 | `rpc/estimate-hbar-to-token.json`                | eth_estimateGas, 1 HBAR to SAUCE for an associated recipient                                                              |
 | `rpc/gas-price.json`                             | eth_gasPrice                                                                                                              |
 | `rpc/chain-id.json`                              | eth_chainId                                                                                                               |
+| `rpc/get-balance-invalid-address.json`           | eth_getBalance of "0x12", captured at 16:49 UTC: HTTP 400, -32602 for a malformed address, not for a value                |
 | `rpc/send-raw-value-below-one-tinybar.json`      | eth_sendRawTransaction with a value of 10^8 weibar: HTTP 400, -32602 (research logs, w3-probes 30-c04v-swap.log line 111) |
 | `rpc/estimate-multicall-unscaled-value.json`     | eth_estimateGas of the multicall with that value: INSUFFICIENT_TOKEN_BALANCE, empty data (same log, line 94)              |
 | `rpc/call-direct-unscaled-value-178.json`        | eth_call of the direct exactInput with that value: RespCode(178) (w3-probes 20-c15-viem-2.39.0.log line 112)              |

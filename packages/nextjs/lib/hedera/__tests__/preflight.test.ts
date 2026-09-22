@@ -133,6 +133,16 @@ describe("recipient: exists, right address form, associated or able to be", () =
     expect(verdict.message).toContain("has its own EVM address 0x3b7a9a1b874dd0994cc4137047dacf2803bb6c01");
   });
 
+  it("the long-zero form of an account without an EVM address of its own is its address, and passes", () => {
+    const verdict = recipientVerdict(
+      "0x00000000000000000000000000000000006f9bbc",
+      account("account-without-evm-address"),
+      relation,
+      testnet.sauce,
+    );
+    expect(verdict).toMatchObject({ status: "pass", action: "none" });
+  });
+
   it("an address with no account is refused", async () => {
     const nobody = `0x${"12".repeat(20)}` as const;
     const mirror = createMirrorClient({

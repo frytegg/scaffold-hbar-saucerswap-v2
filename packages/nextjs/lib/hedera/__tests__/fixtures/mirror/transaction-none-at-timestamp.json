@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "body": {
+    "transactions": [],
+    "links": {
+      "next": null
+    }
+  }
+}

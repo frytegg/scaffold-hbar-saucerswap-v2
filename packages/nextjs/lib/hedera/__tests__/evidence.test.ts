@@ -240,6 +240,39 @@ describe("checkEvidence re-reads every recorded figure from the mirror node", ()
     ]);
   });
 
+  it.each([
+    ["the block", { blockNumber: 40_812_425 }, "40812424", "40812425"],
+    [
+      "the consensus timestamp",
+      { consensusTimestamp: "1790023842.760213409" },
+      "1790023842.760213408",
+      "1790023842.760213409",
+    ],
+    ["the sender's net HBAR movement in tinybar", { senderNetTinybar: "-78312193" }, "-78312192", "-78312193"],
+  ])("fails a record that differs from the chain in %s, and names both values", async (what, edit, onChain, inFile) => {
+    const record = await probeRecord();
+    const [approve, swap] = record.transactions;
+    const edited = { ...record, transactions: [approve, { ...swap, ...edit }] };
+    expect(await checkEvidence(edited, mirror)).toEqual([
+      `swap ${SWAP}: ${what} is ${onChain} on the mirror node, ${inFile} in the file.`,
+    ]);
+  });
+
+  it("fails a transaction whose record the mirror node does not have", async () => {
+    const withoutRecord = createMirrorClient({
+      transport: replayMirror({
+        [mirrorPaths.contractResult(SWAP)]: mirrorFixture("result-token-to-hbar-success"),
+        [mirrorPaths.account(LONG_ZERO_MAIN)]: mirrorFixture("account-by-long-zero-address"),
+        [mirrorPaths.transaction("1790023842.760213408")]: mirrorFixture("transaction-none-at-timestamp"),
+      }),
+    });
+    const record = await probeRecord();
+    const swapOnly = { ...record, transactions: [record.transactions[1]] };
+    expect(await checkEvidence(swapOnly, withoutRecord)).toEqual([
+      `swap ${SWAP}: the mirror node has no transaction record at 1790023842.760213408.`,
+    ]);
+  });
+
   it("fails a hash that the mirror node does not know", async () => {
     const record = await probeRecord();
     const unknown = { ...record, transactions: [{ ...record.transactions[1], hash: `0x${"ab".repeat(32)}` as Hex }] };
