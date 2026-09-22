@@ -30,7 +30,8 @@ The report ends with every third-party host contacted, per route and mode; it mu
 
 ## Run it
 
-From the repository root, after the production build of the app:
+From the repository root, after the production build of the app (`yarn build`), the root script
+`yarn probe:routes` runs these three commands:
 
 ```bash
 npm ci --omit=dev --prefix tools/route-probe
@@ -99,6 +100,7 @@ npm run check-types --prefix tools/route-probe
 ```
 
 Tests run on `node:test`; the sources are plain ES modules type-checked through JSDoc under `strict`.
+The root script `yarn probe:routes:check` runs these three commands.
 
 <!-- checks:allow
 paths: app/token/[id]/page.tsx .invalid

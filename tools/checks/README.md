@@ -12,6 +12,7 @@ node tools/checks/check-paths.mjs --repo ../another-checkout
 node tools/checks/run-tests.mjs
 ```
 
+From the repository root, `yarn check:docs` runs the nine checks, and `yarn check:tools` runs their tests with the other tools' checks.
 The runner prints the findings of each check that did not pass, then one table.
 Exit codes are the same for every command: 0 when the check passes or has nothing to judge, 1 when it has findings, 2 when it reached no verdict (registry unreachable, dependencies not installed, shallow clone, or a published CLI whose code no longer matches what the checks cut out of it).
 

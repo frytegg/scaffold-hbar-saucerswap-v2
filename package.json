@@ -10,6 +10,9 @@
   },
   "scripts": {
     "build": "yarn next:build",
+    "check:all": "yarn lint:strict && yarn typecheck && yarn check:tools && yarn probe:routes:check && yarn check:docs",
+    "check:docs": "node tools/checks/run-all.mjs",
+    "check:tools": "yarn hardhat:lint:tools && yarn hardhat:check-types:tools && node tools/checks/run-tests.mjs && node --test tools/gate/routes.test.mjs",
     "dev": "yarn next:dev",
     "format": "yarn next:format && yarn hardhat:format && yarn hardhat:format:tools",
     "hardhat:account": "yarn workspace @sh/hardhat account",
@@ -41,6 +44,8 @@
     "next:lint": "yarn workspace @sh/nextjs lint",
     "next:serve": "yarn workspace @sh/nextjs serve",
     "next:start": "yarn workspace @sh/nextjs start",
+    "probe:routes": "npm ci --omit=dev --prefix tools/route-probe && npm run browsers --prefix tools/route-probe && node tools/route-probe/src/cli.mjs --serve",
+    "probe:routes:check": "npm ci --prefix tools/route-probe && npm run test --prefix tools/route-probe && npm run check-types --prefix tools/route-probe",
     "serve": "yarn next:serve",
     "test": "yarn hardhat:test",
     "typecheck": "yarn next:check-types && yarn hardhat:check-types",
