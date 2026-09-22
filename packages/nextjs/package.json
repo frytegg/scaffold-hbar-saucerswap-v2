@@ -5,7 +5,9 @@
   "scripts": {
     "build": "next build",
     "check-types": "tsc --noEmit --incremental",
+    "check:live": "vitest run --config vitest.live.config.ts",
     "dev": "next dev",
+    "evidence:check": "vitest run --config vitest.live.config.ts evidence",
     "format": "prettier --write . \"!(node_modules|.next|contracts)/**/*\"",
     "lint": "next lint",
     "lint:all": "next lint --dir app --dir components --dir hooks --dir lib --dir services --dir utils",
