@@ -23,7 +23,7 @@ The docs are every README.md and AGENTS.md of the repository, these tool READMEs
 | Check | Refuses |
 | --- | --- |
 | `check-paths.mjs` | a path in backticks, or an entry of a drawn directory tree, that git does not track unless the ignore rules explain its absence; a reference to a file the CLI deletes from scaffolds |
-| `check-scripts.mjs` | a documented command or a manifest placeholder that names no root script; a documented command with a flag; a flag after a placeholder; an outro command that runs bare a script the docs show with arguments |
+| `check-scripts.mjs` | a documented command or a manifest placeholder that names no root script, or, after npm's `--prefix <dir>`, no script of the package in that directory; a documented command with a flag; a flag after a placeholder; an outro command that runs bare a script the docs show with arguments |
 | `check-symbols.mjs` | a code identifier in backticks that is neither in the tracked source nor exported by a dependency named on the same line |
 | `check-snippets.mjs` | a TypeScript fence that does not type-check inside `packages/nextjs`, or inside the workspace its info string names |
 | `check-env.mjs` | a variable that the code, the `.env.example` files, the docs and the manifest do not all know; a variable called required although the code has a default for it |
