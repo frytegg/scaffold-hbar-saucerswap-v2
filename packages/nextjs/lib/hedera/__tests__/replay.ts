@@ -3,13 +3,30 @@ import { readFileSync } from "node:fs";
 import { type PublicClient, createPublicClient, http } from "viem";
 import { hederaTestnet } from "viem/chains";
 
-/** A JSON-RPC answer as the relay sent it: its HTTP status and body. */
-export type WireFixture = { request: { method: string }; status: number; body: Record<string, unknown> };
+/** A JSON-RPC answer as the relay sent it: its HTTP status and body, and the request when the capture kept it. */
+export type WireFixture = {
+  request: { method: string; params?: readonly unknown[] };
+  status: number;
+  body: Record<string, unknown>;
+};
 
 const fixtureUrl = (name: string) => new URL(`./fixtures/${name}.json`, import.meta.url);
 
 export function rpcFixture(name: string): WireFixture {
   return JSON.parse(readFileSync(fixtureUrl(`rpc/${name}`), "utf8")) as WireFixture;
+}
+
+/**
+ * The same capture, replayed for a read that names no sender. The captures were all made from 0x3b7a…6c01, reads
+ * included; a quote or an allowance answers the same for any caller, and the library sends those reads without one.
+ */
+export function readFixture(name: string): WireFixture {
+  const fixture = rpcFixture(name);
+  const [call, ...rest] = fixture.request.params ?? [];
+  const withoutSender = Object.fromEntries(
+    Object.entries(call as Record<string, unknown>).filter(([key]) => key !== "from"),
+  );
+  return { ...fixture, request: { ...fixture.request, params: [withoutSender, ...rest] } };
 }
 
 export function mirrorFixture(name: string): MirrorResponse {
@@ -22,14 +39,37 @@ export function mirrorBody(name: string): Record<string, unknown> {
 }
 
 /**
+ * JSON-RPC params as text, compared the way the relay reads them: fields in any order, hex in any case, and a zero
+ * value as no value.
+ */
+function canonicalParams(params: readonly unknown[] | undefined): string {
+  return JSON.stringify(params ?? [], (key, item: unknown) => {
+    if (key === "value" && item === "0x0") return undefined;
+    if (typeof item === "string" && item.startsWith("0x")) return item.toLowerCase();
+    if (typeof item === "object" && item !== null && !Array.isArray(item)) {
+      return Object.fromEntries(Object.entries(item).sort(([left], [right]) => left.localeCompare(right)));
+    }
+    return item;
+  });
+}
+
+/**
  * A fetch for viem's http transport that answers each JSON-RPC method with its captured answer, so that the error
- * objects are the ones the pinned viem builds from the relay's real response. Any other method fails the test.
+ * objects are the ones the pinned viem builds from the relay's real response. When the capture kept its request, the
+ * test's request must be that same request: sender, target, calldata and value. Anything else fails the test.
  */
 export function replayFetch(answers: readonly WireFixture[], status?: number): typeof fetch {
   return async (_url, init) => {
-    const request = JSON.parse(String(init?.body)) as { id: number; method: string };
+    const request = JSON.parse(String(init?.body)) as { id: number; method: string; params?: unknown[] };
     const answer = answers.find(fixture => fixture.request.method === request.method);
     if (answer === undefined) throw new Error(`No captured answer for ${request.method}.`);
+    const captured = answer.request.params;
+    if (captured !== undefined && canonicalParams(request.params) !== canonicalParams(captured)) {
+      throw new Error(
+        `The test sent ${request.method} ${canonicalParams(request.params)}, but the capture answered ` +
+          `${canonicalParams(captured)}.`,
+      );
+    }
     return new Response(JSON.stringify({ ...answer.body, id: request.id }), {
       status: status ?? answer.status,
       headers: { "content-type": "application/json" },

@@ -6,13 +6,16 @@ import { mirrorPaths } from "../mirrorPaths";
 import { SwapBuildError, buildHbarToTokenSwap, minimumOut, quoteExactInput, swapPath } from "../swap";
 import { UnitError, assertJsonRpcValue, hbarToTinybar, tinybar } from "../units";
 import { mirrorBody, mirrorFixture, replayClient, replayFetch, replayMirror, rpcFixture } from "./replay";
-import { createWalletClient, encodeErrorResult, http } from "viem";
+import { type Address, createWalletClient, encodeErrorResult, http } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { hederaTestnet } from "viem/chains";
 import { describe, expect, it } from "vitest";
 
 const SENDER = "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01";
 const ONE_HBAR = hbarToTinybar("1");
+// 0.0.10574825 holds no SAUCE and has no automatic association slot; it has an EVM address of its own.
+const UNASSOCIATED = "0x82756b984e8c34C28C98A3Eb6977dF106e4B3aaC";
+const UNASSOCIATED_LONG_ZERO = "0x0000000000000000000000000000000000A15BE9";
 
 async function thrownBy(run: () => Promise<unknown>): Promise<unknown> {
   try {
@@ -23,8 +26,8 @@ async function thrownBy(run: () => Promise<unknown>): Promise<unknown> {
   throw new Error("expected the call to fail");
 }
 
-/** Simulates a direct exactInput of 1 HBAR against a captured eth_call answer. */
-async function simulateDirect(fixture: string, value: bigint): Promise<unknown> {
+/** Simulates from SENDER a direct exactInput of 1 HBAR to `recipient`, as the captured eth_call did. */
+async function simulateDirect(fixture: string, recipient: Address, value: bigint): Promise<unknown> {
   const client = replayClient([rpcFixture(fixture)]);
   return thrownBy(() =>
     client.simulateContract({
@@ -34,8 +37,8 @@ async function simulateDirect(fixture: string, value: bigint): Promise<unknown> 
       args: [
         {
           path: swapPath(testnet.whbar, 3000, testnet.sauce),
-          recipient: SENDER,
-          deadline: 1_790_024_196n,
+          recipient,
+          deadline: 1_790_091_643n,
           amountIn: ONE_HBAR,
           amountOutMinimum: 1n,
         },
@@ -52,7 +55,7 @@ function rpcErrorOf(fixture: string): unknown {
 
 describe("explainError before sending: simulation and estimation answers", () => {
   it("direct call to a recipient without the token: TransferFail(184) means associate", async () => {
-    const failure = explainError(await simulateDirect("call-direct-unassociated-184", 10n ** 18n));
+    const failure = explainError(await simulateDirect("call-direct-unassociated-184", UNASSOCIATED, 10n ** 18n));
     expect(failure).toMatchObject({
       kind: "hts-response-code",
       code: 184,
@@ -71,7 +74,9 @@ describe("explainError before sending: simulation and estimation answers", () =>
   });
 
   it("a recipient in long-zero form of an account with its own EVM address: TransferFail(282)", async () => {
-    const failure = explainError(await simulateDirect("call-direct-long-zero-recipient-282", 10n ** 18n));
+    const failure = explainError(
+      await simulateDirect("call-direct-long-zero-recipient-282", UNASSOCIATED_LONG_ZERO, 10n ** 18n),
+    );
     expect(failure).toMatchObject({ code: 282, statusName: "INVALID_ALIAS_KEY", action: "none" });
     expect(failure.message).toContain("evm_address");
   });
@@ -108,7 +113,7 @@ describe("explainError before sending: simulation and estimation answers", () =>
   });
 
   it("RespCode(178) on a direct call with a correct value stays a balance problem", async () => {
-    const failure = explainError(await simulateDirect("call-direct-unscaled-value-178", 10n ** 18n), {
+    const failure = explainError(await simulateDirect("call-direct-unscaled-value-178", SENDER, 10n ** 18n), {
       value: assertJsonRpcValue(10n ** 18n),
       amountIn: ONE_HBAR,
     });

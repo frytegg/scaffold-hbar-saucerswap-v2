@@ -11,7 +11,7 @@ import {
   swapPath,
 } from "../swap";
 import { hbarToTinybar, tinybar } from "../units";
-import { mirrorBody, replayClient, rpcFixture } from "./replay";
+import { mirrorBody, readFixture, replayClient } from "./replay";
 import { encodeFunctionData } from "viem";
 import { describe, expect, it } from "vitest";
 
@@ -119,7 +119,7 @@ describe("amounts stay within what HTS can move (int64)", () => {
 
 describe("quote and deadline", () => {
   it("reads QuoterV2's amountOut from the captured eth_call: 1 HBAR -> 46.430539 SAUCE on 22 Sept", async () => {
-    const client = replayClient([rpcFixture("call-quote-hbar-to-sauce")]);
+    const client = replayClient([readFixture("call-quote-hbar-to-sauce")]);
     expect(await quoteExactInput(client, swapPath(testnet.whbar, 3000, testnet.sauce), 100_000_000n)).toBe(46_430_539n);
   });
 

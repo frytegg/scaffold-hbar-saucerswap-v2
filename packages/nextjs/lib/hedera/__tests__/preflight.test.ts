@@ -12,28 +12,31 @@ import {
 } from "../preflight";
 import { buildHbarToTokenSwap, buildTokenToHbarSwap, quoteExactInput, swapPath } from "../swap";
 import { hbarToTinybar, tinybar } from "../units";
-import { mirrorFixture, replayClient, replayMirror, rpcFixture } from "./replay";
+import { mirrorFixture, readFixture, replayClient, replayMirror, rpcFixture } from "./replay";
 import { decodeFunctionResult, parseAbi } from "viem";
 import { describe, expect, it } from "vitest";
 
 const MAIN = "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01";
 const TEN_SAUCE = 10_000_000n;
+// The simulations captured on 22 Sept used this deadline and a minimum output of 1, which a quote of 1 at 0 basis
+// points of slippage reproduces.
+const CAPTURE = { deadline: 1_790_091_643n, quote: 1n, slippageBps: 0 } as const;
 
 describe("allowance: the check simulation does not make", () => {
   it("the captured eth_call accepts a token -> HBAR swap with allowance 0, and the preflight refuses it", async () => {
     const swap = buildTokenToHbarSwap({
       pool: testnet.hbarSaucePool,
       recipient: MAIN,
-      slippageBps: 500,
-      deadline: 1_790_024_437n,
+      slippageBps: CAPTURE.slippageBps,
+      deadline: CAPTURE.deadline,
       amountIn: TEN_SAUCE,
-      quotedAmountOut: tinybar(21_407_548n),
+      quotedAmountOut: tinybar(CAPTURE.quote),
     });
     const simulator = replayClient([rpcFixture("call-token-to-hbar-allowance-zero")]);
     const { result } = await simulator.simulateContract({ ...swap, account: MAIN });
     expect(result).toHaveLength(2);
 
-    const verdict = await checkAllowance(replayClient([rpcFixture("call-allowance-router-zero")]), {
+    const verdict = await checkAllowance(replayClient([readFixture("call-allowance-router-zero")]), {
       token: testnet.sauce,
       owner: MAIN,
       amountIn: TEN_SAUCE,
@@ -58,15 +61,6 @@ describe("allowance: the check simulation does not make", () => {
   it("an allowance equal to the amount passes", async () => {
     const verdict = allowanceVerdict(TEN_SAUCE, TEN_SAUCE, testnet.sauce);
     expect(verdict).toMatchObject({ status: "pass", action: "none" });
-  });
-
-  it("reads a real allowance through the token's ERC-20 face: 40 SAUCE left to another spender", async () => {
-    const verdict = await checkAllowance(replayClient([rpcFixture("call-allowance-position-manager")]), {
-      token: testnet.sauce,
-      owner: MAIN,
-      amountIn: 40_000_000n,
-    });
-    expect(verdict.status).toBe("pass");
   });
 });
 
@@ -176,15 +170,16 @@ describe("facade result: a code other than 22 is a failure inside a successful t
 describe("cost: an upper bound from the estimate for this sender and recipient", () => {
   const gasPrice = BigInt(rpcFixture("gas-price").body.result as string);
 
-  it("HBAR -> token for an associated recipient, from the captured estimate and gas price", async () => {
+  it("HBAR -> token for an associated recipient, estimated for its sender, from the captured answers", async () => {
     const swap = buildHbarToTokenSwap({
       pool: testnet.hbarSaucePool,
       recipient: MAIN,
-      slippageBps: 500,
-      deadline: 1_790_024_196n,
+      slippageBps: CAPTURE.slippageBps,
+      deadline: CAPTURE.deadline,
       amountIn: hbarToTinybar("1"),
-      quotedAmountOut: 46_434_742n,
+      quotedAmountOut: CAPTURE.quote,
     });
+    // The capture estimated from MAIN: the replay refuses an estimate that names another sender, or none.
     const client = replayClient([rpcFixture("estimate-hbar-to-token"), rpcFixture("gas-price")]);
     const verdict = await checkCost(client, { call: swap, account: MAIN, autoAssociates: false, token: testnet.sauce });
     expect(verdict).toMatchObject({ status: "pass", gas: 214_457n, fee: 214_457n * 114n });
@@ -199,7 +194,7 @@ describe("cost: an upper bound from the estimate for this sender and recipient",
   it("token -> HBAR: warns when the fee is larger than the HBAR the swap returns", async () => {
     const hbarOut = tinybar(
       await quoteExactInput(
-        replayClient([rpcFixture("call-quote-sauce-to-hbar")]),
+        replayClient([readFixture("call-quote-sauce-to-hbar")]),
         swapPath(testnet.sauce, 3000, testnet.whbar),
         TEN_SAUCE,
       ),

@@ -37,7 +37,7 @@ In `mirror/`, each file holds the HTTP status and the JSON body that https://tes
 
 ## JSON-RPC answers
 
-In `rpc/`, each file holds the method, the HTTP status and the body that https://testnet.hashio.io/api (relay/0.78.5) answered. The first thirteen were captured on 22 Sept 2026 at 14:40 UTC by simulations from 0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01, which send nothing; the last five come from the logs of the research probes of 21 Sept 2026, which recorded the error object only: the jsonrpc and id fields around it were added.
+In `rpc/`, each file holds the method, the HTTP status and the body that https://testnet.hashio.io/api (relay/0.78.5) answered. The first twelve were captured on 22 Sept 2026 at 14:40 UTC by simulations from 0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01, which send nothing, and keep their params: `replay.ts` answers a test only when it sends that same request, and `readFixture` drops the recorded sender for the reads the library sends without one. The last five come from the logs of the research probes of 21 Sept 2026, which recorded the error object only: the jsonrpc and id fields around it were added, and any request with the same method gets their answer.
 
 | file                                             | request, and what it shows                                                                                                |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
@@ -46,7 +46,6 @@ In `rpc/`, each file holds the method, the HTTP status and the body that https:/
 | `rpc/call-multicall-unassociated-184.json`       | the same through multicall: empty data, the status name in the message                                                    |
 | `rpc/call-direct-long-zero-recipient-282.json`   | eth_call, direct exactInput to the long-zero address of 0.0.10574825: TransferFail(282)                                   |
 | `rpc/call-allowance-router-zero.json`            | eth_call, SAUCE allowance(0.0.10645914, SwapRouter): 0                                                                    |
-| `rpc/call-allowance-position-manager.json`       | eth_call, SAUCE allowance(0.0.10645914, position manager): 40000000                                                       |
 | `rpc/call-quote-hbar-to-sauce.json`              | eth_call, QuoterV2 quoteExactInput of 1 HBAR to SAUCE                                                                     |
 | `rpc/call-quote-sauce-to-hbar.json`              | eth_call, QuoterV2 quoteExactInput of 10 SAUCE to HBAR                                                                    |
 | `rpc/call-token-to-hbar-allowance-zero.json`     | eth_call, SAUCE to HBAR multicall with allowance 0: accepted, although the network rejects it                             |
