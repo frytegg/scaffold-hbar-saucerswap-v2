@@ -28,6 +28,16 @@ const nextConfig: NextConfig = {
         resourceRegExp: /^@x402\//,
       }),
     );
+    // The UI kit's Balance and HbarInput fetch a USD price from CoinGecko in the browser and call
+    // console.error when that fails. The kit offers no switch, so its price module is swapped for
+    // one that reports "price unknown": no route contacts CoinGecko.
+    config.plugins.push(
+      new webpack.NormalModuleReplacementPlugin(/^\.\/hbarPrice$/, (resource: { context: string; request: string }) => {
+        if (/@scaffold-hbar-ui[\\/]hooks[\\/]/.test(resource.context)) {
+          resource.request = path.join(__dirname, "utils/scaffold-hbar/noHbarPrice.ts");
+        }
+      }),
+    );
     config.externals.push("pino-pretty", "lokijs", "encoding");
     if (dev) {
       config.watchOptions = {
