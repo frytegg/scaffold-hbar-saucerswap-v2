@@ -1,0 +1,24 @@
+{
+  "name": "route-probe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Loads every page route of the Next.js app in a real browser, in three network modes, and fails on any console error.",
+  "engines": {
+    "node": ">=20.18.3"
+  },
+  "scripts": {
+    "browsers": "playwright install chromium",
+    "browsers:ci": "playwright install --with-deps chromium",
+    "check-types": "tsc --project tsconfig.json",
+    "probe": "node src/cli.mjs",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "playwright": "1.59.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.0",
+    "typescript": "5.9.3"
+  }
+}
