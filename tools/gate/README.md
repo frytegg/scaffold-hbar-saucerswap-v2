@@ -25,7 +25,7 @@ bash tools/gate/local.sh --work-dir ../gate-work
 bash tools/gate/scaffold-and-check.sh --template owner/repo --work-dir ../gate-work
 ```
 
-`--template-dir` takes a clean template tree such as a fresh checkout: apart from git's own folder, `node_modules`, the Next.js build output, `.env` and the package manager's cache, the seam copies every file it finds, untracked ones included. `--work-dir` has to be outside the template tree. `--help` lists every option; each one maps to a switch of the CLI (`-s`, `--yes` or `--ci`, the package manager, the skills install, the directory argument) or of the environment (`CI` unset).
+`--template-dir` takes a clean template tree such as a fresh checkout: apart from git's own folder, `node_modules`, the Next.js build output, `.env` and the package manager's cache, the seam copies every file it finds, untracked ones included. `--work-dir` has to be outside the template tree. `--help` lists every option; each one maps to a switch of the CLI (`-s`, `--yes` or `--ci`, the package manager, the skills install, the directory argument) or of the environment (`--without-ci-variables`).
 
 With `--template-dir` the seam replaces the download only: the CLI still reads its capabilities from a built-in entry whose default framework is Foundry, so `--solidity-framework` is mandatory there. The "no `-s`" case can only be proven through `--template`, against a public repository.
 
@@ -34,9 +34,10 @@ Steps, in order. Each one has its own log file under `<work-dir>/logs/` and its 
 | step | passes when |
 | --- | --- |
 | `rate-limit` | always. Prints the machine's unauthenticated GitHub quota first: the CLI reads `template.json` from the GitHub API without a token and silently falls back to its own defaults when that read is refused |
-| `environment` | always. Versions, `CI`, git identity (a throwaway identity is set for the run when the machine has none, because the CLI refuses to start without one) |
+| `environment` | always. Versions, the CI variables that the host sets and those that the run keeps, git identity (a throwaway identity is set for the run when the machine has none, because the CLI refuses to start without one) |
 | `cli-help` | only for `--prompts ci` and `--no-directory`: the leg is skipped once the CLI's help stops listing the flag |
 | `scaffold` | `npx create-scaffold-hbar@latest <dir> --template <spec>` exits 0 |
+| `ci-detection` | runs whether the scaffold passed or not, in a project pinned to the default package manager (skipped otherwise). Prints that package manager's own answer: whether it detects CI (the default of `enableImmutableInstalls`) and whether its installs are immutable. Fails when the answer cannot be read, or when it still detects CI with `--without-ci-variables` |
 | `project-created` | the directory exists (the CLI renames a project whose name it rejects and still exits 0) |
 | `scaffold-output` | the Congratulations line is there; `Format step failed`, `YN0028` and `requirements not met` are not |
 | `git-state` | branch `main`, exactly one commit, clean working tree |
@@ -58,7 +59,7 @@ The run exits 1 when any step is `FAIL`. `--soft <step>` reports a failure as `s
 | `gate-skeleton.yml` | the public skeleton only | the judges' path against the skeleton itself: each CLI switch changed against one baseline, plus the pairs that interact; the leg without `-s` is blocking; the secret scan of the skeleton's tree and history, blocking; three recorded runs of the brief's literal command |
 | `hosts-control.yml` | the public skeleton only | the same script against the hosts' blank template, to tell a failure of the base from a failure of this template; never blocking |
 
-`CI` is left as GitHub sets it: installs are then immutable, which is what a judge running inside CI gets. No workflow uses a secret.
+GitHub sets `CI` and `GITHUB_ACTIONS`, and the workflows leave them as they are: installs are then immutable, which is what a judge running inside CI gets. The legs with `--without-ci-variables` stand for a developer machine: the script removes every variable that the default package manager reads to detect CI, not only `CI`, since `GITHUB_ACTIONS` alone keeps it in CI mode, and the `ci-detection` step prints its answer. No workflow uses a secret.
 
 ## On Windows Git Bash
 

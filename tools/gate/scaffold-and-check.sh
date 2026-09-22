@@ -14,6 +14,16 @@ CLI_DEFAULT_PROJECT="my-hedera-dapp"
 SEAM_CARRIER_TEMPLATE="blank"
 APP_NAME="gateapp"
 NEXT_DIR="packages/nextjs/.next"
+# Every variable read by the copy of ci-info that Yarn 3.2.3 bundles (.yarn/releases/yarn-3.2.3.cjs). Yarn runs in CI
+# mode, where installs are immutable, as soon as one of CI, CONTINUOUS_INTEGRATION, BUILD_NUMBER and RUN_ID is set, or
+# all the variables that identify one CI vendor: on GitHub, GITHUB_ACTIONS alone is enough.
+CI_VARIABLES=(
+  CI CONTINUOUS_INTEGRATION BUILD_NUMBER RUN_ID
+  APPVEYOR SYSTEM_TEAMFOUNDATIONCOLLECTIONURI AC_APPCIRCLE bamboo_planKey BITBUCKET_COMMIT BITRISE_IO BUDDY_WORKSPACE_ID
+  BUILDKITE CIRCLECI CIRRUS_CI CODEBUILD_BUILD_ARN CF_BUILD_ID CI_NAME DRONE DSARI GITHUB_ACTIONS GITLAB_CI
+  GO_PIPELINE_LABEL LAYERCI HUDSON_URL JENKINS_URL BUILD_ID MAGNUM NETLIFY NEVERCODE RENDER SAILCI SEMAPHORE SCREWDRIVER
+  SHIPPABLE TDDIUM STRIDER TASK_ID TEAMCITY_VERSION TRAVIS NOW_BUILDER APPCENTER_BUILD_ID
+)
 
 TEMPLATE=""
 TEMPLATE_DIR=""
@@ -22,7 +32,7 @@ FRAMEWORK=""
 SKILLS="off"
 PROMPTS="yes"
 DIRECTORY_ARGUMENT=1
-UNSET_CI=0
+WITHOUT_CI_VARIABLES=0
 PORT=3103
 ROOT_SCRIPTS="lint:strict typecheck build test"
 SERVE_SCRIPT="serve"
@@ -43,7 +53,8 @@ usage: scaffold-and-check.sh (--template <owner/repo[#ref]> | --template-dir <di
   --skills <on|off>            Hedera Skills marketplace install (default: off)
   --prompts <yes|ci|flags>     --yes (default), --ci, or neither with every choice passed as a flag
   --no-directory               pass no directory argument (the CLI then uses its default project name)
-  --unset-ci                   remove CI from the environment of the CLI and of every check
+  --without-ci-variables       remove every variable of Yarn's CI detection (CI, GITHUB_ACTIONS and the others of its
+                               list) from the environment of the CLI and of every check, as on a developer machine
   --port <n>                   port of the production boot (default: 3103)
   --route <path>               extra concrete route to request, query string included (repeatable)
   --root-scripts "<a b c>"     root scripts to run, in order (default: "lint:strict typecheck build test")
@@ -65,6 +76,16 @@ native_path() {
   if command -v cygpath > /dev/null 2>&1; then cygpath -m "$1"; else printf '%s\n' "$1"; fi
 }
 
+# The CI_VARIABLES that are set to a non-empty value, which is what ci-info tests, comma-separated; "none" if none.
+set_ci_variables() {
+  local name found=()
+  for name in "${CI_VARIABLES[@]}"; do
+    if [ -n "${!name-}" ]; then found+=("$name"); fi
+  done
+  local IFS=,
+  echo "${found[*]:-none}"
+}
+
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --template) TEMPLATE=${2-}; shift 2 ;;
@@ -74,7 +95,7 @@ while [ "$#" -gt 0 ]; do
     --skills) SKILLS=${2-}; shift 2 ;;
     --prompts) PROMPTS=${2-}; shift 2 ;;
     --no-directory) DIRECTORY_ARGUMENT=0; shift ;;
-    --unset-ci) UNSET_CI=1; shift ;;
+    --without-ci-variables) WITHOUT_CI_VARIABLES=1; shift ;;
     --port) PORT=${2-}; shift 2 ;;
     --route) ROUTES+=("${2-}"); shift 2 ;;
     --root-scripts) ROOT_SCRIPTS=${2-}; shift 2 ;;
@@ -115,7 +136,12 @@ mkdir -p "$LOG_DIR"
 SUMMARY_TSV="$LOG_DIR/summary.tsv"
 : > "$SUMMARY_TSV"
 
-if [ "$UNSET_CI" = 1 ]; then unset CI; fi
+# Annotations are for the runner, so this is read before --without-ci-variables removes GITHUB_ACTIONS.
+ANNOTATE=0
+if [ -n "${GITHUB_ACTIONS-}" ]; then ANNOTATE=1; fi
+HOST_CI_VARIABLES=$(set_ci_variables)
+if [ "$WITHOUT_CI_VARIABLES" = 1 ]; then unset "${CI_VARIABLES[@]}"; fi
+RUN_CI_VARIABLES=$(set_ci_variables)
 export NEXT_TELEMETRY_DISABLED=1 npm_config_update_notifier=false
 
 STEP_INDEX=0
@@ -145,7 +171,7 @@ run_step() {
   log="$LOG_DIR/$(printf '%02d' "$STEP_INDEX")-${step//:/-}.log"
   local started=$SECONDS rc status
   {
-    echo "### $(date -u +%FT%TZ) step=$step cwd=$PWD CI=${CI-<unset>}"
+    echo "### $(date -u +%FT%TZ) step=$step cwd=$PWD ci-variables=$RUN_CI_VARIABLES"
     echo "### command: $*"
   } > "$log"
   if [ "$limit" = 0 ]; then
@@ -167,7 +193,7 @@ run_step() {
   LAST_LOG=$log
   echo "[$status] $step (exit $rc, $((SECONDS - started)) s)"
   if [ "$status" != "pass" ]; then tail -n 30 "$log" | sed 's/^/    | /'; fi
-  if [ "$status" = "soft-fail" ] && [ -n "${GITHUB_ACTIONS-}" ]; then
+  if [ "$status" = "soft-fail" ] && [ "$ANNOTATE" = 1 ]; then
     echo "::warning title=non-blocking gate step failed::$step exited $rc; it is listed in the job summary"
   fi
 }
@@ -204,7 +230,8 @@ step_environment() {
   echo "yarn on PATH: $(cd "$WORK_DIR" && yarn --version 2>&1 | head -n 1)"
   echo "git: $(git --version)"
   echo "forge: $(command -v forge || echo absent)"
-  echo "CI: ${CI-<unset>}"
+  echo "CI variables set by the host: $HOST_CI_VARIABLES"
+  echo "CI variables that the CLI and the checks see: $RUN_CI_VARIABLES"
   echo "published CLI: $(npm view create-scaffold-hbar version 2>&1 | tail -n 1)"
   if has_git_identity; then
     echo "git identity: configured"
@@ -295,13 +322,13 @@ step_tree_shape() {
   fi
   found=$(find . -name '.env*' ! -name '.env.example' -not -path '*/node_modules/*' -not -path './.git/*')
   if [ -n "$found" ]; then echo "env files that a fresh scaffold must not have:"; echo "$found"; rc=1; fi
-  pinned=$(node -p 'String(require("./package.json").packageManager ?? "")')
+  pinned=$(project_pin)
   echo "packageManager=$pinned"
   if [ -n "$PACKAGE_MANAGER" ] && [ "${pinned%%@*}" != "$PACKAGE_MANAGER" ]; then
     echo "EXPECTED a project pinned to $PACKAGE_MANAGER"
     rc=1
   fi
-  # A lockfile that the CLI's install had to change is refused where CI=true makes installs immutable.
+  # A lockfile that the CLI's install had to change is refused where CI mode makes installs immutable.
   if [ -n "$TEMPLATE_DIR" ] && [ -f yarn.lock ]; then
     if cmp -s "$TEMPLATE_DIR/yarn.lock" yarn.lock; then
       echo "ok: the lockfile is byte-identical to the template's"
@@ -321,6 +348,51 @@ step_tree_still_clean() {
   echo "tracked files changed by the root scripts:"
   echo "$dirty"
   return 1
+}
+
+# The packageManager field of the scaffolded project; empty when there is no project or no field.
+project_pin() {
+  if [ -f "$APP_DIR/package.json" ]; then
+    node -p 'String(require(process.argv[1]).packageManager ?? "")' "$(native_path "$APP_DIR/package.json")"
+  fi
+}
+
+# Asked in the project, the Yarn that installed it reports its CI detection as the default of enableImmutableInstalls
+# and what the install did as the effective value.
+step_ci_detection() {
+  local output line detected effective
+  output=$(cd "$APP_DIR" && timeout 300 yarn config --why --json 2>&1)
+  if ! line=$(grep '"key":"enableImmutableInstalls"' <<< "$output"); then
+    echo "Yarn did not report enableImmutableInstalls. Its output:"
+    echo "$output"
+    return 1
+  fi
+  echo "$line"
+  detected=$(grep -o '"default":[a-z]*' <<< "$line")
+  detected=${detected#*:}
+  effective=$(grep -o '"effective":[a-z]*' <<< "$line")
+  echo "Yarn detects CI: $detected; immutable installs: ${effective#*:}"
+  case "$detected" in
+    false) echo "ok: Yarn runs as on a developer machine" ;;
+    true)
+      if [ "$WITHOUT_CI_VARIABLES" = 1 ]; then
+        echo "Yarn still detects CI with every variable of CI_VARIABLES removed: it reads one that the list lacks"
+        return 1
+      fi
+      echo "ok: Yarn runs in CI mode, as the host sets it"
+      ;;
+    *) echo "cannot read Yarn's CI detection from that line"; return 1 ;;
+  esac
+}
+
+report_ci_detection() {
+  local pinned
+  pinned=$(project_pin)
+  case "${pinned%%@*}" in
+    yarn) run_step ci-detection 0 step_ci_detection ;;
+    "") skip_step ci-detection "no project, or no packageManager field, to say which package manager installed it" ;;
+    *) skip_step ci-detection "the project is pinned to $pinned: only Yarn's CI detection is read" ;;
+  esac
 }
 
 step_project_created() {
@@ -372,7 +444,7 @@ print_summary() {
 
 # ---------------------------------------------------------------- run
 build_cli_arguments
-TITLE="scaffold gate: ${TEMPLATE:-local tree $(basename "$TEMPLATE_DIR")} [${CLI_ARGUMENTS[*]}] CI=${CI-<unset>} node=$(node --version)"
+TITLE="scaffold gate: ${TEMPLATE:-local tree $(basename "$TEMPLATE_DIR")} [${CLI_ARGUMENTS[*]}] ci-variables=$RUN_CI_VARIABLES node=$(node --version)"
 echo "$TITLE"
 echo "work dir: $WORK_DIR"
 cd "$WORK_DIR" || die "cannot enter $WORK_DIR"
@@ -417,6 +489,8 @@ else
   SCAFFOLD_STATUS=$LAST_STATUS
   SCAFFOLD_LOG=$LAST_LOG
   run_step rate-limit-after 0 step_rate_limit
+  # Also after a failed scaffold: the mode Yarn was in is what tells an immutable-lockfile refusal apart.
+  report_ci_detection
   if [ "$SCAFFOLD_STATUS" = "pass" ]; then
     run_checks "$SCAFFOLD_LOG"
   else

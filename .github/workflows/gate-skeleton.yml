@@ -68,9 +68,11 @@ jobs:
           - leg: "skills-on-with-npm"
             node: "20.18.3"
             options: "--solidity-framework hardhat --skills on --package-manager npm"
-          - leg: ci-variable-unset
+          # A developer machine: every variable that the default package manager reads to detect CI is removed, CI and
+          # GITHUB_ACTIONS among them, so its installs are not immutable; the ci-detection step prints its answer.
+          - leg: without-ci-variables
             node: "20.18.3"
-            options: "--solidity-framework hardhat --unset-ci"
+            options: "--solidity-framework hardhat --without-ci-variables"
           - leg: node-22
             node: "22"
             options: "--solidity-framework hardhat"

@@ -33,12 +33,12 @@ jobs:
         include:
           - leg: default-package-manager
             options: ""
-          - leg: default-package-manager-ci-variable-unset
-            options: "--unset-ci"
+          - leg: default-package-manager-without-ci-variables
+            options: "--without-ci-variables"
           - leg: "package-manager-npm"
             options: "--package-manager npm"
-          - leg: "ci-variable-unset-with-npm"
-            options: "--unset-ci --package-manager npm"
+          - leg: "without-ci-variables-with-npm"
+            options: "--without-ci-variables --package-manager npm"
     steps:
       - name: Checkout (for the gate scripts only)
         uses: actions/checkout@v4
