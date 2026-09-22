@@ -36,6 +36,11 @@ if ! manager=$(node -e '
   exit 3
 fi
 
+# The gate sets MSYS_NO_PATHCONV=1 to keep its own route arguments intact on Git Bash. A project's script must not
+# inherit it: Corepack's shell shim for the package manager then hands node an unconverted /c/... path, and the
+# script dies with "Cannot find module 'C:\c\Program Files\...'" before it starts.
+unset MSYS_NO_PATHCONV
+
 case "$manager" in
   yarn) exec yarn run "$script_name" ;;
   npm) exec npm run "$script_name" ;;
