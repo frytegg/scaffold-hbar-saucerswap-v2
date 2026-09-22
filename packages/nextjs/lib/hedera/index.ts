@@ -51,7 +51,7 @@ export type { ResponseCode, StatusName } from "./responseCodes";
 export { RESPONSE_CODES, failureStatusIn, statusNameOf } from "./responseCodes";
 export type { RpcErrorDetails } from "./rpcError";
 export { extractRpcError } from "./rpcError";
-export type { ApproveCall, SwapBuildErrorCode, SwapCall } from "./swap";
+export type { ApproveCall, BuiltCall, SwapBuildErrorCode, SwapCall } from "./swap";
 export {
   SwapBuildError,
   approvalGranted,

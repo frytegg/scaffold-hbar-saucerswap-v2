@@ -2,6 +2,7 @@ import { htsTokenAbi, quoterV2Abi, swapRouterAbi } from "./abi";
 import { type HbarPoolEntry, type TokenEntry, testnet } from "./addresses";
 import { type Tinybar, type Weibar, payable, tinybar } from "./units";
 import {
+  type Abi,
   type Address,
   type Hex,
   type PublicClient,
@@ -36,6 +37,18 @@ export type ApproveCall = {
   readonly abi: typeof htsTokenAbi;
   readonly functionName: "approve";
   readonly args: readonly [Address, bigint];
+};
+
+/**
+ * Either call above in the untyped form viem accepts for any ABI, for code that simulates, estimates or sends both
+ * the same way. Its arguments were checked against the ABI when the builder encoded them.
+ */
+export type BuiltCall = {
+  readonly address: Address;
+  readonly abi: Abi;
+  readonly functionName: string;
+  readonly args: readonly unknown[];
+  readonly value?: Weibar;
 };
 
 type SwapRequest = {

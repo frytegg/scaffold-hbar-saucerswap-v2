@@ -4,7 +4,7 @@ import { type TokenEntry, testnet } from "./addresses";
 import { type FailureAction, explainResponseCode } from "./failure";
 import type { MirrorAccount, MirrorClient, MirrorTokenRelationship } from "./mirror";
 import { SUCCESS_CODE } from "./responseCodes";
-import type { ApproveCall, SwapCall } from "./swap";
+import type { BuiltCall } from "./swap";
 import { type Tinybar, WEIBAR_PER_TINYBAR, formatHbar, formatTokenAmount, tinybar } from "./units";
 import type { Address, PublicClient } from "viem";
 
@@ -209,13 +209,8 @@ export async function checkCost(
     autoAssociates,
     token,
     hbarOut,
-  }: { call: SwapCall | ApproveCall; account: Address; autoAssociates: boolean; token: TokenEntry; hbarOut?: Tinybar },
+  }: { call: BuiltCall; account: Address; autoAssociates: boolean; token: TokenEntry; hbarOut?: Tinybar },
 ): Promise<CostVerdict> {
-  // One branch per call type, so that each is checked against its own ABI.
-  const estimate =
-    call.functionName === "approve"
-      ? client.estimateContractGas({ ...call, account })
-      : client.estimateContractGas({ ...call, account });
-  const [gas, gasPrice] = await Promise.all([estimate, client.getGasPrice()]);
+  const [gas, gasPrice] = await Promise.all([client.estimateContractGas({ ...call, account }), client.getGasPrice()]);
   return costVerdict({ gas, gasPrice, autoAssociates, token, hbarOut });
 }

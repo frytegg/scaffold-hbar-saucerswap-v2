@@ -13,8 +13,7 @@ import { type HbarInputContext, explainError, postMortem } from "../failure";
 import type { MirrorAccount, MirrorContractResult, MirrorTransaction } from "../mirror";
 import { type PreflightVerdict, checkAllowance, checkCost, checkRecipient, readAllowance } from "../preflight";
 import {
-  type ApproveCall,
-  type SwapCall,
+  type BuiltCall,
   approvalGranted,
   buildApproveCall,
   buildHbarToTokenSwap,
@@ -87,17 +86,11 @@ describe.skipIf(!KEY)(title, () => {
   }
 
   /** Simulates, signs with viem's default flow, then reads the outcome from the mirror node's DETAIL view. */
-  async function send(call: SwapCall | ApproveCall, context?: HbarInputContext): Promise<MirrorContractResult> {
+  async function send(call: BuiltCall, context?: HbarInputContext): Promise<MirrorContractResult> {
     let hash: Hex;
     try {
-      // One branch per call type, so that each request is checked against its own ABI.
-      if (call.functionName === "approve") {
-        const { request } = await testnetClient.simulateContract({ ...call, account });
-        hash = await wallet.writeContract(request);
-      } else {
-        const { request } = await testnetClient.simulateContract({ ...call, account });
-        hash = await wallet.writeContract(request);
-      }
+      const { request } = await testnetClient.simulateContract({ ...call, account });
+      hash = await wallet.writeContract(request);
     } catch (error: unknown) {
       const failure = explainError(error, context);
       throw new Error(`${failure.message} (${failure.via})`, { cause: error });
