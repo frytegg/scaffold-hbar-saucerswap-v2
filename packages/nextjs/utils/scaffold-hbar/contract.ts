@@ -355,52 +355,48 @@ export const getParsedErrorWithAllAbis = (error: any, chainId: AllowedChainIds):
       return originalParsedError;
     }
 
-    try {
-      // Get all deployed contracts for the current chain
-      const chainContracts = deployedContractsData[chainId as keyof typeof deployedContractsData];
+    // Get all deployed contracts for the current chain
+    const chainContracts = deployedContractsData[chainId as keyof typeof deployedContractsData];
 
-      if (!chainContracts) {
-        return originalParsedError;
-      }
-
-      // Build a lookup table of error signatures to error names
-      const errorLookup: Record<string, { name: string; contract: string; signature: string }> = {};
-
-      Object.entries(chainContracts).forEach(([contractName, contract]: [string, any]) => {
-        if (contract.abi) {
-          contract.abi.forEach((item: any) => {
-            if (item.type === "error") {
-              // Create the proper error signature like Solidity does
-              const errorName = item.name;
-              const inputs = item.inputs || [];
-              const inputTypes = inputs.map((input: any) => input.type).join(",");
-              const errorSignature = `${errorName}(${inputTypes})`;
-
-              // Hash the signature and take the first 4 bytes (8 hex chars)
-              const hash = keccak256(toHex(errorSignature));
-              const errorSelector = hash.slice(0, 10); // 0x + 8 chars = 10 total
-
-              errorLookup[errorSelector] = {
-                name: errorName,
-                contract: contractName,
-                signature: errorSignature,
-              };
-            }
-          });
-        }
-      });
-
-      // Check if we can find the error in our lookup
-      const errorInfo = errorLookup[signature];
-      if (errorInfo) {
-        return `Contract function execution reverted with the following reason:\n${errorInfo.signature} from ${errorInfo.contract} contract`;
-      }
-
-      // If not found in simple lookup, provide a helpful message with context
-      return `${originalParsedError}\n\nThis error occurred when calling a function that internally calls another contract. Check the contract that your function calls internally for more details.`;
-    } catch (lookupError) {
-      console.log("Failed to create error lookup table:", lookupError);
+    if (!chainContracts) {
+      return originalParsedError;
     }
+
+    // Build a lookup table of error signatures to error names
+    const errorLookup: Record<string, { name: string; contract: string; signature: string }> = {};
+
+    Object.entries(chainContracts).forEach(([contractName, contract]: [string, any]) => {
+      if (contract.abi) {
+        contract.abi.forEach((item: any) => {
+          if (item.type === "error") {
+            // Create the proper error signature like Solidity does
+            const errorName = item.name;
+            const inputs = item.inputs || [];
+            const inputTypes = inputs.map((input: any) => input.type).join(",");
+            const errorSignature = `${errorName}(${inputTypes})`;
+
+            // Hash the signature and take the first 4 bytes (8 hex chars)
+            const hash = keccak256(toHex(errorSignature));
+            const errorSelector = hash.slice(0, 10); // 0x + 8 chars = 10 total
+
+            errorLookup[errorSelector] = {
+              name: errorName,
+              contract: contractName,
+              signature: errorSignature,
+            };
+          }
+        });
+      }
+    });
+
+    // Check if we can find the error in our lookup
+    const errorInfo = errorLookup[signature];
+    if (errorInfo) {
+      return `Contract function execution reverted with the following reason:\n${errorInfo.signature} from ${errorInfo.contract} contract`;
+    }
+
+    // If not found in simple lookup, provide a helpful message with context
+    return `${originalParsedError}\n\nThis error occurred when calling a function that internally calls another contract. Check the contract that your function calls internally for more details.`;
   }
 
   return originalParsedError;

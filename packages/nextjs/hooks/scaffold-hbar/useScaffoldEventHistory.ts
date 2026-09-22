@@ -95,12 +95,6 @@ export const useScaffoldEventHistory = <
 }: UseScaffoldEventHistoryConfig<TContractName, TEventName, TBlockData, TTransactionData, TReceiptData>) => {
   const selectedNetwork = useSelectedNetwork(chainId);
 
-  useEffect(() => {
-    console.log(
-      "useScaffoldEventHistory: getLogs can be heavy on public RPCs. For production, use an indexer like ponder.sh.",
-    );
-  }, []);
-
   const publicClient = usePublicClient({
     chainId: selectedNetwork.id,
   });
