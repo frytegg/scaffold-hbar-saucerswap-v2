@@ -3222,7 +3222,7 @@ __metadata:
     "@scaffold-hbar-ui/components": ^2.0.0
     "@scaffold-hbar-ui/debug-contracts": ^2.0.0
     "@scaffold-hbar-ui/hooks": ^1.1.0
-    "@tailwindcss/postcss": latest
+    "@tailwindcss/postcss": ^4.2.1
     "@tanstack/react-query": ^5.59.15
     "@trivago/prettier-plugin-sort-imports": ^4.3.0
     "@types/node": ^18.19.50
@@ -4222,7 +4222,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tailwindcss/postcss@latest":
+"@tailwindcss/postcss@npm:^4.2.1":
   version: 4.2.1
   resolution: "@tailwindcss/postcss@npm:4.2.1"
   dependencies:
