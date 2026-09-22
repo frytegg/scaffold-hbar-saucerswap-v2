@@ -41,7 +41,7 @@ export type ApproveCall = {
 
 /**
  * Either call above in the untyped form viem accepts for any ABI, for code that simulates, estimates or sends both
- * the same way. Its arguments were checked against the ABI when the builder encoded them.
+ * the same way. The types above are what check a call's arguments, where the builders create it.
  */
 export type BuiltCall = {
   readonly address: Address;
