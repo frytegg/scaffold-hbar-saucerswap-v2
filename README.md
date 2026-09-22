@@ -1,7 +1,7 @@
 # Hardhat base for Scaffold-HBAR templates
 
 A Hedera dApp starting point with one Solidity framework, Hardhat, and a Next.js frontend whose pages load with no configuration and without the browser calling any third-party host.
-It is the blank template of Scaffold-HBAR as `create-scaffold-hbar` scaffolds it, minus its default keys, dead scripts and Foundry leftovers, plus the checks that keep it that way: repository checks for the docs and the manifest, a browser probe of every route, and a gate that scaffolds the template through the published CLI on every push.
+It is the blank template of Scaffold-HBAR as `create-scaffold-hbar` scaffolds it, minus its default keys, dead scripts and Foundry leftovers, plus the checks that keep it that way: repository checks for the docs and the manifest, a browser probe of every route, and a gate that scaffolds the template through the published CLI on pushes to `main` and every night.
 It ships no product of its own: templates are built on top of it.
 
 ## Quick start
@@ -78,7 +78,7 @@ yarn check:all                  # lint:strict, typecheck, the tools' tests, the 
 
 After `yarn build`, `yarn probe:routes` loads every page route in Chromium three times: third parties reachable, third parties failing at the network level, and third parties answering 429 then 400. A console error, a page error, or any request to a third-party host fails the route. It serves the build on port 3000 and stops the server afterwards.
 
-`yarn gate:local` scaffolds the committed HEAD through the published CLI into a temporary folder, installs it, and runs `lint:strict`, `typecheck`, `build` and `test` in the new project, then boots it with no env file and requests every route. It needs well over 1 GB of disk while it runs. `.github/workflows/gate.yml` runs the same leg on every push to the template repository, then the route probe, the docs checks and a secret scan of the tree and the history.
+`yarn gate:local` scaffolds the committed HEAD through the published CLI into a temporary folder, installs it, and runs `lint:strict`, `typecheck`, `build` and `test` in the new project, then boots it with no env file and requests every route. It needs well over 1 GB of disk while it runs. `.github/workflows/gate.yml` runs the same leg on every push to `main` of the template repository that changes more than Markdown, and nightly, then the route probe, the docs checks and a secret scan of the tree and the history.
 
 ## Working with a coding agent
 

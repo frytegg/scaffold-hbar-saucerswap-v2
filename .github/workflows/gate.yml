@@ -6,7 +6,13 @@ name: Gate
 # No secret is used anywhere. tools/gate/README.md describes each step.
 
 on:
+  # A leg scaffolds, installs, builds and probes in a browser, and a private repository's Actions minutes are
+  # limited: pushes run on main only, and not when they change Markdown alone, which check:all checks before a
+  # commit and the nightly run checks again. Another branch runs by hand (workflow_dispatch).
   push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
   schedule:
     # Nightly, away from 17:00-18:00 UTC. Scheduled runs only fire on the default branch.
     - cron: "23 3 * * *"
