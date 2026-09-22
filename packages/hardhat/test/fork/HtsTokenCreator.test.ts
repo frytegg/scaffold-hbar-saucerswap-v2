@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import type { HtsTokenCreator } from "../typechain-types";
+import type { HtsTokenCreator } from "../../typechain-types";
 
 describe("HtsTokenCreator", function () {
   async function deployFixture() {

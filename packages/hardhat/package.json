@@ -18,7 +18,8 @@
     "lint": "eslint",
     "lint-staged": "eslint",
     "lint:tools": "prettier --check \"../../tools/**/*.{mjs,json}\"",
-    "test": "cross-env HEDERA_FORKING=true hardhat test"
+    "test": "cross-env HEDERA_FORKING=true hardhat test",
+    "test:mock": "hardhat test"
   },
   "devDependencies": {
     "@ethersproject/abi": "~5.7.0",

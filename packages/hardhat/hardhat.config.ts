@@ -1,15 +1,21 @@
 import * as dotenv from "dotenv";
 dotenv.config();
 
+/**
+ * The `chain` and `test` scripts set HEDERA_FORKING, and it picks the whole fork tier at once: the plugin that
+ * emulates the token service, the in-process network's fork of Hedera testnet, and the tests that need it. Without
+ * it the in-process network forks nothing and `hardhat test` runs the mock tier, which needs no network at all.
+ */
+const forkingTier = process.env.HEDERA_FORKING === "true";
+
 import { HardhatUserConfig, task } from "hardhat/config";
 import "@nomicfoundation/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
-// Only load the Hedera forking plugin where a script sets HEDERA_FORKING (`chain` and `test`).
-// Deploying to an already-running node doesn't need it and would fail with EADDRINUSE.
-if (process.env.HEDERA_FORKING === "true") {
+// Deploying to an already-running node doesn't need the plugin and would fail with EADDRINUSE.
+if (forkingTier) {
   // eslint-disable-next-line @typescript-eslint/no-require-imports -- conditional plugin load
   require("@hashgraph/system-contracts-forking/plugin");
 }
@@ -51,15 +57,20 @@ const config: HardhatUserConfig = {
       default: 0,
     },
   },
+  paths: {
+    tests: forkingTier ? "test/fork" : "test/mock",
+  },
   networks: {
-    hardhat: {
-      forking: {
-        url: hederaRpcUrl,
-        // @ts-expect-error - custom property for hedera-forking plugin
-        chainId: 296,
-        workerPort: 10001,
-      },
-    },
+    hardhat: forkingTier
+      ? {
+          forking: {
+            url: hederaRpcUrl,
+            // @ts-expect-error - custom property for hedera-forking plugin
+            chainId: 296,
+            workerPort: 10001,
+          },
+        }
+      : {},
     hederaTestnet: {
       url: "https://testnet.hashio.io/api",
       accounts: liveAccounts,
