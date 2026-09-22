@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "eth_call"
+  },
+  "status": 200,
+  "body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "code": 3,
+      "message": "[Request ID: 6b0bf41f-2546-4a55-93a7-88958c138d94] execution reverted: CONTRACT_REVERT_EXECUTED",
+      "data": "0x"
+    }
+  }
+}

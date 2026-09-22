@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "eth_getLogs"
+  },
+  "status": 400,
+  "body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "code": -32004,
+      "message": "[Request ID: 50d88d59-ba8c-4f7a-98dd-22324f41763d] The provided fromBlock and toBlock contain timestamps that exceed the maximum allowed duration of 7 days (604800 seconds): fromBlock: 0x268cb51 (1789213868.260228104), toBlock: 0x26ebec1 (1790023437.925932830)"
+    }
+  }
+}

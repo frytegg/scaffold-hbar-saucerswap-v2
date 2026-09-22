@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "eth_call"
+  },
+  "status": 200,
+  "body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "code": 3,
+      "message": "[Request ID: 6b1210a0-4fb4-4da3-be18-c50643afbea5] execution reverted: CONTRACT_REVERT_EXECUTED, INSUFFICIENT_TOKEN_BALANCE",
+      "data": "0xffb9e6ed00000000000000000000000000000000000000000000000000000000000000b2"
+    }
+  }
+}

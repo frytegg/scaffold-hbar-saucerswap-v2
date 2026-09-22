@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "eth_chainId",
+    "params": []
+  },
+  "status": 200,
+  "body": {
+    "result": "0x128",
+    "jsonrpc": "2.0",
+    "id": 1
+  }
+}

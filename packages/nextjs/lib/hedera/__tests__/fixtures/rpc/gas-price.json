@@ -1,0 +1,12 @@
+{
+  "request": {
+    "method": "eth_gasPrice",
+    "params": []
+  },
+  "status": 200,
+  "body": {
+    "result": "0x1096d4b8800",
+    "jsonrpc": "2.0",
+    "id": 1
+  }
+}

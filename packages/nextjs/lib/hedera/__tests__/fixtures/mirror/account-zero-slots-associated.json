@@ -1,0 +1,35 @@
+{
+  "status": 200,
+  "body": {
+    "account": "0.0.10650085",
+    "alias": "BJXZURAHYLQT6VO7NGQCQHQPVHE3AQG6",
+    "auto_renew_period": 7776000,
+    "balance": {
+      "balance": 571072248,
+      "timestamp": "1790004201.731811043",
+      "tokens": [
+        {
+          "token_id": "0.0.15058",
+          "balance": 0
+        },
+        {
+          "token_id": "0.0.1183558",
+          "balance": 46466682
+        }
+      ]
+    },
+    "created_timestamp": "1790003528.044816105",
+    "decline_reward": false,
+    "deleted": false,
+    "ethereum_nonce": 9,
+    "evm_address": "0x0a6f9a4407c2e13f55df69a0281e0fa9c9b040de",
+    "expiry_timestamp": "1797779528.044816105",
+    "max_automatic_token_associations": 0,
+    "memo": "",
+    "pending_reward": 0,
+    "receiver_sig_required": false,
+    "staked_account_id": null,
+    "staked_node_id": null,
+    "stake_period_start": null
+  }
+}

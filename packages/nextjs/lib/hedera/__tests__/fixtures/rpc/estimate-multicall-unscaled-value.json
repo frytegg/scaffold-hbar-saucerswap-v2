@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "eth_estimateGas"
+  },
+  "status": 200,
+  "body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "code": 3,
+      "message": "[Request ID: 2c7b86bb-3596-4005-8e76-28ebe327370a] execution reverted: CONTRACT_REVERT_EXECUTED, INSUFFICIENT_TOKEN_BALANCE",
+      "data": "0x"
+    }
+  }
+}

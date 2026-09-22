@@ -1,0 +1,12 @@
+{
+  "status": 404,
+  "body": {
+    "_status": {
+      "messages": [
+        {
+          "message": "Not found"
+        }
+      ]
+    }
+  }
+}

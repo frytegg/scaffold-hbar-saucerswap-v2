@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "body": {
+    "allowances": [
+      {
+        "amount": 40000000,
+        "amount_granted": 100000000,
+        "owner": "0.0.10645914",
+        "spender": "0.0.1308184",
+        "timestamp": {
+          "from": "1790006246.347715105",
+          "to": null
+        },
+        "token_id": "0.0.1183558"
+      }
+    ],
+    "links": {
+      "next": null
+    }
+  }
+}

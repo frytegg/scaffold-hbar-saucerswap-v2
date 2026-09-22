@@ -1,0 +1,9 @@
+{
+  "status": 200,
+  "body": {
+    "tokens": [],
+    "links": {
+      "next": null
+    }
+  }
+}

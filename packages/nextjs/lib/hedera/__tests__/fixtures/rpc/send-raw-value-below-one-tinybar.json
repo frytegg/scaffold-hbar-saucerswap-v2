@@ -1,0 +1,14 @@
+{
+  "request": {
+    "method": "eth_sendRawTransaction"
+  },
+  "status": 400,
+  "body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "error": {
+      "code": -32602,
+      "message": "[Request ID: 9d422719-826a-4bdb-8393-82e79ad5cfa0] Value can't be non-zero and less than 10_000_000_000 wei which is 1 tinybar"
+    }
+  }
+}
