@@ -41,6 +41,8 @@
     "hardhat:lint:tools": "yarn workspace @sh/hardhat lint:tools",
     "hardhat:test": "yarn workspace @sh/hardhat test",
     "hardhat:test:mock": "yarn workspace @sh/hardhat test:mock",
+    "hardhat:verify": "yarn workspace @sh/hardhat verify",
+    "hardhat:verify:testnet": "yarn hardhat:verify --network hederaTestnet",
     "lint": "yarn next:lint:all && yarn hardhat:lint",
     "lint:strict": "yarn next:lint:all --max-warnings=0 && yarn hardhat:lint --max-warnings=0",
     "next:build": "yarn workspace @sh/nextjs build",
