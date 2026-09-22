@@ -141,7 +141,7 @@ jobs:
           --template-dir "$GITHUB_WORKSPACE"
           --work-dir "$RUNNER_TEMP/gate-npm"
           --solidity-framework hardhat
-          --package-manager npm --root-scripts typecheck
+          --package-manager "npm" --root-scripts typecheck
 
       - name: Upload the step logs
         if: ${{ always() }}
