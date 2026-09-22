@@ -21,7 +21,8 @@ import { HardhatPluginError } from "hardhat/plugins";
 import generateTsAbis from "./scripts/generateTsAbis";
 import { NO_DEPLOYER_KEY, RUNTIME_KEY_ENV } from "./utils/deployerAccount";
 
-// Hedera JSON-RPC URL (testnet default). Set HEDERA_RPC_URL in .env for mainnet.
+// Endpoint the in-process `hardhat` network forks (the `chain` and `test` scripts, and a deploy without --network).
+// The live networks below keep their own URLs.
 const hederaRpcUrl = process.env.HEDERA_RPC_URL || "https://testnet.hashio.io/api";
 
 // Live networks sign only with a key supplied at run time: the `deploy` script decrypts
