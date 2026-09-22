@@ -46,7 +46,7 @@ Foundry (`forge`) is not needed: every command here passes `-s hardhat`. No key,
 yarn dev                        # development server on http://localhost:3000
 ```
 
-The home page shows the connected wallet, a burner wallet unless you connect another, and `/debug` reads and writes the sample contracts deployed on Hedera testnet. With no env file both pages load, and on page load the browser talks to the app only: JSON-RPC goes through `/api/hedera/rpc` and account lookups through `/api/hedera/account`, two route handlers that answer HTTP 200 with a typed error body when the public Hedera endpoints behind them fail. A browser logs every HTTP response of 400 or more as a console error, which is why nothing third-party is called from the page.
+The home page shows the connected wallet, a burner wallet unless you connect another, and `/debug` reads and writes the contracts listed in `packages/nextjs/contracts/deployedContracts.ts`. The Hedera testnet entries it ships with are the upstream scaffold's own deployments of the sample contracts, so an owner-only function such as `mint` reverts for you; every deploy rewrites the file from `packages/hardhat/deployments/`, and after `yarn hardhat:deploy:testnet` it lists your own. With no env file both pages load, and on page load the browser talks to the app only: JSON-RPC goes through `/api/hedera/rpc` and account lookups through `/api/hedera/account`, two route handlers that answer HTTP 200 with a typed error body when the public Hedera endpoints behind them fail. A browser logs every HTTP response of 400 or more as a console error, which is why nothing third-party is called from the page.
 
 Against a local fork of Hedera testnet:
 
