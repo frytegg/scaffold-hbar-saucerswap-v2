@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import type { Address as AddressType, Chain } from "viem";
 import { getAddress } from "viem";
 import { CheckCircleIcon, DocumentDuplicateIcon } from "@heroicons/react/24/outline";
 import { BlockieAvatar } from "~~/components/scaffold-hbar";
-import { useHederaAccountId } from "~~/hooks/scaffold-hbar";
+import { useCopyToClipboard, useHederaAccountId } from "~~/hooks/scaffold-hbar";
 import { getBlockExplorerAddressLink } from "~~/utils/scaffold-hbar";
 
 type HederaAddressProps = {
@@ -16,7 +15,7 @@ type HederaAddressProps = {
 };
 
 export const HederaAddress = ({ address, chain, format, disableAddressLink }: HederaAddressProps) => {
-  const [copied, setCopied] = useState(false);
+  const { copyToClipboard, isCopiedToClipboard } = useCopyToClipboard();
   const { accountId, isLoading, error } = useHederaAccountId(address, chain.id);
 
   if (!address) {
@@ -33,12 +32,6 @@ export const HederaAddress = ({ address, chain, format, disableAddressLink }: He
   const displayAddress = format === "long" ? checkSumAddress : shortAddress;
   const explorerLink = getBlockExplorerAddressLink(chain, checkSumAddress);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(checkSumAddress);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 800);
-  };
-
   const addressContent = <span className="text-sm font-normal">{displayAddress}</span>;
 
   return (
@@ -52,8 +45,12 @@ export const HederaAddress = ({ address, chain, format, disableAddressLink }: He
             {addressContent}
           </a>
         )}
-        <button type="button" className="btn btn-ghost btn-xs p-0 min-h-0 h-auto" onClick={handleCopy}>
-          {copied ? (
+        <button
+          type="button"
+          className="btn btn-ghost btn-xs p-0 min-h-0 h-auto"
+          onClick={() => copyToClipboard(checkSumAddress)}
+        >
+          {isCopiedToClipboard ? (
             <CheckCircleIcon className="w-4 h-4 text-success" />
           ) : (
             <DocumentDuplicateIcon className="w-4 h-4 opacity-70 hover:opacity-100" />

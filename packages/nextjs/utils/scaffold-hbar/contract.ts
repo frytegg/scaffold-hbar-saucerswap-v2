@@ -130,6 +130,7 @@ export enum ContractCodeStatus {
   "LOADING",
   "DEPLOYED",
   "NOT_FOUND",
+  "UNREACHABLE",
 }
 
 type AbiStateMutability = "pure" | "view" | "nonpayable" | "payable";

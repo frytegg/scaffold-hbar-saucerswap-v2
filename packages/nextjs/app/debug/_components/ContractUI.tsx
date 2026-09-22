@@ -16,12 +16,27 @@ type ContractUIProps = {
  **/
 export const ContractUI = ({ contractName }: ContractUIProps) => {
   const { targetNetwork } = useTargetNetwork();
-  const { data: deployedContractData, isLoading: deployedContractLoading } = useDeployedContractInfo({ contractName });
+  const {
+    data: deployedContractData,
+    isLoading: deployedContractLoading,
+    error: deployedContractError,
+  } = useDeployedContractInfo({ contractName });
 
   if (deployedContractLoading) {
     return (
       <div className="mt-14">
         <span className="loading loading-spinner loading-lg"></span>
+      </div>
+    );
+  }
+
+  if (deployedContractError) {
+    return (
+      <div role="alert" className="alert alert-warning mt-14 max-w-2xl">
+        <span>
+          Could not reach {targetNetwork.name} to load {String(contractName)}: {deployedContractError} Reload the page
+          to try again.
+        </span>
       </div>
     );
   }
