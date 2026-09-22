@@ -48,6 +48,8 @@ type SwapRequest = {
 };
 
 const BASIS_POINTS = 10_000;
+// Half the quote. A larger slippage leaves a minimum too small to protect the swap from the price it accepts.
+const MAX_SLIPPAGE_BPS = 5_000;
 // HTS amounts are int64: the router casts every amount it moves and reverts above this.
 const MAX_HTS_AMOUNT = 2n ** 63n - 1n;
 
@@ -62,10 +64,10 @@ function assertHtsAmount(amount: bigint, what: string): void {
 
 /** The least output to accept, `slippageBps` basis points under the quote. Never 0: a zero minimum accepts any price. */
 export function minimumOut(quotedAmountOut: bigint, slippageBps: number): bigint {
-  if (!Number.isInteger(slippageBps) || slippageBps < 0 || slippageBps >= BASIS_POINTS) {
+  if (!Number.isInteger(slippageBps) || slippageBps < 0 || slippageBps > MAX_SLIPPAGE_BPS) {
     throw new SwapBuildError(
       "invalid-slippage",
-      `A slippage of ${slippageBps} basis points is not an integer from 0 to 9999.`,
+      `A slippage of ${slippageBps} basis points is not an integer from 0 to ${MAX_SLIPPAGE_BPS} (half the quote).`,
     );
   }
   const minimum = (quotedAmountOut * BigInt(BASIS_POINTS - slippageBps)) / BigInt(BASIS_POINTS);

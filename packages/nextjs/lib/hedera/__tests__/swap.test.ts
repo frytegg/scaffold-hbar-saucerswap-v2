@@ -76,8 +76,15 @@ describe("slippage is a parameter, and a zero minimum is refused", () => {
     expect(buildErrorOf(() => minimumOut(quote, bps))).toBe("zero-minimum-out");
   });
 
-  it.each([-1, 10_000, 0.5, Number.NaN])("refuses a slippage of %s basis points", bps => {
+  it.each([-1, 5_001, 9_999, 10_000, 0.5, Number.NaN])("refuses a slippage of %s basis points", bps => {
     expect(buildErrorOf(() => minimumOut(46_434_742n, bps))).toBe("invalid-slippage");
+  });
+
+  it("accepts at most half the quote, and says so when it refuses more", () => {
+    expect(minimumOut(46_434_742n, 5_000)).toBe(23_217_371n);
+    expect(() => minimumOut(46_434_742n, 9_999)).toThrow(
+      "A slippage of 9999 basis points is not an integer from 0 to 5000 (half the quote).",
+    );
   });
 
   it("no builder produces a swap with amountOutMinimum 0", () => {
