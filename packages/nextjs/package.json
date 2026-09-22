@@ -8,6 +8,7 @@
     "dev": "next dev",
     "format": "prettier --write . \"!(node_modules|.next|contracts)/**/*\"",
     "lint": "next lint",
+    "lint:all": "next lint --dir app --dir components --dir hooks --dir lib --dir services --dir utils",
     "serve": "next start",
     "start": "next dev",
     "test": "vitest run"

@@ -54,3 +54,7 @@ In `rpc/`, each file holds the method, the HTTP status and the body that https:/
 | `rpc/call-direct-unscaled-value-178.json`        | eth_call of the direct exactInput with that value: RespCode(178) (w3-probes 20-c15-viem-2.39.0.log line 112)              |
 | `rpc/call-quote-no-pool.json`                    | eth_call, a quote through a fee tier with no pool: empty data (same log, line 87)                                         |
 | `rpc/get-logs-span-over-7-days.json`             | eth_getLogs over 9.37 days: HTTP 400, -32004 (same log, line 16)                                                          |
+
+## Lint fixture
+
+`lint/plantedValueViolations.ts` is written for this repository: planted violations of the transaction-value lint guard, which `lintGuard.test.ts` lints as a file of the app's hooks directory.
