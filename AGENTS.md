@@ -1,120 +1,164 @@
-# Agent instructions
+# Agent guide
 
-Briefing for coding agents in this app (Cursor, Claude Code, Codex). Claude Code loads it through `CLAUDE.md`.
+Hardhat-only Scaffold-HBAR base: a Next.js app in `packages/nextjs`, a Hardhat package in `packages/hardhat`, and the tooling that checks both in `tools/`. Claude Code loads this file through `CLAUDE.md`.
+Run every command from the repository root. The commands below are spelled for the package manager this project was scaffolded with; the CLI rewrites them when it scaffolds for npm.
 
-This is a Scaffold-HBAR dApp: Next.js App Router, wallet connect, Debug Contracts, and Hedera networks (testnet, mainnet, local fork).
-
-Use the package manager this project was created with (`packageManager` in the root `package.json`, or the lockfile). Examples use `yarn`; if the app was created with npm, swap `yarn <script>` for `npm run <script>`.
-
-## Packages
-
-- `packages/hardhat` is the Solidity package (Hardhat, `hardhat-deploy`)
-- `packages/nextjs` is the frontend (App Router, RainbowKit, Wagmi, Viem, DaisyUI)
+Stack: Node.js 20.18.3 or later, TypeScript in strict mode, Next.js 15 (App Router), RainbowKit 2.2.9, wagmi 2.19.5, viem 2.39.0, DaisyUI 5, Hardhat 2.22.19 with hardhat-deploy, Solidity 0.8.28.
 
 ## Commands
 
-Package-prefixed scripts for package-specific work. Keep only truly cross-workspace commands unprefixed.
-
 ```bash
-# Local chain + deploy + frontend (separate terminals)
-yarn hardhat:chain    # Hedera-forked Hardhat node on 8545
-yarn hardhat:deploy --network localhost
-yarn next:start       # http://localhost:3000
-
-# Frontend only
-yarn next:dev
-
-# Quality / build
-yarn lint
-yarn format
-yarn next:build
-yarn hardhat:compile
-
-# Live networks
-yarn hardhat:deploy --network hederaTestnet   # or hederaMainnet
-
-# Deployer account
-yarn hardhat:account:generate
-yarn hardhat:account:import
-yarn hardhat:account
+yarn dev                        # development server, http://localhost:3000
+yarn build                      # production build of packages/nextjs
+yarn serve                      # production server for that build, http://localhost:3000
+yarn lint:strict                # ESLint and Prettier on both packages, no warning allowed
+yarn typecheck                  # TypeScript on both packages, after compiling the contracts
+yarn test                       # Hardhat tests on a fork of Hedera testnet: needs the network
+yarn format                     # Prettier on both packages and on tools/
+yarn check:tools                # formatting, types and unit tests of the tooling, no network
+yarn check:docs                 # docs, manifest, npm-mode rewrite and hygiene checks (tools/checks)
+yarn check:all                  # lint:strict, typecheck, check:tools, probe:routes:check, check:docs
+yarn probe:routes               # every page route in Chromium, three network modes; after build, port 3000
+yarn gate:local                 # scaffold HEAD through the published CLI and check the result; slow, over 1 GB
+yarn hardhat:chain              # fork of Hedera testnet, JSON-RPC on http://127.0.0.1:8545
+yarn hardhat:deploy:localhost   # deploy the sample contracts to that fork
+yarn hardhat:account:generate   # new deployer key, stored encrypted in packages/hardhat/.env
+yarn hardhat:deploy:testnet     # deploy to Hedera testnet; asks for the key's password
 ```
 
-`yarn hardhat:deploy` without `--network localhost` targets the in-process `hardhat` network, not the long-running fork.
+A script that needs a flag gets a flag-free alias, as `lint:strict` and `hardhat:deploy:testnet` do: in a project scaffolded for npm, the CLI turns each documented command into `npm run <script>`, and a flag that follows it goes to npm, not to the script.
+
+## Verify your change
+
+Run these before you stop, and fix what fails:
+
+1. `yarn format`
+2. `yarn check:all`
+3. Changed anything under `packages/nextjs`: `yarn build`, then `yarn probe:routes`.
+4. Changed anything under `packages/hardhat`: `yarn test`. It fails when hashio, the public relay the fork reads, is down; run it again before you debug.
+5. Changed `template.json`, a `package.json`, the lockfile or a workflow: `yarn gate:local`. It scaffolds the committed HEAD, so commit first.
+6. `git status` lists only the files you meant to change, and no command above modified a tracked file.
+
+## Critical invariants
+
+- On page load the browser calls the app's own origin only. Hedera JSON-RPC goes through `packages/nextjs/app/api/hedera/rpc/route.ts` and mirror-node reads through `packages/nextjs/app/api/hedera/account/route.ts`; both answer HTTP 200 with a typed error body when the upstream fails, because a browser logs every response of 400 or more as a console error. `yarn probe:routes` fails a route on any console error and on any request to a third-party host.
+- No fallback key, anywhere. Live networks in `packages/hardhat/hardhat.config.ts` sign only with `__RUNTIME_DEPLOYER_PRIVATE_KEY`, which the deploy script sets for its own run from the encrypted key; without it they get no account and the deploy task refuses to run. Hardhat's well-known account #0 is a funded account on Hedera testnet.
+- The WalletConnect project id comes from the environment only. Without it, `packages/nextjs/services/web3/wagmiConnectors.tsx` offers browser-injected and burner wallets and creates no WalletConnect connector.
+- `packages/nextjs/contracts/deployedContracts.ts` is generated by the deploy task: never edit it by hand. Third-party contracts go in `packages/nextjs/contracts/externalContracts.ts`.
+- `HEDERA_FORKING` is set by the `chain` and `test` scripts of `packages/hardhat` only. It loads the forking plugin, which a deploy to an already running node must not load: its worker port would be taken (`EADDRINUSE`).
+- Keep the `@x402/*` guard in `packages/nextjs/next.config.ts`: without it the production build fails as soon as `@coinbase/cdp-sdk` resolves to a release that lazy-imports the optional `@x402/*` packages (1.53 and later), which a fresh npm-mode install does.
+- Workspace scripts (`packages/*/package.json`) call binaries directly (`hardhat compile`, `tsc`), set variables with `cross-env`, never with an inline `VAR=value`, and quote globs with double quotes: on Windows, scripts run through `cmd.exe` under npm.
+- A root script that chains another one calls a root alias with the `next:` or `hardhat:` prefix: the CLI prunes and converts chained scripts by that prefix.
+- Text that the CLI rewrites for npm (Markdown, JSON, TypeScript and JavaScript sources, YAML, `.env.example` files and a few more; not TSX, Solidity or shell scripts) never names the default package manager in prose, never has `npm` directly followed by a word other than `run`, `install`, `exec` or `ci`, and never ends a line with `npm`. `yarn check:docs` replays the CLI's rewrite and reports each such line.
+- Every path, script, symbol and variable named in a README or in this file exists; `yarn check:docs` checks them. A deliberate exception is declared in a `checks:allow` comment, as at the end of this file.
+- LF line endings, enforced by `.gitattributes`; no symbolic links, which the CLI drops on Windows.
 
 ## Layout
 
-### Hardhat
-
-- Contracts: `packages/hardhat/contracts/`
-- Deploy scripts: `packages/hardhat/deploy/`
-- Tests: `packages/hardhat/test/`
-- Config: `packages/hardhat/hardhat.config.ts`
-- Tagged deploy: if `deployHederaToken.tags = ["HederaToken"]`, run `yarn hardhat:deploy --tags HederaToken`
-
-### After deploy
-
-ABIs and addresses are written to `packages/nextjs/contracts/deployedContracts.ts`. Put third-party contracts in `packages/nextjs/contracts/externalContracts.ts`.
-
-Sample contracts on this starter: `HederaToken` (ERC-20) and `HtsTokenCreator` (HTS precompile at `0x167`).
-
-## Frontend contract interaction
-
-Hooks live in `packages/nextjs/hooks/scaffold-hbar`. Use the names that exist in the codebase:
-
-- `useScaffoldReadContract` — not `useScaffoldContractRead`
-- `useScaffoldWriteContract` — not `useScaffoldContractWrite`
-
-Also: `useScaffoldWatchContractEvent`, `useScaffoldEventHistory`, `useDeployedContractInfo`, `useScaffoldContract`, `useTransactor`.
-
-```typescript
-const { data: balance } = useScaffoldReadContract({
-  contractName: "HederaToken",
-  functionName: "balanceOf",
-  args: [connectedAddress],
-});
-
-const { writeContractAsync, isPending } = useScaffoldWriteContract({
-  contractName: "HederaToken",
-});
-
-await writeContractAsync({
-  functionName: "mint",
-  args: [connectedAddress, parseEther("1")],
-});
-```
-
-`HederaToken.mint` is `onlyOwner`. For HTS creation, `HtsTokenCreator.createToken` is payable (HTS fee via `msg.value`) and emits `TokenCreated`.
-
-### UI
-
-Use `@scaffold-hbar-ui/components` for web3 UI: `Address`, `AddressInput`, `Balance`, `EtherInput`, `IntegerInput`.
-
-Use DaisyUI classes, not raw Tailwind when a DaisyUI component exists:
-
-```tsx
-<button className="btn btn-primary">Connect</button>
-```
-
-### Networks
-
-- Hardhat: `packages/hardhat/hardhat.config.ts` (`hederaTestnet` 296, `hederaMainnet` 295)
-- Next.js: `packages/nextjs/scaffold.config.ts` (target networks, polling, RPC overrides, WalletConnect)
-
-## Style
-
-| Style | Use |
+| Path | What |
 | --- | --- |
-| `UpperCamelCase` | types, components |
-| `lowerCamelCase` | variables, functions |
-| `CONSTANT_CASE` | constants |
-| `snake_case` | Hardhat deploy files |
+| `packages/nextjs/app/page.tsx` | home route |
+| `packages/nextjs/app/debug/page.tsx` | Debug Contracts route: reads and writes every deployed contract |
+| `packages/nextjs/app/api/hedera/rpc/route.ts` | same-origin JSON-RPC relay, `POST /api/hedera/rpc?network=testnet` or `mainnet` |
+| `packages/nextjs/app/api/hedera/account/route.ts` | account id of an EVM address, from the mirror node |
+| `packages/nextjs/services/hedera/` | relay logic, upstream URLs, structured server log |
+| `packages/nextjs/scaffold.config.ts` | target networks, RPC overrides pointing at the relay, WalletConnect project id |
+| `packages/nextjs/hooks/scaffold-hbar/` | contract hooks |
+| `packages/hardhat/contracts/` | `HederaToken.sol` (ERC-20) and `HtsTokenCreator.sol` (HTS through `0x167`) |
+| `packages/hardhat/deploy/` | hardhat-deploy scripts, run in file-name order |
+| `packages/hardhat/test/` | Mocha and Chai tests |
+| `packages/hardhat/scripts/runHardhatDeployWithPK.ts` | the deploy wrapper: key handling, then `hardhat deploy` |
+| `tools/checks/` | repository checks and their tests |
+| `tools/route-probe/` | browser probe; standalone package outside the workspaces, installed from its own lockfile |
+| `tools/gate/` | scaffold gate scripts |
+| `.github/workflows/` | `gate.yml` (template repository), `gate-skeleton.yml` and `hosts-control.yml` (public skeleton only), `lint.yaml` |
+| `template.json` | the CLI's manifest: capabilities, env variables, closing message. Template repository only: the CLI deletes it from every scaffold |
 
-Next.js imports use the `~~` alias:
+## Frontend patterns
+
+Read and write a deployed contract through the hooks of `~~/hooks/scaffold-hbar`: `useScaffoldReadContract` and `useScaffoldWriteContract` (not `useScaffoldContractRead` or `useScaffoldContractWrite`). Also there: `useScaffoldWatchContractEvent`, `useScaffoldEventHistory`, `useDeployedContractInfo`, `useTransactor`.
 
 ```tsx
-import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
+"use client";
+
+import { useState } from "react";
+import { parseUnits } from "viem";
+import { useAccount } from "wagmi";
+import { useScaffoldReadContract, useScaffoldWriteContract } from "~~/hooks/scaffold-hbar";
+
+export const MintOne = () => {
+  const { address } = useAccount();
+  const [failure, setFailure] = useState<string>();
+  const { data: balance } = useScaffoldReadContract({
+    contractName: "HederaToken",
+    functionName: "balanceOf",
+    args: [address],
+  });
+  const { writeContractAsync, isPending } = useScaffoldWriteContract({ contractName: "HederaToken" });
+
+  const mint = async () => {
+    if (!address) return;
+    setFailure(undefined);
+    try {
+      // HederaToken keeps the ERC-20 default of 18 decimals; mint is onlyOwner.
+      await writeContractAsync({ functionName: "mint", args: [address, parseUnits("1", 18)] });
+    } catch (error: unknown) {
+      // The transactor has already shown a notification; keep the reason next to the button too.
+      setFailure(error instanceof Error ? error.message : String(error));
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p>Balance: {balance?.toString() ?? "unknown"}</p>
+      <button className="btn btn-primary" disabled={!address || isPending} onClick={mint}>
+        Mint 1 HTK
+      </button>
+      {failure && <p className="text-error">{failure}</p>}
+    </div>
+  );
+};
 ```
 
-App Router pages live under `packages/nextjs/app/`. Add `"use client"` when the page uses hooks.
+UI components come from `@scaffold-hbar-ui/components`: `Address`, `Balance`, `HederaAddressInput`, `HbarInput`, `HederaPortalFaucet`. It has no `AddressInput` or `EtherInput`, names that other Scaffold-ETH 2 guides use. Prefer DaisyUI classes (`btn`, `card`, `text-error`) to raw Tailwind when one exists. Imports inside the app use the `~~` alias. A page that uses hooks starts with `"use client"`.
 
-Prefer `type` over `interface`. No `T` prefix on types. Let TypeScript infer when it can. Comments should add information.
+## Testing
+
+- `yarn test` runs `packages/hardhat/test/*.test.ts` against an in-process fork of Hedera testnet read through hashio, where `@hashgraph/system-contracts-forking` emulates the token service at `0x167`. The forking worker binds port 10001, so two runs cannot share a machine.
+- The tooling tests use `node:test` and need no network: `tools/checks/test/`, `tools/gate/routes.test.mjs` (both in `yarn check:tools`) and `tools/route-probe/test/` (`yarn probe:routes:check`). Tests sit next to the tool they cover.
+- The frontend has no unit tests. `yarn probe:routes` is its check: each page route, three network modes, zero console errors, zero third-party requests. A new page is probed without any change; a new dynamic route needs a sample in `tools/route-probe/probe.config.json`.
+- A test name states the rule it enforces. A check proves that it can fail: the route probe runs six loads that must fail on every invocation, and the repository checks are tested against fixtures that must fail.
+
+## Boundaries
+
+Always:
+- run the steps of "Verify your change" before you stop;
+- document a flag-free alias script, never a command with a flag;
+- keep keys out of files: the deployer key lives encrypted in `packages/hardhat/.env`, or in the shell for one command.
+
+Ask first:
+- adding or upgrading a dependency: it changes the lockfile, and an install under `CI=true` fails when the committed lockfile would have to change;
+- renaming or removing a root script: the gate calls `lint:strict`, `typecheck`, `build`, `test`, `serve`, `probe:routes` and `check:docs`, and the closing message of `template.json` names others;
+- changing `template.json`, a workflow, or `.gitleaks.toml`;
+- anything that deploys, signs or spends on a live network.
+
+Never:
+- commit an env file or a key, or add a fallback key;
+- call a third-party host from the browser on page load;
+- edit `packages/nextjs/contracts/deployedContracts.ts` by hand;
+- add a symbolic link;
+- edit the agent kit that comes with Scaffold-HBAR (`.agents/`, `.claude/`) or what the skills install adds (`agent/`, `skills-lock.json`);
+- rename `main`, rewrite pushed history, or add an AI co-author or `Signed-off-by` trailer to a commit.
+
+## Git
+
+Conventional commits: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`, `ci:`, with an optional scope such as `fix(nextjs):`. Imperative, lowercase subject; the body says why; one logical change per commit. In a project scaffolded with the default package manager, a pre-commit hook lints the staged files and type-checks the frontend.
+
+## Code style
+
+TypeScript strict; `type` over `interface`; no `T` prefix on type names. Prettier with a print width of 120 in both packages and in `tools/`. Contracts: Solidity 0.8.28, OpenZeppelin 5. Errors are handled or propagated with their cause, never swallowed; server code logs through `packages/nextjs/services/hedera/serverLog.ts`, never with a bare `console.log`. Comments say what the code cannot.
+
+<!-- checks:allow
+paths: agent skills-lock.json template.json
+symbols: useScaffoldContractRead useScaffoldContractWrite AddressInput EtherInput
+-->
