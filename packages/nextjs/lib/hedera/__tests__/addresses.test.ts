@@ -10,7 +10,9 @@ import { describe, expect, it } from "vitest";
 const entries: [string, AddressBookEntry][] = [
   ["swapRouter", testnet.swapRouter],
   ["quoterV2", testnet.quoterV2],
+  ["v2Factory", testnet.v2Factory],
   ["whbar", testnet.whbar],
+  ["whbarContract", testnet.whbarContract],
   ["sauce", testnet.sauce],
   ["hbarSaucePool", testnet.hbarSaucePool],
 ];

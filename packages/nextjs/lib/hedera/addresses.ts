@@ -47,12 +47,26 @@ export const testnet = {
     source: SAUCERSWAP_DOCS,
     checkedOn: CHECKED_ON,
   },
+  /** Ask it for a pool with getPool: testnet pools were created with another init-code hash than the published one. */
+  v2Factory: {
+    id: "0.0.1197038",
+    evmAddress: "0x00000000000000000000000000000000001243eE",
+    source: SAUCERSWAP_DOCS,
+    checkedOn: CHECKED_ON,
+  },
   /** The WHBAR token that swap paths name for HBAR; the router wraps and unwraps it itself. */
   whbar: {
     id: "0.0.15058",
     evmAddress: "0x0000000000000000000000000000000000003aD2",
     symbol: "WHBAR",
     decimals: 8,
+    source: SAUCERSWAP_DOCS,
+    checkedOn: CHECKED_ON,
+  },
+  /** The contract behind that token: it holds the wrapped HBAR and pays it out when the router unwraps. */
+  whbarContract: {
+    id: "0.0.15057",
+    evmAddress: "0x0000000000000000000000000000000000003aD1",
     source: SAUCERSWAP_DOCS,
     checkedOn: CHECKED_ON,
   },
@@ -70,7 +84,9 @@ export const testnet = {
   chainId: number;
   swapRouter: AddressBookEntry;
   quoterV2: AddressBookEntry;
+  v2Factory: AddressBookEntry;
   whbar: TokenEntry;
+  whbarContract: AddressBookEntry;
   sauce: TokenEntry;
   hbarSaucePool: HbarPoolEntry;
 };

@@ -1,4 +1,4 @@
-export { htsTokenAbi, quoterV2Abi, swapRevertAbi, swapRouterAbi } from "./abi";
+export { htsTokenAbi, quoterV2Abi, swapRevertAbi, swapRouterAbi, v2FactoryAbi } from "./abi";
 export { entityIdOfLongZero, isLongZeroAddress, isSentBy } from "./addressForms";
 export type { AddressBookEntry, EntityId, HbarPoolEntry, TokenEntry } from "./addresses";
 export { testnet } from "./addresses";

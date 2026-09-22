@@ -19,6 +19,10 @@ export const swapRouterAbi = parseAbi([
   "function multicall(bytes[] data) payable returns (bytes[] results)",
   "function refundETH() payable",
   "function unwrapWHBAR(uint256 amountMinimum, address recipient) payable",
+  "function factory() view returns (address)",
+  // Two getters: whbar() is the token that paths name, WHBAR() the contract that wraps and unwraps it.
+  "function whbar() view returns (address)",
+  "function WHBAR() view returns (address)",
   ...swapErrorSignatures,
 ]);
 
@@ -26,8 +30,14 @@ export const quoterV2Abi = parseAbi([
   "function quoteExactInput(bytes path, uint256 amountIn) returns (uint256 amountOut, uint160[] sqrtPriceX96AfterList, uint32[] initializedTicksCrossedList, uint256 gasEstimate)",
 ]);
 
+export const v2FactoryAbi = parseAbi([
+  "function getPool(address tokenA, address tokenB, uint24 fee) view returns (address pool)",
+]);
+
 /** The ERC-20 functions an HTS token answers at its own address. */
 export const htsTokenAbi = parseAbi([
   "function allowance(address owner, address spender) view returns (uint256)",
   "function approve(address spender, uint256 amount) returns (bool)",
+  "function symbol() view returns (string)",
+  "function decimals() view returns (uint8)",
 ]);
