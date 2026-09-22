@@ -71,6 +71,7 @@ Without a stored key the deploy stops with exit code 1 and names both ways to pr
 ```bash
 yarn lint:strict                # ESLint and Prettier on both packages, no warning allowed
 yarn typecheck                  # both packages; compiles the contracts first
+yarn test:unit                  # unit tests of the frontend's Hedera library, no network and no key
 yarn build                      # production build of the frontend
 yarn test                       # Hardhat tests on a fork of Hedera testnet (network needed)
 yarn check:all                  # lint:strict, typecheck, the tools' tests, the docs checks (registry needed)
@@ -98,6 +99,7 @@ After `yarn build`, `yarn probe:routes` loads every page route in Chromium three
 | `yarn format` | Prettier on both packages and on `tools/` |
 | `yarn typecheck` | TypeScript on both packages, after compiling the contracts |
 | `yarn test` | Hardhat tests |
+| `yarn test:unit` | Vitest tests of `packages/nextjs/lib/hedera` and of the mirror relay, on captured testnet answers |
 | `yarn check:tools` | formatting of `tools/`, types and unit tests of `tools/checks` and `tools/gate` |
 | `yarn check:docs` | the repository checks of `tools/checks`: docs, manifest, npm-mode rewrite, hygiene |
 | `yarn check:all` | `lint:strict`, `typecheck`, `check:tools`, `probe:routes:check`, `check:docs` |
@@ -122,8 +124,8 @@ Nothing needs to be set: the app, the build and the tests run with no env file. 
 | `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | `packages/nextjs/.env.local` | no | empty: WalletConnect is off, browser-injected and burner wallets are offered | `packages/nextjs/scaffold.config.ts` |
 | `HEDERA_RPC_TESTNET_URL` | `packages/nextjs/.env.local` | no | `https://testnet.hashio.io/api` | the `/api/hedera/rpc` relay, on the server |
 | `HEDERA_RPC_MAINNET_URL` | `packages/nextjs/.env.local` | no | `https://mainnet.hashio.io/api` | the same relay, for mainnet |
-| `HEDERA_MIRROR_TESTNET_URL` | `packages/nextjs/.env.local` | no | `https://testnet.mirrornode.hedera.com` | the `/api/hedera/account` route, on the server |
-| `HEDERA_MIRROR_MAINNET_URL` | `packages/nextjs/.env.local` | no | `https://mainnet.mirrornode.hedera.com` | the same route, for mainnet |
+| `HEDERA_MIRROR_TESTNET_URL` | `packages/nextjs/.env.local` | no | `https://testnet.mirrornode.hedera.com` | the `/api/hedera/account` and `/api/hedera/mirror` routes, on the server |
+| `HEDERA_MIRROR_MAINNET_URL` | `packages/nextjs/.env.local` | no | `https://mainnet.mirrornode.hedera.com` | the same routes, for mainnet |
 | `HEDERA_RPC_URL` | `packages/hardhat/.env` | no | `https://testnet.hashio.io/api` | the in-process Hardhat network, which forks it (`hardhat:chain`, `test`) |
 | `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | `packages/hardhat/.env` | for a live deploy | none; written by `hardhat:account:generate` or `hardhat:account:import` | the deploy script, which asks for its password |
 | `__RUNTIME_DEPLOYER_PRIVATE_KEY` | never a file: the shell, for one command | no | none | `packages/hardhat/hardhat.config.ts`, the only key live networks sign with; the deploy script sets it from the encrypted key |
@@ -134,14 +136,15 @@ Nothing needs to be set: the app, the build and the tests run with no env file. 
 flowchart LR
   Browser -->|"POST /api/hedera/rpc?network=testnet"| Handlers["route handlers, packages/nextjs/app/api/hedera"]
   Browser -->|"GET /api/hedera/account"| Handlers
+  Browser -->|"GET /api/hedera/mirror"| Handlers
   Handlers -->|JSON-RPC| Relay["Hedera JSON-RPC relay (hashio by default)"]
   Handlers -->|REST| Mirror["Hedera Mirror Node"]
 ```
 
-- `packages/nextjs`: Next.js 15 with the app directory, RainbowKit 2.2.9, wagmi 2.19.5, viem 2.39.0 and the `@scaffold-hbar-ui` kit. Routes `/`, `/debug`, and the two route handlers above.
+- `packages/nextjs`: Next.js 15 with the app directory, RainbowKit 2.2.9, wagmi 2.19.5, viem 2.39.0 and the `@scaffold-hbar-ui` kit. Routes `/`, `/debug`, and the three route handlers above. `packages/nextjs/lib/hedera` holds the Hedera-specific code the app and scripts share: units, addresses, ABIs, error decoding, the mirror client and the checks run before a transaction is signed.
 - `packages/hardhat`: Hardhat 2.22.19 with hardhat-deploy. Sample contracts `HederaToken`, an ERC-20, and `HtsTokenCreator`, which creates and mints an HTS token through the system contract at `0x167`. The tests run on a fork of Hedera testnet where `@hashgraph/system-contracts-forking` emulates the token service.
 - `tools/checks`: the repository checks behind `check:docs`; `tools/route-probe`: the browser probe, a standalone package outside the workspaces, installed from its own lockfile by npm, so that no install of the app downloads a browser; `tools/gate`: the scaffold gate. Each has a README.
-- `.github/workflows`: `gate.yml` in the template repository; `gate-skeleton.yml` and `hosts-control.yml`, which a guard limits to the public skeleton repository of this base; `lint.yaml` on pushes and pull requests to `main`: `lint:strict`, `typecheck`, `check:tools`, `probe:routes:check` and ShellCheck on `tools/gate`.
+- `.github/workflows`: `gate.yml` in the template repository; `gate-skeleton.yml` and `hosts-control.yml`, which a guard limits to the public skeleton repository of this base; `lint.yaml` on pushes and pull requests to `main`: `lint:strict`, `typecheck`, `test:unit`, `check:tools`, `probe:routes:check` and ShellCheck on `tools/gate`.
 
 ## What this base does not do
 
@@ -151,7 +154,7 @@ flowchart LR
 - Only page load is checked for third-party calls. After user action, the UI kit's address input on `/debug` asks the public mirror node directly, and its write form logs a console error when a transaction fails.
 - The `/api/hedera/rpc` relay forwards any `eth_`, `net_` or `web3_` call and adds no rate limit of its own: every visitor's calls leave from the server's address.
 - No browser-wallet signature is part of any check here, and WalletConnect is off until a project id is set.
-- The frontend has no unit tests; the route probe is its only automated check.
+- The unit tests cover `packages/nextjs/lib/hedera` and the mirror relay only; pages and components are checked by the route probe alone.
 - This code is experimental and has not been audited.
 
 ## Licence and provenance
