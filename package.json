@@ -64,6 +64,7 @@
     "probe:routes": "npm ci --omit=dev --prefix tools/route-probe && npm run browsers --prefix tools/route-probe && node tools/route-probe/src/cli.mjs --serve",
     "probe:routes:check": "npm ci --prefix tools/route-probe && npm run test --prefix tools/route-probe && npm run check-types --prefix tools/route-probe",
     "serve": "yarn next:serve",
+    "shots": "npm ci --omit=dev --prefix tools/route-probe && npm run browsers --prefix tools/route-probe && node tools/route-probe/src/shots.mjs --serve",
     "test": "yarn hardhat:test",
     "test:mock": "yarn hardhat:test:mock",
     "test:unit": "yarn next:test",

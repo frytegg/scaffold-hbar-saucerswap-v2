@@ -82,6 +82,31 @@ with almost no text), and one per blocking mode, where a planted third-party req
 console error that names the planted host. If any of them passes, the run fails with "The probe is blind
 to …", whatever the routes did. The planted host ends in `.invalid`, so nothing leaves the machine.
 
+## The pictures in the docs
+
+`src/shots.mjs` is the second thing this package does with the same browser and the same server: it drives the
+built app to the states a reader reaches with no wallet, and writes one PNG per declared shot to `docs/images/`.
+The root script is `yarn shots`, and it serves the app on port 3210 so that a probe or a development server on
+3000 can keep running.
+
+```bash
+yarn build
+yarn shots
+```
+
+Each shot names the one `<section>` its picture is cropped to, the button to press, and every sentence that
+section must hold once it has settled. That list is the guard: a verdict that changes, a panel that disappears
+or an image over 150 KB fails the run, so a caption in the docs cannot quietly stop being true. A console error
+or a request to a third-party host fails it too, which is what lets a caption say the page was driven against
+live testnet reads. Exit codes match the probe's: 0 every shot was taken, 1 a shot failed, 2 the tool could not
+run. `--help` lists the options; `missingExpectations`, `oversizeFailure` and `panelCountFailure` are tested in
+`test/shots.test.mjs`, each with the case that must fail.
+
+The pictures are byte-identical between runs on one machine: a fresh context, a fixed viewport and device scale,
+light colour scheme, reduced motion, and the web fonts awaited before the shutter. Fonts render differently on
+another operating system, so the bytes are not promised across machines — what is promised is that the state in
+the picture was re-reached and re-checked.
+
 ## What it cannot see
 
 - Interception happens in the browser. What a route handler does on the server when its upstream is down
