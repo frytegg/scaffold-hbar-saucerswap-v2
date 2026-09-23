@@ -98,7 +98,7 @@ Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.m
 | `/swap` | a SaucerSwap V2 swap both ways: the account read from the mirror node, a quote on user action, one line per check the network would otherwise answer only after taking the gas, a cost preview, the send, and the outcome read back from the mirror node's DETAIL view. With no wallet connected it offers the same quote and the same checks against a fixed testnet account instead, so the refusals can be read without installing anything |
 | `/positions` | the connected account's V2 positions, read-only: the range against the pool's live tick, what closing one would return, and both links per serial |
 | `/debug` | the stock Debug Contracts page: it reads and writes the contracts deployed for the network the wallet is on, which on Hedera testnet is this template's own consumer and nothing else |
-| `packages/nextjs/lib/hedera/` | what the pages, the scripts and the tests share: the two units, the address book, original ABIs, error decoding, the mirror client, the pre-send checks, the swap and position builders, the gas rules |
+| `packages/nextjs/lib/hedera/` | what the pages, the scripts and the tests share: the two units, the address book, original ABIs, error decoding, the mirror client, the pre-send checks, the swap and position builders, the gas rules — [`docs/use-the-checks-in-your-app.md`](docs/use-the-checks-in-your-app.md) is the one-line call and the sentence each of them answers |
 | `packages/hardhat/contracts/SaucerSwapHbarConsumer.sol` | a contract that swaps the HBAR sent with a call for an HTS token and keeps it; it associates itself in its constructor, so the deployer pays for that relation once instead of every swap paying for it |
 | `yarn test:unit` and `yarn test:mock` | the two offline tiers: captured testnet answers replayed through the pinned viem, and the contract against original mocks injected at the real addresses, which reproduce the response codes and the empty reverts a fork cannot |
 | `yarn test` and `yarn probe:routes` | the inherited samples on a fork of Hedera testnet, and every page route loaded in Chromium in three network modes with zero console errors and zero third-party requests |
@@ -131,7 +131,7 @@ Nothing in the browser talks to a third party. Those route handlers, and the acc
 | `packages/nextjs/components/swap/` | the swap panel; `swapPlan.ts` takes its reads as an argument, so every refusal it can show is tested without a network |
 | `packages/nextjs/components/positions/` | the positions list, built the same way |
 | `packages/nextjs/components/hedera/` | what both routes share: the failure note, the words for the action to take, the two links, and `withRuleGasLimit`, the one door from a page to the gas rules |
-| `packages/nextjs/lib/hedera/` | the Hedera-specific library; `index.ts` is its public surface, `__live__/` holds the keyless and signed tiers |
+| `packages/nextjs/lib/hedera/` | the Hedera-specific library; `index.ts` is its public surface, which [`docs/use-the-checks-in-your-app.md`](docs/use-the-checks-in-your-app.md) calls with no page, no wagmi hook and no component of this template, and `__live__/` holds the keyless and signed tiers |
 | `packages/hardhat/contracts/` | the consumer, its own minimal interfaces, the mocks the offline tier injects, and the inherited samples |
 | `docs/evidence/` | one JSON record per signed scenario, re-read by `yarn evidence:check` |
 | `docs/hedera-behaviour.md` | the nine sections above, in full |
