@@ -23,6 +23,10 @@ const MIRROR = "https://testnet.mirrornode.hedera.com";
 const APPROVE = mirrorBody("result-approve-success").hash as Hex;
 const SWAP = mirrorBody("result-token-to-hbar-success").hash as Hex;
 const LONG_ZERO_MAIN = "0x0000000000000000000000000000000000a2719a";
+/** The recipient of the two swaps of 21 Sept 2026 that the token service refused: 0 slots, no relation. */
+const RECIPIENT_WITHOUT_A_SLOT = "0.0.10574825";
+/** What every transaction of this project was charged per gas, while eth_gasPrice answered 114. */
+const EFFECTIVE_GAS_PRICE_TINYBAR = 109n;
 
 const mirror = createMirrorClient({
   transport: replayMirror({
@@ -34,6 +38,10 @@ const mirror = createMirrorClient({
     [mirrorPaths.transaction("1790023842.760213408")]: mirrorFixture("transaction-token-to-hbar-success"),
     [mirrorPaths.transaction("1790023599.459077954")]: mirrorFixture("transaction-hbar-to-token-success"),
     [mirrorPaths.transaction("1790092634.789133757")]: mirrorFixture("transaction-staking-reward-in-record"),
+    [mirrorPaths.transaction("1790003843.112195937")]: mirrorFixture("transaction-direct-unassociated-recipient-184"),
+    [mirrorPaths.transaction("1790003851.151762335")]: mirrorFixture(
+      "transaction-multicall-unassociated-recipient-184",
+    ),
   }),
 });
 
@@ -184,6 +192,24 @@ describe("fees and HBAR movements come from the transaction record's transfer li
 
   it("an account that is not in the list moved nothing", async () => {
     expect(netTransfer(await transfers("1790023815.578594660"), testnet.swapRouter.id)).toBe(0n);
+  });
+
+  it("the two swaps refused for a missing association paid for their gas and delivered nothing", async () => {
+    // 0xc0fb56df…976b called exactInput directly and 0x4d10ea98…a483 wrapped it in multicall, both on 21 Sept 2026,
+    // to 0.0.10574825, an account with no automatic association slot and no relation with the token.
+    const refused = [
+      { timestamp: "1790003843.112195937", result: "result-direct-unassociated-recipient-184", paid: 11_455_355n },
+      { timestamp: "1790003851.151762335", result: "result-multicall-unassociated-recipient-184", paid: 11_738_101n },
+    ] as const;
+    for (const { timestamp, result, paid } of refused) {
+      const list = await transfers(timestamp);
+      expect(netTransfer(list, MAIN.accountId)).toBe(-paid);
+      expect(paid).toBe(BigInt(mirrorBody(result).gas_used as number) * EFFECTIVE_GAS_PRICE_TINYBAR);
+      // The network was credited more than the sender paid: the relay's operator covers the rest of a revert.
+      expect(networkFee(list)).toBeGreaterThan(paid);
+      expect(netTransfer(list, testnet.swapRouter.id)).toBe(0n);
+      expect(netTransfer(list, RECIPIENT_WITHOUT_A_SLOT)).toBe(0n);
+    }
   });
 });
 

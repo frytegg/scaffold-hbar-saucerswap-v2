@@ -55,11 +55,13 @@ In `mirror/`, each file holds the HTTP status and the JSON body that https://tes
 | `mirror/nft-serial-358-held.json`                           | the same read for serial 358: a position of the same collection that a third party still holds                                                                                                                                               |
 | `mirror/nft-serial-not-found.json`                          | the same read for a serial the collection never had: 404                                                                                                                                                                                     |
 
-The one below was captured on 2026-09-23, for a transfer the research probes sent on 21 Sept 2026; nothing was signed to capture it. It keeps every field the mirror node answered but the two signature components, which the library never reads and which trip generic secret scanners.
+The three below were captured on 2026-09-23, for transactions the research probes sent on 21 Sept 2026; nothing was signed to capture them. The contract result keeps every field the mirror node answered but the two signature components, which the library never reads and which trip generic secret scanners.
 
-| file                                       | GET, and what it shows                                                                                                                                                                            |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `mirror/result-sub-tinybar-remainder.json` | /api/v1/contracts/results/0x6fc04ceb…2fbfd: a plain HBAR transfer signed with 10,000,000,001 weibar. `SUCCESS`, `amount` 1: the network moved 1 tinybar and dropped the remainder without an error |
+| file                                                           | GET, and what it shows                                                                                                                                                                             |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mirror/result-sub-tinybar-remainder.json`                     | /api/v1/contracts/results/0x6fc04ceb…2fbfd: a plain HBAR transfer signed with 10,000,000,001 weibar. `SUCCESS`, `amount` 1: the network moved 1 tinybar and dropped the remainder without an error |
+| `mirror/transaction-direct-unassociated-recipient-184.json`    | /api/v1/transactions?timestamp=1790003843.112195937: the record of the direct call refused for a missing association; the sender paid 11,455,355 tinybar and no token moved                        |
+| `mirror/transaction-multicall-unassociated-recipient-184.json` | /api/v1/transactions?timestamp=1790003851.151762335: the same for the multicall form, 11,738,101 tinybar                                                                                           |
 
 ## JSON-RPC answers
 
