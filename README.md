@@ -67,7 +67,7 @@ Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.m
 | --- | --- |
 | `/swap` | a SaucerSwap V2 swap both ways: the account read from the mirror node, a quote on user action, one line per check the network would otherwise answer only after taking the gas, a cost preview, the send, and the outcome read back from the mirror node's DETAIL view |
 | `/positions` | the connected account's V2 positions, read-only: the range against the pool's live tick, what closing one would return, and both links per serial |
-| `/debug` | reads and writes every deployed contract, including this template's own consumer on Hedera testnet |
+| `/debug` | the stock Debug Contracts page: it reads and writes the contracts deployed for the network the wallet is on, which on Hedera testnet is this template's own consumer and nothing else |
 | `packages/nextjs/lib/hedera/` | what the pages, the scripts and the tests share: the two units, the address book, original ABIs, error decoding, the mirror client, the pre-send checks, the swap and position builders, the gas rules |
 | `packages/hardhat/contracts/SaucerSwapHbarConsumer.sol` | a contract that swaps the HBAR sent with a call for an HTS token and keeps it; it associates itself in its constructor, so the deployer pays for that relation once instead of every swap paying for it |
 | `yarn test:unit` and `yarn test:mock` | the two offline tiers: captured testnet answers replayed through the pinned viem, and the contract against original mocks injected at the real addresses, which reproduce the response codes and the empty reverts a fork cannot |
