@@ -21,8 +21,11 @@ export function feeForGas(gas: bigint, gasPrice: bigint): Tinybar {
 /**
  * Why a wallet announces more than the network takes. MetaMask 13.48.0 priced the gas LIMIT at eth_gasPrice on all
  * seven transactions measured on 22 Sept 2026, while each one was charged for the gas it used at a lower effective
- * price: `lib/hedera/__tests__/fixtures/wallet/metamask-fee-display.json` holds the seven pairs.
+ * price: `lib/hedera/__tests__/fixtures/wallet/metamask-fee-display.json` holds the seven pairs. It says "about the
+ * same" because this preview is an estimate while the wallet prices its own limit; the two coincided on those seven
+ * because the limit was the relay's own estimate, and no wallet has yet been measured on this route.
  */
 export const WALLET_FEE_NOTE =
-  "Your wallet announces this same upper bound, because it prices the gas limit at the current gas price. The " +
-  "network charges only the gas the call uses, so what leaves the account is usually smaller and never larger.";
+  "Your wallet announces about the same figure, because it prices the gas limit at the current gas price. The " +
+  "network charges only the gas the call uses, so what leaves the account is smaller on every transaction this " +
+  "project has measured.";
