@@ -35,6 +35,8 @@ export type {
   MirrorContractAction,
   MirrorContractResult,
   MirrorErrorReason,
+  MirrorNft,
+  MirrorNftPage,
   MirrorResponse,
   MirrorTokenRelationship,
   MirrorTransaction,
@@ -43,6 +45,7 @@ export type {
   WaitOptions,
 } from "./mirror";
 export {
+  MAX_MIRROR_PAGE,
   MirrorError,
   RETRY_DELAYS_MS,
   createMirrorClient,
@@ -80,6 +83,16 @@ export {
   v2FactoryFeeAbi,
   v2PoolAbi,
 } from "./positionAbi";
+export type { PoolState, PositionFields, PositionStatus } from "./positionReads";
+export {
+  positionStatus,
+  readManagerAllowance,
+  readMintFeeTinybar,
+  readNftApproval,
+  readPoolState,
+  readPosition,
+  readPositionSerials,
+} from "./positionReads";
 export type { CostVerdict, PreflightCheck, PreflightVerdict, RecipientVerdict } from "./preflight";
 export {
   allowanceVerdict,

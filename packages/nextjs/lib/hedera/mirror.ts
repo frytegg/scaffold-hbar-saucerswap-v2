@@ -74,6 +74,15 @@ export type MirrorTokenRelationship = {
   balance: bigint;
 };
 
+/** One NFT an account holds, from the mirror node's own list: the HTS facade cannot enumerate serials. */
+export type MirrorNft = { tokenId: EntityId; serialNumber: bigint };
+
+/** One page of that list, with whether the mirror node has more of it than the page holds. */
+export type MirrorNftPage = { nfts: MirrorNft[]; hasMore: boolean };
+
+/** The largest page the mirror node serves for a list. */
+export const MAX_MIRROR_PAGE = 100;
+
 export type WaitOptions = { timeoutMs?: number; intervalMs?: number };
 
 export type MirrorClient = {
@@ -84,6 +93,8 @@ export type MirrorClient = {
   getTokenRelationship(account: AccountRef, token: EntityId): Promise<MirrorTokenRelationship | null>;
   /** 0 when there is no allowance row: the mirror drops the row once an allowance is used up. */
   getTokenAllowance(owner: AccountRef, spender: EntityId, token: EntityId): Promise<bigint>;
+  /** The serials of one collection the account holds, oldest first; an empty page for an account that has none. */
+  getAccountNfts(account: AccountRef, token: EntityId, limit?: number): Promise<MirrorNftPage>;
   /** The record at a contract result's `timestamp`; null while the mirror has not ingested it. */
   getTransaction(consensusTimestamp: string): Promise<MirrorTransaction | null>;
   waitForResult(hash: Hex, options?: WaitOptions): Promise<MirrorContractResult>;
@@ -202,6 +213,11 @@ function parseAccount(body: unknown, path: string): MirrorAccount {
   };
 }
 
+function parseNft(value: unknown, path: string): MirrorNft {
+  const nft = objectAt(value, path, "nft");
+  return { tokenId: entityIdAt(nft, "token_id", path), serialNumber: integerAt(nft, "serial_number", path) };
+}
+
 function parseTokenRelationship(value: unknown, path: string): MirrorTokenRelationship {
   const relationship = objectAt(value, path, "token relationship");
   return {
@@ -294,6 +310,18 @@ export function createMirrorClient({ transport, sleep = wait, now = Date.now }: 
       const path = mirrorPaths.tokenAllowance(owner, spender, token);
       const [first] = await getList(path, "allowances");
       return first === undefined ? 0n : integerAt(objectAt(first, path, "allowance"), "amount", path);
+    },
+
+    async getAccountNfts(account, token, limit = MAX_MIRROR_PAGE) {
+      const page = Math.min(Math.max(Math.trunc(limit), 1), MAX_MIRROR_PAGE);
+      const path = mirrorPaths.accountNfts(account, token, page);
+      const body = await getFound(path);
+      if (body === null) return { nfts: [], hasMore: false };
+      const listed = objectAt(body, path, "nfts");
+      const nfts = arrayAt(listed, "nfts", path).map(nft => parseNft(nft, path));
+      const links = listed.links;
+      const next = typeof links === "object" && links !== null ? (links as { next?: unknown }).next : null;
+      return { nfts, hasMore: typeof next === "string" && next.length > 0 };
     },
 
     async getTransaction(consensusTimestamp) {

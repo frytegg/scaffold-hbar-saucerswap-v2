@@ -14,6 +14,9 @@ export const mirrorPaths = {
     `/api/v1/accounts/${account}/tokens?token.id=${token}`,
   tokenAllowance: (owner: AccountRef, spender: EntityId, token: EntityId): string =>
     `/api/v1/accounts/${owner}/allowances/tokens?spender.id=${spender}&token.id=${token}`,
+  /** The serials of one NFT collection an account holds. The HTS facade has no enumeration; this is the only list. */
+  accountNfts: (account: AccountRef, token: EntityId, limit: number): string =>
+    `/api/v1/accounts/${account}/nfts?token.id=${token}&limit=${limit}&order=asc`,
   /** The transaction record at a consensus timestamp: its HBAR transfer list, fees included. */
   transaction: (consensusTimestamp: string): string => `/api/v1/transactions?timestamp=${consensusTimestamp}`,
 };
@@ -28,6 +31,7 @@ const RELAYED_PATHS = [
   `/api/v1/accounts/${ACCOUNT}\\?transactions=false`,
   `/api/v1/accounts/${ACCOUNT}/tokens\\?token\\.id=${ENTITY}`,
   `/api/v1/accounts/${ACCOUNT}/allowances/tokens\\?spender\\.id=${ENTITY}&token\\.id=${ENTITY}`,
+  `/api/v1/accounts/${ACCOUNT}/nfts\\?token\\.id=${ENTITY}&limit=\\d{1,3}&order=asc`,
   `/api/v1/transactions\\?timestamp=${TIMESTAMP}`,
 ].map(pattern => new RegExp(`^${pattern}$`));
 

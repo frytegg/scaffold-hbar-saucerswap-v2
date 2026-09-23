@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "eth_call",
+    "params": [
+      {
+        "data": "0x1a686502",
+        "to": "0x37814eDc1ae88cf27c0C346648721FB04e7E0AE7"
+      },
+      "latest"
+    ]
+  },
+  "status": 200,
+  "body": {
+    "result": "0x00000000000000000000000000000000000000000000000000000112dd9fd380",
+    "jsonrpc": "2.0",
+    "id": 2
+  }
+}
