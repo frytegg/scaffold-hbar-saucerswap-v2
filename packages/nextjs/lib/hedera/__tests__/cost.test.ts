@@ -27,7 +27,7 @@ describe("the fee a wallet displays against the fee the network charges", () => 
     for (const row of display.rows) {
       expect(feeForGas(BigInt(row.gasLimit), WALLET_GAS_PRICE)).toBeGreaterThan(BigInt(row.feeTinybar));
     }
-    expect(display.rows).toHaveLength(7);
+    expect(display.rows).toHaveLength(8);
   });
 
   it("says why, in one sentence a page can show next to the preview", () => {

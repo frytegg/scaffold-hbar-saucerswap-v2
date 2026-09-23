@@ -135,7 +135,7 @@ In `wallet/`, two records of the builder's MetaMask session of 22 Sept 2026 (Met
 
 | file                                             | what it holds                                                                                                                                                 |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `wallet/metamask-fee-display.json`               | the seven transactions whose fee display was recorded: gas limit, gas used and fee from the mirror node, and what the wallet announced before the signature   |
+| `wallet/metamask-fee-display.json`               | the eight transactions of that session whose fee display was recorded: gas limit, gas used and fee from the mirror node, and what the wallet announced before the signature. Seven rows were captured on the evening itself; the eighth, the swap the wallet estimated for itself, was read back from the mirror node on 23 Sept 2026 against the session report that kept its displayed figure |
 | `wallet/metamask-send-refused-no-gas-limit.json` | the sentence the wallet wrapped the relay's refusal in when it could not price a position mint sent with no gas limit, and what it displayed instead of a fee |
 
 ## Lint fixture

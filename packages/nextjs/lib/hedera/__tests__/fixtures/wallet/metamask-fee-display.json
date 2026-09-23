@@ -84,6 +84,21 @@
       "hashscanUrl": "https://hashscan.io/testnet/tx/0xa2141a193ae864f5ab90b44043345559a113e0f4884c7adecc83f278b63329f3"
     },
     {
+      "label": "swap HBAR for SAUCE with no gas limit from the dapp, so the wallet estimated it",
+      "hash": "0x38f1088c70a735cac7e6e2d51e7fc30c6b4ad6eee1e6e20734ac76a3bce33814",
+      "consensusTimestamp": "1790109112.219958001",
+      "result": "SUCCESS",
+      "to": "0x0000000000000000000000000000000000159398",
+      "gasLimit": 201758,
+      "gasUsed": 187293,
+      "feeTinybar": 20414937,
+      "feeSource": "charged_tx_fee of the transaction record",
+      "chargedTxFee": 20414937,
+      "walletShownHbar": "0.23",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x38f1088c70a735cac7e6e2d51e7fc30c6b4ad6eee1e6e20734ac76a3bce33814",
+      "hashscanUrl": "https://hashscan.io/testnet/tx/0x38f1088c70a735cac7e6e2d51e7fc30c6b4ad6eee1e6e20734ac76a3bce33814"
+    },
+    {
       "label": "decrease a position's liquidity to zero",
       "hash": "0x03a2b7a4dfd00778a86b65f06ffbcb9cea528e22a3452ac212c248d481047ffc",
       "consensusTimestamp": "1790110296.573574104",
