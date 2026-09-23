@@ -45,7 +45,7 @@ Every sentence it shows in quotes is produced by the library while the command r
 yarn preflight
 ```
 
-The command above answers about a fixed account this repository chose. This one asks for an account — an EVM address (`0x…`) or a Hedera account id (`0.0.…`) — reads it on Hedera's public mirror node and its JSON-RPC relay, and prints what `recipientVerdict`, `checkAllowance` and the gas rule for the call no simulator prices answer about it: the same verdicts, the same sentences and the same actions a page shows for the address a wallet connects. Nothing is signed and no key is read, and it prints the mirror URLs it read for you to open yourself.
+The command above replays answers this repository captured. This one answers about an account you choose: it asks for one — an EVM address (`0x…`) or a Hedera account id (`0.0.…`) — reads it on Hedera's public mirror node and its JSON-RPC relay, and prints three things about it. Whether a swap can pay it SAUCE, which is `recipientVerdict`. Whether the router may spend that account's SAUCE, which is `checkAllowance`. And what the call no simulator prices would cost at today's gas price, which is the gas rule and `checkCost`. They are the same verdicts, in the same sentences and with the same actions, that a page shows for the address a wallet connects. Nothing is signed and no key is read, and it prints the mirror URLs it read for you to open yourself.
 
 It asks on standard input rather than taking the account after the command, because a project scaffolded for the other package manager forwards what follows a script name only for a few names this one is not among, and the account would be dropped there and kept here. A question behaves the same under both.
 
