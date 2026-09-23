@@ -16,6 +16,15 @@ interface IMockHederaTokenService {
 
     function balanceOf(address token, address account) external view returns (uint256);
 
+    function approveToken(
+        address token,
+        address owner,
+        address spender,
+        uint256 amount
+    ) external returns (int64 responseCode);
+
+    function allowance(address token, address owner, address spender) external view returns (uint256);
+
     /// @notice Test helper with no counterpart on Hedera: associates `account` with `token` and credits it.
     function mockCredit(address token, address account, uint256 amount) external;
 
@@ -31,17 +40,20 @@ interface IMockHederaTokenService {
 ///         that did nothing; and it **enforces association**, so a token cannot reach an account that has never
 ///         held it.
 /// @dev `hardhat_setCode` copies runtime code only, so nothing here may depend on a constructor: a test credits
-///      balances with `mockCredit` after the injection. Only what an association and an HBAR-in swap need is
-///      modelled. There are no keys, fees, expiry, custom fees or allowances here; the allowance behaviour is
-///      covered offline by the relay answers captured in `packages/nextjs/lib/hedera/__tests__/fixtures/`.
+///      balances with `mockCredit` after the injection. Only what an association, an HBAR-in swap and a position
+///      need is modelled: there are no keys, fees, expiry or custom fees. An allowance is here because the position
+///      manager pulls the pool's token out of the sender's account, and a missing one is answered with a response
+///      code — the 292 that no simulator sees — rather than with a revert.
 contract MockHederaTokenService {
     int64 private constant SUCCESS = 22;
     int64 private constant INSUFFICIENT_TOKEN_BALANCE = 178;
     int64 private constant TOKEN_NOT_ASSOCIATED_TO_ACCOUNT = 184;
     int64 private constant TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT = 194;
+    int64 private constant SPENDER_DOES_NOT_HAVE_ALLOWANCE = 292;
 
     mapping(address token => mapping(address account => bool)) private associated;
     mapping(address token => mapping(address account => uint256)) private balances;
+    mapping(address token => mapping(address owner => mapping(address spender => uint256))) private allowances;
     /// @dev 0 answers a response code, as the real service does. Anything else answers that many bytes instead.
     uint256 private answerLength;
 
@@ -60,7 +72,8 @@ contract MockHederaTokenService {
         return SUCCESS;
     }
 
-    /// @dev `sender` must be the caller, or the token's own facade passing on a `transfer` its holder made.
+    /// @dev `sender` is the caller, or the token's own facade passing on a `transfer` its holder made, or an account
+    ///      that gave the caller an allowance. Without one the answer is a response code, not a revert.
     function transferToken(
         address token,
         address sender,
@@ -68,13 +81,32 @@ contract MockHederaTokenService {
         int64 amount
     ) external returns (int64 responseCode) {
         require(amount >= 0, "MockHederaTokenService: negative amounts are not modelled");
-        require(msg.sender == sender || msg.sender == token, "MockHederaTokenService: allowances are not modelled");
         uint256 moved = uint256(uint64(amount));
+        if (msg.sender != sender && msg.sender != token) {
+            if (allowances[token][sender][msg.sender] < moved) return SPENDER_DOES_NOT_HAVE_ALLOWANCE;
+            allowances[token][sender][msg.sender] -= moved;
+        }
         if (!associated[token][recipient]) return TOKEN_NOT_ASSOCIATED_TO_ACCOUNT;
         if (balances[token][sender] < moved) return INSUFFICIENT_TOKEN_BALANCE;
         balances[token][sender] -= moved;
         balances[token][recipient] += moved;
         return SUCCESS;
+    }
+
+    /// @dev The caller is the owner, or the token's own facade passing on an `approve` its holder made.
+    function approveToken(
+        address token,
+        address owner,
+        address spender,
+        uint256 amount
+    ) external returns (int64 responseCode) {
+        require(msg.sender == owner || msg.sender == token, "MockHederaTokenService: only the owner may approve");
+        allowances[token][owner][spender] = amount;
+        return SUCCESS;
+    }
+
+    function allowance(address token, address owner, address spender) external view returns (uint256) {
+        return allowances[token][owner][spender];
     }
 
     function isAssociated(address token, address account) external view returns (bool) {

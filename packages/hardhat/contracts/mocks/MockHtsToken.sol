@@ -26,4 +26,14 @@ contract MockHtsToken {
         );
         return responseCode == SUCCESS;
     }
+
+    function allowance(address owner, address spender) external view returns (uint256) {
+        return IMockHederaTokenService(HTS).allowance(address(this), owner, spender);
+    }
+
+    /// @dev The facade answers a bool, not a response code, which is what the seam library reads after an approve.
+    function approve(address spender, uint256 amount) external returns (bool) {
+        int64 responseCode = IMockHederaTokenService(HTS).approveToken(address(this), msg.sender, spender, amount);
+        return responseCode == SUCCESS;
+    }
 }
