@@ -10,7 +10,8 @@ import { SAUCERSWAP_UNAVAILABLE, headlineFor } from "~~/components/hedera/failur
 import { type HederaFailure, type TokenEntry, explainError } from "~~/lib/hedera";
 
 // What a reviewer without a wallet can still watch happen: the quote and the pre-flight of a token-input swap, run
-// against a fixed public address. It reads and it refuses; there is no send button here, and no key to sign with.
+// against a fixed public address. It shows the verdicts the panel above would show, and it cannot send: there is no
+// button here that signs, and no key for the address it reads.
 
 export const SampleRunCard = ({ reads, token }: { reads: PlanReads | null; token: TokenEntry }) => {
   const [lines, setLines] = useState<readonly PanelCheck[] | null>(null);
@@ -38,7 +39,7 @@ export const SampleRunCard = ({ reads, token }: { reads: PlanReads | null; token
         These checks take an address, not a key. This runs the quote and the whole pre-flight for {SAMPLE_AMOUNT}{" "}
         {token.symbol} against {SAMPLE_ACCOUNT_ID}, the account the transactions in{" "}
         <code>docs/hedera-behaviour.md</code> were sent from, and shows what Hedera testnet answers for it right now.
-        Nothing is signed, nothing is sent, and both reads leave from this app&apos;s own origin.
+        Nothing is signed, nothing is sent, and every read leaves from this app&apos;s own origin.
       </p>
       <button
         className="btn btn-primary btn-sm w-fit"
