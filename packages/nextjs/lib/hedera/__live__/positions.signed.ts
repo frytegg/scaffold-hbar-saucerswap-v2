@@ -285,6 +285,7 @@ describe.skipIf(!KEY)(title, () => {
     );
   });
 
+  // Six transactions and the mirror node's own lag: this one test is the whole cycle, so it gets its own timeout.
   it("opens a position at the live tick, reads it back, collects it as native HBAR and burns it", async () => {
     const preflight: EvidencePreflight[] = [];
     const transactions: EvidenceTransaction[] = [];
@@ -462,5 +463,5 @@ describe.skipIf(!KEY)(title, () => {
       await abandon();
       throw error;
     }
-  });
+  }, 300_000);
 });
