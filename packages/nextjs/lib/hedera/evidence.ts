@@ -7,15 +7,24 @@ import { netTransfer, networkFee } from "./transfers";
 import { type Tinybar, formatHbar } from "./units";
 import { type Hex, decodeAbiParameters, isHex } from "viem";
 
-// A file of docs/evidence/ records one swap that the signed evidence run made on Hedera testnet: what was asked, what
-// the network did, and the software that did it. Nothing in it is private. checkEvidence re-reads every figure from
-// the mirror node, so anyone can verify a file without a key.
+// A file of docs/evidence/ records one thing the signed evidence runs did on Hedera testnet — a swap, or the life
+// cycle of one liquidity position — with what was asked, what the network did, and the software that did it. Nothing
+// in it is private. The two check functions re-read every figure from the mirror node, so anyone can verify a file
+// without a key. A record that carries a `position` is a life cycle; anything else is a swap.
 
 export const EVIDENCE_SCHEMA_VERSION = 1;
 
+/**
+ * What a recorded transaction did. A swap record uses `approve`, `swap` and `deploy`, the creation of the contract a
+ * `via` swap went through; a position record uses the calls of a life cycle, `nft-approve` being the approval on the
+ * position NFT that a burn needs.
+ */
+const EVIDENCE_ROLES = ["approve", "swap", "deploy", "nft-approve", "mint", "decrease", "collect", "burn"] as const;
+
+export type EvidenceRole = (typeof EVIDENCE_ROLES)[number];
+
 export type EvidenceTransaction = {
-  /** `deploy` is the creation of the contract a `via` swap went through. */
-  role: "approve" | "swap" | "deploy";
+  role: EvidenceRole;
   hash: Hex;
   /** The mirror node's DETAIL view of the transaction: the machine-checkable proof. */
   mirrorUrl: string;
@@ -93,6 +102,7 @@ const isObject = (value: unknown): value is JsonObject =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 const isString = (value: unknown): value is string => typeof value === "string" && value.length > 0;
 const isInteger = (value: unknown): value is number => typeof value === "number" && Number.isSafeInteger(value);
+const isBoolean = (value: unknown): value is boolean => typeof value === "boolean";
 const isIntegerString = (value: unknown): value is string => typeof value === "string" && /^-?\d+$/.test(value);
 const isEntityId = (value: unknown): value is EntityId => typeof value === "string" && /^\d+\.\d+\.\d+$/.test(value);
 const isHash = (value: unknown): value is Hex => typeof value === "string" && isHex(value) && value.length === 66;
@@ -104,7 +114,7 @@ const oneOf =
 function parseTransaction(value: unknown, file: string): EvidenceTransaction {
   if (!isObject(value)) throw new EvidenceFormatError(file, "transactions");
   return {
-    role: field(value, "role", file, oneOf("approve", "swap", "deploy")),
+    role: field(value, "role", file, oneOf(...EVIDENCE_ROLES)),
     hash: field(value, "hash", file, isHash),
     mirrorUrl: field(value, "mirrorUrl", file, isString),
     result: field(value, "result", file, oneOf("SUCCESS")),
@@ -239,15 +249,14 @@ function amountOutOf(swap: EvidenceSwap, callResult: Hex): bigint {
   return amountOut;
 }
 
-async function checkTransaction(
-  record: EvidenceRecord,
+/** Everything a recorded transaction claims that the mirror node answers on its own, whatever the record is about. */
+async function checkAgainstMirror(
+  sender: EvidenceRecord["sender"],
   recorded: EvidenceTransaction,
+  result: MirrorContractResult,
   mirror: MirrorClient,
 ): Promise<string[]> {
   const at = `${recorded.role} ${recorded.hash}`;
-  const result = await mirror.getContractResult(recorded.hash);
-  if (result === null) return [`${at}: the mirror node has no result for this hash.`];
-
   const findings: string[] = [];
   const compare = (what: string, onChain: string, inFile: string) => {
     if (onChain !== inFile) findings.push(`${at}: ${what} is ${onChain} on the mirror node, ${inFile} in the file.`);
@@ -258,13 +267,9 @@ async function checkTransaction(
   compare("the gas used", result.gasUsed.toString(), recorded.gasUsed.toString());
 
   // The mirror names the sender in long-zero form: resolve it to its account, then compare the EVM address.
-  const sender = await mirror.getAccount(result.from);
-  compare(
-    "the sender's EVM address",
-    sender?.evmAddress.toLowerCase() ?? "unknown",
-    record.sender.evmAddress.toLowerCase(),
-  );
-  compare("the sender's account", sender?.accountId ?? "unknown", record.sender.accountId);
+  const from = await mirror.getAccount(result.from);
+  compare("the sender's EVM address", from?.evmAddress.toLowerCase() ?? "unknown", sender.evmAddress.toLowerCase());
+  compare("the sender's account", from?.accountId ?? "unknown", sender.accountId);
 
   const transaction = await mirror.getTransaction(result.timestamp);
   if (transaction === null) {
@@ -273,19 +278,46 @@ async function checkTransaction(
     compare("the fee in tinybar", networkFee(transaction.transfers).toString(), recorded.feeTinybar);
     compare(
       "the sender's net HBAR movement in tinybar",
-      netTransfer(transaction.transfers, record.sender.accountId).toString(),
+      netTransfer(transaction.transfers, sender.accountId).toString(),
       recorded.senderNetTinybar,
     );
   }
+  return findings;
+}
+
+/** The return value an HTS approve answers: a transaction that succeeded and approved nothing returns false. */
+function checkApprovalReturn(recorded: EvidenceTransaction, result: MirrorContractResult): string[] {
+  if (result.callResult === null) {
+    return [`${recorded.role} ${recorded.hash}: the mirror node has no return value for this transaction.`];
+  }
+  if (approvalGranted(result.callResult)) return [];
+  return [
+    `${recorded.role} ${recorded.hash}: the approval's return value is false on the mirror node, true in the file.`,
+  ];
+}
+
+async function checkTransaction(
+  record: EvidenceRecord,
+  recorded: EvidenceTransaction,
+  mirror: MirrorClient,
+): Promise<string[]> {
+  const at = `${recorded.role} ${recorded.hash}`;
+  const result = await mirror.getContractResult(recorded.hash);
+  if (result === null) return [`${at}: the mirror node has no result for this hash.`];
+  const findings = await checkAgainstMirror(record.sender, recorded, result, mirror);
 
   // A contract creation answers with the runtime bytecode it deployed, which is not a value to compare.
-  if (recorded.role === "deploy") return findings;
+  if (recorded.role === "deploy" || result.result !== "SUCCESS") return findings;
+  if (recorded.role === "approve") return [...findings, ...checkApprovalReturn(recorded, result)];
   if (result.callResult === null) {
     findings.push(`${at}: the mirror node has no return value for this transaction.`);
-  } else if (result.result === "SUCCESS" && recorded.role === "approve") {
-    compare("the approval's return value", String(approvalGranted(result.callResult)), "true");
-  } else if (result.result === "SUCCESS") {
-    compare("the swap's amountOut", amountOutOf(record.swap, result.callResult).toString(), record.swap.amountOut);
+  } else {
+    const onChain = amountOutOf(record.swap, result.callResult).toString();
+    if (onChain !== record.swap.amountOut) {
+      findings.push(
+        `${at}: the swap's amountOut is ${onChain} on the mirror node, ${record.swap.amountOut} in the file.`,
+      );
+    }
   }
   return findings;
 }
@@ -298,5 +330,204 @@ export async function checkEvidence(record: EvidenceRecord, mirror: MirrorClient
   const findings: string[] = [];
   for (const transaction of record.transactions)
     findings.push(...(await checkTransaction(record, transaction, mirror)));
+  return findings;
+}
+
+/**
+ * What an account held before or after a position cycle. A fresh account is the interesting case: no allowance for
+ * the position manager, no approval on the position NFT and no relation with it, which is the state a first-time
+ * user is in and the one the extra two signatures of the cycle are for.
+ */
+export type EvidenceAccountState = {
+  balanceTinybar: string;
+  balanceHbar: string;
+  /** The pool token's balance, in its own smallest unit. */
+  tokenBalance: string;
+  /** -1 for unlimited, as the mirror node reports it: an account with none cannot receive the position NFT. */
+  maxAutomaticTokenAssociations: number;
+  /** Whether the account already had a relation with the position NFT collection. */
+  holdsLpNftRelation: boolean;
+  /** The position serials the account held, oldest first. */
+  positions: string[];
+  /** What the position manager was allowed to spend of the pool token. */
+  managerAllowance: string;
+  /** Whether the position manager could already move the account's positions, which a burn needs. */
+  nftApproval: boolean;
+};
+
+export type EvidencePosition = {
+  manager: EntityId;
+  lpNft: EntityId;
+  pool: EntityId;
+  poolFee: number;
+  /** The serial the mint created, and the position every transaction of the record is about. */
+  tokenId: string;
+  tickLower: number;
+  tickUpper: number;
+  tickSpacing: number;
+  /** The pool's own tick and square-root price, read at the block the range and the amounts were computed from. */
+  tickAtMint: number;
+  sqrtPriceX96AtMint: string;
+  /** The liquidity the manager reported for the position once it existed. */
+  liquidity: string;
+  /** How far under the amounts the range needs at that price the minimums were set. */
+  toleranceBps: number;
+  amount0Desired: string;
+  amount1Desired: string;
+  amount0Min: string;
+  amount1Min: string;
+  /** The factory's fee converted through the exchange-rate system contract, and the value the mint carried. */
+  mintFeeTinybar: string;
+  mintValueTinybar: string;
+  /** What the position holds, from its liquidity at the price it was minted at. */
+  depositedHbar: string;
+  depositedToken: string;
+  /** What the manager owed the position after the decrease, read from `positions` before the collect. */
+  collectedHbar: string;
+  collectedToken: string;
+  /** The HBAR the split collect moved into the account natively, from that transaction's own transfer list. */
+  hbarReceivedTinybar: string;
+  summary: string;
+};
+
+export type PositionEvidenceRecord = {
+  schemaVersion: typeof EVIDENCE_SCHEMA_VERSION;
+  name: string;
+  network: "testnet";
+  chainId: number;
+  recordedAt: string;
+  sender: { evmAddress: EvmAddress; accountId: EntityId };
+  software: { viem: string; relay: string; node: string };
+  /** The account before anything was signed, and after the position was burnt. */
+  preState: EvidenceAccountState;
+  postState: EvidenceAccountState;
+  preflight: EvidencePreflight[];
+  position: EvidencePosition;
+  transactions: EvidenceTransaction[];
+};
+
+/** Which of the two shapes a file of docs/evidence/ holds. A swap record has no `position`. */
+export function isPositionEvidence(json: unknown): boolean {
+  return isObject(json) && isObject(json.position);
+}
+
+function parseAccountState(value: unknown, file: string): EvidenceAccountState {
+  if (!isObject(value)) throw new EvidenceFormatError(file, "preState or postState");
+  const positions = field(value, "positions", file, Array.isArray);
+  return {
+    balanceTinybar: field(value, "balanceTinybar", file, isIntegerString),
+    balanceHbar: field(value, "balanceHbar", file, isString),
+    tokenBalance: field(value, "tokenBalance", file, isIntegerString),
+    maxAutomaticTokenAssociations: field(value, "maxAutomaticTokenAssociations", file, isInteger),
+    holdsLpNftRelation: field(value, "holdsLpNftRelation", file, isBoolean),
+    positions: positions.map((serial, index) => {
+      if (!isIntegerString(serial)) throw new EvidenceFormatError(file, `positions[${index}]`);
+      return serial;
+    }),
+    managerAllowance: field(value, "managerAllowance", file, isIntegerString),
+    nftApproval: field(value, "nftApproval", file, isBoolean),
+  };
+}
+
+function parsePosition(value: unknown, file: string): EvidencePosition {
+  if (!isObject(value)) throw new EvidenceFormatError(file, "position");
+  return {
+    manager: field(value, "manager", file, isEntityId),
+    lpNft: field(value, "lpNft", file, isEntityId),
+    pool: field(value, "pool", file, isEntityId),
+    poolFee: field(value, "poolFee", file, isInteger),
+    tokenId: field(value, "tokenId", file, isIntegerString),
+    tickLower: field(value, "tickLower", file, isInteger),
+    tickUpper: field(value, "tickUpper", file, isInteger),
+    tickSpacing: field(value, "tickSpacing", file, isInteger),
+    tickAtMint: field(value, "tickAtMint", file, isInteger),
+    sqrtPriceX96AtMint: field(value, "sqrtPriceX96AtMint", file, isIntegerString),
+    liquidity: field(value, "liquidity", file, isIntegerString),
+    toleranceBps: field(value, "toleranceBps", file, isInteger),
+    amount0Desired: field(value, "amount0Desired", file, isIntegerString),
+    amount1Desired: field(value, "amount1Desired", file, isIntegerString),
+    amount0Min: field(value, "amount0Min", file, isIntegerString),
+    amount1Min: field(value, "amount1Min", file, isIntegerString),
+    mintFeeTinybar: field(value, "mintFeeTinybar", file, isIntegerString),
+    mintValueTinybar: field(value, "mintValueTinybar", file, isIntegerString),
+    depositedHbar: field(value, "depositedHbar", file, isIntegerString),
+    depositedToken: field(value, "depositedToken", file, isIntegerString),
+    collectedHbar: field(value, "collectedHbar", file, isIntegerString),
+    collectedToken: field(value, "collectedToken", file, isIntegerString),
+    hbarReceivedTinybar: field(value, "hbarReceivedTinybar", file, isIntegerString),
+    summary: field(value, "summary", file, isString),
+  };
+}
+
+/** Reads a position record, refusing a file that is not a whole life cycle: a cycle that left a position open. */
+export function parsePositionEvidence(json: unknown, file: string): PositionEvidenceRecord {
+  if (!isObject(json)) throw new EvidenceFormatError(file, "the top-level object");
+  const sender = field(json, "sender", file, isObject);
+  const software = field(json, "software", file, isObject);
+  const preflight = field(json, "preflight", file, Array.isArray);
+  const transactions = field(json, "transactions", file, Array.isArray);
+  const entries = transactions.map(transaction => parseTransaction(transaction, file));
+  for (const role of ["mint", "decrease", "collect", "burn"] as const) {
+    if (!entries.some(entry => entry.role === role))
+      throw new EvidenceFormatError(file, `a transaction with role ${role}`);
+  }
+  return {
+    schemaVersion: field(json, "schemaVersion", file, (value): value is 1 => value === EVIDENCE_SCHEMA_VERSION),
+    name: field(json, "name", file, isString),
+    network: field(json, "network", file, oneOf("testnet")),
+    chainId: field(json, "chainId", file, isInteger),
+    recordedAt: field(json, "recordedAt", file, isString),
+    sender: {
+      evmAddress: field(sender, "evmAddress", file, isEvmAddress),
+      accountId: field(sender, "accountId", file, isEntityId),
+    },
+    software: {
+      viem: field(software, "viem", file, isString),
+      relay: field(software, "relay", file, isString),
+      node: field(software, "node", file, isString),
+    },
+    preState: parseAccountState(json.preState, file),
+    postState: parseAccountState(json.postState, file),
+    preflight: preflight.map(verdict => parsePreflight(verdict, file)),
+    position: parsePosition(json.position, file),
+    transactions: entries,
+  };
+}
+
+/**
+ * Re-reads a position cycle from the mirror node: every transaction as a swap record's is re-read, the HBAR the
+ * split collect paid out natively, and that the account no longer holds the serial. Empty when all of it holds.
+ */
+export async function checkPositionEvidence(record: PositionEvidenceRecord, mirror: MirrorClient): Promise<string[]> {
+  const findings: string[] = [];
+  for (const recorded of record.transactions) {
+    const at = `${recorded.role} ${recorded.hash}`;
+    const result = await mirror.getContractResult(recorded.hash);
+    if (result === null) {
+      findings.push(`${at}: the mirror node has no result for this hash.`);
+      continue;
+    }
+    findings.push(...(await checkAgainstMirror(record.sender, recorded, result, mirror)));
+    if (result.result !== "SUCCESS") continue;
+    if (recorded.role === "approve") findings.push(...checkApprovalReturn(recorded, result));
+    if (recorded.role !== "collect") continue;
+    // The collect's own transfer list is what proves the HBAR arrived as HBAR: what the account gained, plus the
+    // fee it paid in the same transaction, is the whole payout. A collect that paid WHBAR tokens moves no HBAR.
+    const paid = BigInt(recorded.senderNetTinybar) + BigInt(recorded.feeTinybar);
+    if (paid.toString() !== record.position.hbarReceivedTinybar) {
+      findings.push(
+        `${at}: the account's HBAR movement and fee give ${paid} tinybar of native HBAR, ` +
+          `${record.position.hbarReceivedTinybar} in the file.`,
+      );
+    }
+  }
+
+  const held = await mirror.getAccountNfts(record.sender.accountId, record.position.lpNft);
+  if (held.nfts.some(nft => nft.serialNumber.toString() === record.position.tokenId)) {
+    findings.push(
+      `position ${record.position.tokenId}: ${record.sender.accountId} still holds it, so the cycle this file ` +
+        "records did not close.",
+    );
+  }
   return findings;
 }
