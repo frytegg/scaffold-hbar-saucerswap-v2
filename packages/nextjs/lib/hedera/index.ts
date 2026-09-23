@@ -19,6 +19,15 @@ export type { FailureAction, FailureContext, FailureKind, HederaFailure } from "
 export { explainContractResult, explainError, explainResponseCode, postMortem } from "./failure";
 export type { GasMeasurement, GasRule, GasRuleErrorCode } from "./gasRules";
 export { GAS_RULES_MODULE, GasRuleError, gasRuleFor, gasRules, largestMeasuredGas, withGasLimit } from "./gasRules";
+export type { AmountRounding, PositionAmounts, PositionRange } from "./liquidityMath";
+export {
+  LiquidityMathError,
+  amount0Delta,
+  amount1Delta,
+  amountsForLiquidity,
+  liquidityForAmounts,
+  rangeOfPosition,
+} from "./liquidityMath";
 export type {
   MirrorAccount,
   MirrorClient,
@@ -70,6 +79,22 @@ export {
   swapDeadline,
   swapPath,
 } from "./swap";
+export type { TickMathErrorCode, TickRange } from "./tickMath";
+export {
+  MAX_SQRT_RATIO,
+  MAX_TICK,
+  MIN_SQRT_RATIO,
+  MIN_TICK,
+  Q96,
+  TickMathError,
+  assertRange,
+  narrowRangeAround,
+  snapRangeToSpacing,
+  snapTickDown,
+  snapTickUp,
+  sqrtRatioAtTick,
+  tickAtSqrtRatio,
+} from "./tickMath";
 export { netTransfer, networkFee } from "./transfers";
 export type { Tinybar, UnitErrorCode, Weibar } from "./units";
 export {

@@ -58,6 +58,49 @@ export function mirrorFixture(name: string): MirrorResponse {
   return JSON.parse(readFileSync(fixtureUrl(`mirror/${name}`), "utf8")) as MirrorResponse;
 }
 
+/** One `Mint` or `Burn` of the HBAR/SAUCE pool, with the square-root price the pool was at when it happened. */
+export type PoolEventFixture = {
+  readonly event: "Mint" | "Burn";
+  readonly transactionHash: string;
+  readonly mirrorUrl: string;
+  readonly blockNumber: number;
+  readonly tickLower: number;
+  readonly tickUpper: number;
+  readonly liquidity: string;
+  readonly amount0: string;
+  readonly amount1: string;
+  readonly sqrtPriceX96Before: string;
+  readonly tickBefore: number;
+};
+
+export type PoolEventsFixture = {
+  readonly pool: {
+    readonly fee: number;
+    readonly tickSpacing: number;
+    readonly token0: string;
+    readonly token1: string;
+  };
+  readonly events: readonly PoolEventFixture[];
+};
+
+/** One transaction of the position life cycle this project executed, calldata included. */
+export type LifecycleStepFixture = {
+  readonly step: "mint" | "decrease" | "collect" | "burn";
+  readonly transactionHash: string;
+  readonly result: string;
+  readonly valueTinybar: string;
+  readonly gasLimit: number;
+  readonly gasUsed: number;
+  readonly functionParameters: `0x${string}`;
+  readonly events: readonly { readonly name: string; readonly args: Record<string, string> }[];
+};
+
+export type LifecycleFixture = { readonly transactions: readonly LifecycleStepFixture[] };
+
+export function positionFixture<T>(name: string): T {
+  return JSON.parse(readFileSync(fixtureUrl(`position/${name}`), "utf8")) as T;
+}
+
 /** The body of a captured mirror answer, for tests that read a field directly. */
 export function mirrorBody(name: string): Record<string, unknown> {
   return mirrorFixture(name).body as Record<string, unknown>;
@@ -86,7 +129,12 @@ function canonicalParams(params: readonly unknown[] | undefined): string {
 export function replayFetch(answers: readonly WireFixture[], status?: number): typeof fetch {
   return async (_url, init) => {
     const request = JSON.parse(String(init?.body)) as { id: number; method: string; params?: unknown[] };
-    const answer = answers.find(fixture => fixture.request.method === request.method);
+    const sameMethod = answers.filter(fixture => fixture.request.method === request.method);
+    // Several captures of one method (the reads of a position are all eth_call) are told apart by their params;
+    // with one capture the params are still compared below, so a test that sends something else still fails.
+    const answer =
+      sameMethod.find(fixture => canonicalParams(fixture.request.params) === canonicalParams(request.params)) ??
+      sameMethod[0];
     if (answer === undefined) throw new Error(`No captured answer for ${request.method}.`);
     const captured = answer.request.params;
     if (captured !== undefined && canonicalParams(request.params) !== canonicalParams(captured)) {
