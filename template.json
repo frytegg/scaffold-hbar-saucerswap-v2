@@ -1,6 +1,6 @@
 {
-  "name": "hardhat-base",
-  "description": "Hardhat-only Scaffold-HBAR base: Next.js frontend, sample HTS contracts, conventional root scripts, and no default keys.",
+  "name": "saucerswap-v2",
+  "description": "SaucerSwap V2 swaps and liquidity positions on Hedera, from wagmi and viem and from Solidity, with the checks that refuse before the wallet opens what the network would refuse after taking the gas.",
   "create-scaffold-hbar": {
     "capabilities": {
       "frontend": ["nextjs-app"],
