@@ -10,12 +10,18 @@ This is a Scaffold-HBAR template — Next.js, wagmi and Hardhat — whose swap p
 npx create-scaffold-hbar@latest my-app --template frytegg/scaffold-hbar-saucerswap-v2 -s hardhat
 ```
 
+That command asks what to install before it starts. Where nothing can answer it — a script, a container, any shell without a terminal attached — add `--yes`, which accepts every default:
+
+```bash
+npx create-scaffold-hbar@latest my-app --template frytegg/scaffold-hbar-saucerswap-v2 -s hardhat --yes
+```
+
 ```bash
 cd my-app
 yarn dev
 ```
 
-The app answers on `http://localhost:3000` with no env file, no key and no account. `/swap` and `/positions` load without asking the network for anything, and every read and write they make afterwards leaves from the app's own origin.
+The app answers on `http://localhost:3000` with no env file, no key and no account. `/swap` and `/positions` load without asking the network for anything, and every read and write they make afterwards leaves from the app's own origin. The first page requested compiles while it loads, which takes a minute or two and shows nothing meanwhile; every page after that is immediate.
 
 ## Verify it yourself
 
