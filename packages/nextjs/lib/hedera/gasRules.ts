@@ -73,7 +73,7 @@ export const gasRules: readonly GasRule[] = [
         hash: "0xac5b06097841d492cad222545bd01eddc837099040bd1d5e5bb3abfd1e85d017",
         mirrorUrl: `${MIRROR_RESULT}/0xac5b06097841d492cad222545bd01eddc837099040bd1d5e5bb3abfd1e85d017`,
         sentOn: "2026-09-23",
-        sentBy: "yarn evidence:position, gas limit 1,000,000",
+        sentBy: "this template's own evidence:position command, gas limit 1,000,000",
       },
     ],
   },

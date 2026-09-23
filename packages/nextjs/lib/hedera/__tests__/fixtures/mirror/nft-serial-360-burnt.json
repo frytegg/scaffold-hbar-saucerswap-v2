@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "body": {
+    "account_id": null,
+    "created_timestamp": "1790110138.767890856",
+    "delegating_spender": null,
+    "deleted": true,
+    "metadata": "aHR0cHM6Ly9kZXYuc3N2Mi5pby8wMDAwMDAwMDAwMDE2OA==",
+    "modified_timestamp": "1790110358.293712738",
+    "serial_number": 360,
+    "spender": null,
+    "token_id": "0.0.1310436"
+  }
+}
