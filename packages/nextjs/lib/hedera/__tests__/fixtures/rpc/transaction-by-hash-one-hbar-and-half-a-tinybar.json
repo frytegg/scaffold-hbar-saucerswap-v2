@@ -1,9 +1,7 @@
 {
   "request": {
     "method": "eth_getTransactionByHash",
-    "params": [
-      "0xa304abb41b6f368268a2cfc43fe723a6450e5920c56f502d655bc235c4027eaa"
-    ]
+    "params": ["0xa304abb41b6f368268a2cfc43fe723a6450e5920c56f502d655bc235c4027eaa"]
   },
   "status": 200,
   "body": {
