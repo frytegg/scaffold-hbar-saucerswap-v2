@@ -9,6 +9,7 @@ import { positionManagerAbi } from "../positionAbi";
 import { checkAllowance, facadeResultVerdict } from "../preflight";
 import { extractRpcError } from "../rpcError";
 import { formatHbar, tinybar } from "../units";
+import { type LabelledLine, REPORT_INDENT, REPORT_WIDTH, renderLines, thousands } from "./textReport";
 import { readFileSync } from "node:fs";
 import { type Hex, decodeFunctionResult, parseAbi } from "viem";
 import { hashscanTransactionUrl, mirrorResultUrl } from "~~/components/hedera/links";
@@ -24,12 +25,7 @@ import { hashscanTransactionUrl, mirrorResultUrl } from "~~/components/hedera/li
 // leaves this process: `replayCaptured.test.ts` asserts that with a global fetch that throws.
 
 /** One fact of a block: a short label, what happened, and — for this template's half — the sentence it produced. */
-export type ReplayLine = {
-  readonly label: string;
-  readonly text: string;
-  /** A sentence the library produced just now, quoted verbatim. */
-  readonly says?: string;
-};
+export type ReplayLine = LabelledLine;
 
 export type ReplayProof = {
   readonly label: string;
@@ -114,10 +110,6 @@ async function replayMirrorResult(
 
 function proofOf(label: string, hash: Hex): ReplayProof {
   return { label, hash, mirrorUrl: mirrorResultUrl(hash), hashscanUrl: hashscanTransactionUrl(hash) };
-}
-
-function thousands(value: bigint | number): string {
-  return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 /** What a caller knows about a call, which is what decides whether a gas limit is the right advice. */
@@ -313,40 +305,9 @@ export async function replayBehaviours(): Promise<readonly ReplayBlock[]> {
   return [await allowanceBlock(), await notEstimableBlock(), await responseCodeBlock()];
 }
 
-const WIDTH = 96;
-const INDENT = "  ";
-const MAX_LABEL = 22;
-
-function wrapped(text: string, width: number): string[] {
-  const lines: string[] = [];
-  let current = "";
-  for (const word of text.split(" ")) {
-    if (current === "") current = word;
-    else if (`${current} ${word}`.length <= width) current = `${current} ${word}`;
-    else {
-      lines.push(current);
-      current = word;
-    }
-  }
-  if (current !== "") lines.push(current);
-  return lines;
-}
-
-function renderLines(entries: readonly ReplayLine[]): string[] {
-  const labelWidth = Math.min(MAX_LABEL, Math.max(...entries.map(entry => entry.label.length)));
-  const gutter = `${INDENT}  ${" ".repeat(labelWidth)}  `;
-  return entries.flatMap(entry => {
-    const head = `${INDENT}  ${entry.label.padEnd(labelWidth)}  `;
-    const body = wrapped(entry.text, WIDTH - gutter.length).map((line, index) =>
-      index === 0 ? `${head}${line}` : `${gutter}${line}`,
-    );
-    const quote =
-      entry.says === undefined
-        ? []
-        : wrapped(`"${entry.says}"`, WIDTH - gutter.length - 2).map(line => `${gutter}  ${line}`);
-    return [...body, ...quote];
-  });
-}
+// The layout every plain-text report of this template shares, under the names the lines below already used.
+const WIDTH = REPORT_WIDTH;
+const INDENT = REPORT_INDENT;
 
 function renderBlock(block: ReplayBlock, index: number, total: number): string[] {
   return [
