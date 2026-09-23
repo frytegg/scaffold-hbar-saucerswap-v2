@@ -42,6 +42,7 @@ const mirror = createMirrorClient({
     [mirrorPaths.transaction("1790003851.151762335")]: mirrorFixture(
       "transaction-multicall-unassociated-recipient-184",
     ),
+    [mirrorPaths.transaction("1790187178.675834463")]: mirrorFixture("transaction-multicall-long-zero-recipient-282"),
   }),
 });
 
@@ -210,6 +211,19 @@ describe("fees and HBAR movements come from the transaction record's transfer li
       expect(netTransfer(list, testnet.swapRouter.id)).toBe(0n);
       expect(netTransfer(list, RECIPIENT_WITHOUT_A_SLOT)).toBe(0n);
     }
+  });
+
+  it("the swap to a long-zero recipient paid for its gas and kept the HBAR it was swapping", async () => {
+    // 0x0c3b33df…54a5, 23 Sept 2026: 0.01 HBAR to the long-zero form of the sender's OWN account, which holds SAUCE
+    // and has unlimited slots. Nothing about an association, and nothing moved but the fee.
+    const list = await transfers("1790187178.675834463");
+    const paid = BigInt(mirrorBody("result-multicall-long-zero-recipient-282").gas_used as number);
+    expect(netTransfer(list, MAIN.accountId)).toBe(-(paid * EFFECTIVE_GAS_PRICE_TINYBAR));
+    expect(netTransfer(list, MAIN.accountId)).toBe(-10_322_954n);
+    // The 0.01 HBAR of the swap never left: a successful swap's sender pays the amount as well as the fee.
+    expect(netTransfer(list, testnet.swapRouter.id)).toBe(0n);
+    expect(netTransfer(list, testnet.whbarContract.id)).toBe(0n);
+    expect(networkFee(list)).toBeGreaterThan(10_322_954n);
   });
 });
 

@@ -26,6 +26,9 @@ const ONE_HBAR = hbarToTinybar("1");
 // 0.0.10574825 holds no SAUCE and has no automatic association slot; it has an EVM address of its own.
 const UNASSOCIATED = "0x82756b984e8c34C28C98A3Eb6977dF106e4B3aaC";
 const UNASSOCIATED_LONG_ZERO = "0x0000000000000000000000000000000000A15BE9";
+// The long-zero form of SENDER's own account, 0.0.10645914: it holds SAUCE and has unlimited slots, so nothing it
+// meets can be an association failure.
+const LONG_ZERO_MAIN = "0x0000000000000000000000000000000000a2719a";
 
 async function thrownBy(run: () => Promise<unknown>): Promise<unknown> {
   try {
@@ -98,6 +101,37 @@ describe("explainError before sending: simulation and estimation answers", () =>
     );
     expect(failure).toMatchObject({ code: 282, statusName: "INVALID_ALIAS_KEY", action: "none" });
     expect(failure.message).toContain("evm_address");
+  });
+
+  it("the same recipient in its own EVM address form is the association failure, not this one", async () => {
+    const byAddress = explainError(await simulateDirect("call-direct-unassociated-184", UNASSOCIATED, 10n ** 18n));
+    const byLongZero = explainError(
+      await simulateDirect("call-direct-long-zero-recipient-282", UNASSOCIATED_LONG_ZERO, 10n ** 18n),
+    );
+    // One account, one call, two address forms: the association error and the alias error are never the same answer.
+    expect(byAddress.code).toBe(184);
+    expect(byAddress.action).toBe("associate");
+    expect(byLongZero.code).toBe(282);
+    expect(byLongZero.action).not.toBe("associate");
+    expect(byLongZero.message).not.toContain("Associate");
+  });
+
+  it("through multicall the data is erased and INVALID_ALIAS_KEY survives in the relay's sentence only", async () => {
+    // The calldata of 0x0c3b…54a5, rebuilt here by the builder that sent it: the capture answers nothing else.
+    const client = replayClient([rpcFixture("call-multicall-long-zero-recipient-282")]);
+    const call = buildHbarToTokenSwap({
+      pool: testnet.hbarSaucePool,
+      recipient: LONG_ZERO_MAIN,
+      slippageBps: 100,
+      deadline: 1_790_187_477n,
+      amountIn: hbarToTinybar("0.01"),
+      quotedAmountOut: 463_942n,
+    });
+    const failure = explainError(await thrownBy(() => client.simulateContract({ ...call, account: SENDER })));
+    expect(failure).toMatchObject({ kind: "hedera-status-text", code: 282, statusName: "INVALID_ALIAS_KEY" });
+    // "hedera-status-text" is only reached with no revert data at all: the multicall dropped TransferFail(282).
+    expect(failure.via).toContain("status name in the relay message");
+    expect(failure.action).toBe("none");
   });
 
   it("'Too little received' means the price moved: requote", () => {
@@ -408,6 +442,33 @@ describe("explainContractResult and postMortem after sending: the mirror node's 
       "actions-multicall-unassociated-recipient-184",
     );
     expect(await postMortem(mirror, sent)).toMatchObject({ code: 184, action: "associate" });
+  });
+
+  it("the multicall to the long-zero form of an alias account (0x0c3b…54a5): TransferFail(282) in /actions", async () => {
+    const { mirror, sent, transport } = await mirrorOf(
+      "result-multicall-long-zero-recipient-282",
+      "actions-multicall-long-zero-recipient-282",
+    );
+    expect(sent.errorMessage).toBe("0x");
+    expect(await postMortem(mirror, sent)).toMatchObject({
+      kind: "hts-response-code",
+      code: 282,
+      statusName: "INVALID_ALIAS_KEY",
+      action: "none",
+      via: "mirror actions, call depth 2: TransferFail(282)",
+    });
+    expect(transport.requested).toContain(mirrorPaths.contractActions(sent.hash));
+  });
+
+  it("that recipient holds the token, so the answer is never the association advice", async () => {
+    const { mirror, sent } = await mirrorOf(
+      "result-multicall-long-zero-recipient-282",
+      "actions-multicall-long-zero-recipient-282",
+    );
+    const failure = await postMortem(mirror, sent);
+    expect(failure?.code).not.toBe(184);
+    expect(failure?.action).not.toBe("associate");
+    expect(failure?.message).toContain("evm_address");
   });
 
   it("the direct call (0xc0fb…976b) keeps its revert data, so no /actions request is made", async () => {

@@ -27,7 +27,17 @@ With no wallet connected, `/swap` offers one button that runs the quote and the 
 
 ## Verify it yourself
 
-Three commands, in this order.
+Two ways in. The short one shows you the failures themselves and asks for nothing: no key, no wallet, no account, no network. The long one re-runs every proof this repository makes, against the tests, against the tree and against the public mirror node. Take the short one first — it is the argument of this template in one screen.
+
+### One command
+
+```bash
+yarn replay
+```
+
+It replays three of the failures below from the answers captured when they happened: the swap every simulator accepted and the network refused, the call no wallet can price, and the response code hiding inside a successful transaction. For each one it prints what a developer's own tools reported, what this template says instead, and the transaction it comes from. Every sentence it shows in quotes is produced by the library while the command runs, from the captured answer printed above it, so what you read is what the app would have shown; the answers themselves are the committed files of `packages/nextjs/lib/hedera/__tests__/fixtures/`, and nothing leaves the process — `packages/nextjs/lib/hedera/__tests__/replayCaptured.test.ts` asserts that against a global `fetch` that throws.
+
+### The whole thing, in three commands
 
 | command | what it proves |
 | --- | --- |
@@ -35,7 +45,7 @@ Three commands, in this order.
 | `yarn check:docs` | every path, link, script, symbol and variable this file names exists in the repository; every figure below is the one its evidence record holds; the tree survives the CLI's rewrite for the other package manager. It fetches the published CLI |
 | `yarn evidence:check` | re-reads every record of `docs/evidence/` from the mirror node: the result, the sender, the block, the gas, the fee taken from the transfer list, and the amount each swap returned. Reads the public mirror node |
 
-Three to four minutes for all three the first time, most of it the first command, which replays the lint rule against a file of planted violations. What they take depends on the machine and on what is already cached: on Windows 11 with Node 24.13.0, on 23 September 2026, they took 155, 57 and 37 seconds in a project scaffolded that morning, and 105, 32 and 39 on a warm checkout of the same machine, where a later run of the first command took 29. These are one machine's wall-clock readings, not a promise about yours.
+Three to four minutes for all three the first time, most of it the first command, which replays the lint rule against a file of planted violations. What they take depends on the machine and on what is already cached: on Windows 11 with Node 24.13.0, on 23 September 2026, they took 155, 57 and 37 seconds in a project scaffolded that morning, and 105, 32 and 39 on a warm checkout of the same machine, where a later run of the first command took 29. The short command above took 4 seconds in that same fresh project. These are one machine's wall-clock readings, not a promise about yours.
 
 Then open the transactions themselves. Each was signed by this template's own code, on Hedera testnet, chain 296; the mirror link is the machine-readable one, Hashscan renders the same transaction for a person.
 
@@ -53,7 +63,7 @@ The Solidity consumer of the third and fourth rows can be read as source, not on
 
 Each record also carries the versions it ran on, what every pre-flight check answered before the send, and the sender's net HBAR movement. With a funded testnet key in the shell, `yarn evidence` signs the swap scenarios again and `yarn evidence:position` a whole life cycle; without one, both exit 0 and say they were skipped.
 
-## Eight things the network does that your tools report wrongly, or not at all
+## Nine things the network does that your tools report wrongly, or not at all
 
 Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.md), with the transactions that prove it, what the mistake costs in HBAR, the code that refuses it and the test that keeps that code honest.
 
@@ -62,6 +72,8 @@ Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.m
 **[The simulators approve a swap the network refuses](docs/hedera-behaviour.md#the-simulators-approve-a-swap-the-network-refuses).** An HTS allowance is held below the EVM, so `eth_call`, `eth_estimateGas` and the mirror node's simulator all accept a token-input swap the network then rejects with `SPENDER_DOES_NOT_HAVE_ALLOWANCE`. You get one keyless read before the send, `allowanceVerdict`, that refuses it and names the amount to approve — and a live check that fails the day the simulators stop being wrong.
 
 **[A token cannot reach an account that has never held it](docs/hedera-behaviour.md#a-token-cannot-reach-an-account-that-has-never-held-it-and-who-that-actually-bites).** The token service refuses a transfer to an account with no relation and no free automatic-association slot; the swap reverts and is charged anyway. You get `recipientVerdict`, which reads the recipient on the mirror node and answers one of six things — including the two cases a wallet cannot see, a recipient that is not the sender and an account whose slot budget the mirror node does not count.
+
+**[An account can have two addresses, and only one of them can receive a token](docs/hedera-behaviour.md#an-account-can-have-two-addresses-and-only-one-of-them-can-receive-a-token).** An account born from an ECDSA key answers to the long-zero form of its id and to an `evm_address` of its own; pay a token to the first and the token service refuses it with `INVALID_ALIAS_KEY`, the same custom error as the association failure above with 282 inside it instead of 184, so the two look alike and want opposite things. You get that comparison inside `recipientVerdict`, before it looks at associations at all, and one transaction of ours that proves the difference: the same account, the same pool, the same direction, one address form apart.
 
 **[Some calls cannot be priced, and the wallet then cannot send them](docs/hedera-behaviour.md#some-calls-cannot-be-priced-and-the-wallet-then-cannot-send-them).** Opening a V2 position is refused by both simulators with `INVALID_NFT_ID` although the network executes it, so a wallet shows "network fee unavailable" and the send fails. A dApp that lets the wallet estimate cannot open a position on Hedera today. You get `packages/nextjs/lib/hedera/gasRules.ts`: today one rule, for the position mint, with the executed transactions its limit is derived from and a builder that refuses to produce such a call without one.
 
@@ -120,7 +132,7 @@ Nothing in the browser talks to a third party. Those route handlers, and the acc
 | `packages/nextjs/lib/hedera/` | the Hedera-specific library; `index.ts` is its public surface, `__live__/` holds the keyless and signed tiers |
 | `packages/hardhat/contracts/` | the consumer, its own minimal interfaces, the mocks the offline tier injects, and the inherited samples |
 | `docs/evidence/` | one JSON record per signed scenario, re-read by `yarn evidence:check` |
-| `docs/hedera-behaviour.md` | the eight sections above, in full |
+| `docs/hedera-behaviour.md` | the nine sections above, in full |
 | `tools/checks/` | the repository checks behind `yarn check:docs` |
 | `tools/gate/` and `tools/route-probe/` | the scaffold gate, and the browser probe as a standalone package so that no install of the app downloads a browser; `yarn shots` is the same package taking the picture above |
 
