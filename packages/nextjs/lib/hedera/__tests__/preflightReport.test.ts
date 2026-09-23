@@ -9,7 +9,8 @@ import {
   renderPreflight,
   runPreflight,
 } from "../__live__/preflightReport";
-import { testnet } from "../addresses";
+import { type EntityId, testnet } from "../addresses";
+import type { EvmAddress } from "../evmAddress";
 import { GasRuleError, gasRules, withGasLimit } from "../gasRules";
 import { type MirrorClient, MirrorError, type MirrorResponse, createMirrorClient } from "../mirror";
 import { mirrorPaths } from "../mirrorPaths";
@@ -57,7 +58,7 @@ function allowanceRow(owner: string, amount: number | null): MirrorResponse {
 type Account = {
   /** The mirror answer for the account, by its own file name. */
   readonly account: string;
-  readonly accountId: string;
+  readonly accountId: EntityId;
   /** The mirror answer for its relation with SAUCE. */
   readonly relation: string;
   /** What the mirror node's allowance list holds for the router, null for no row at all. */
@@ -77,11 +78,11 @@ function answersFor(typed: string, account: Account | null): Record<string, Mirr
   if (account === null) return { [mirrorPaths.account(ref)]: mirrorFixture("account-not-found") };
   return {
     [mirrorPaths.account(ref)]: mirrorFixture(account.account),
-    [mirrorPaths.tokenRelationship(account.accountId as `${number}.${number}.${number}`, sauce.id)]: mirrorFixture(
-      account.relation,
+    [mirrorPaths.tokenRelationship(account.accountId, sauce.id)]: mirrorFixture(account.relation),
+    [mirrorPaths.tokenAllowance(account.accountId, testnet.swapRouter.id, sauce.id)]: allowanceRow(
+      account.accountId,
+      account.row,
     ),
-    [mirrorPaths.tokenAllowance(account.accountId as `${number}.${number}.${number}`, testnet.swapRouter.id, sauce.id)]:
-      allowanceRow(account.accountId, account.row),
   };
 }
 
@@ -205,10 +206,7 @@ describe("an account that holds the token and has an allowance", () => {
     const report = reported(await answer(HOLDER_ADDRESS, HOLDER));
     const mirror = createMirrorClient({ transport: replayMirror(answersFor(HOLDER_ADDRESS, HOLDER)) });
     const account = await mirror.getAccount(refOf(HOLDER_ADDRESS));
-    const relationship = await mirror.getTokenRelationship(
-      HOLDER.accountId as `${number}.${number}.${number}`,
-      sauce.id,
-    );
+    const relationship = await mirror.getTokenRelationship(HOLDER.accountId, sauce.id);
 
     expect(verdict(report, "recipient", "recipientVerdict").says).toBe(
       recipientVerdict(report.address, account, relationship, sauce).message,
@@ -237,8 +235,8 @@ describe("an account that holds the token and has an allowance", () => {
     expect(exitCodeOf(outcome)).toBe(0);
     expect(reported(outcome).reads).toEqual([
       `${MIRROR}${mirrorPaths.account(refOf(HOLDER_ADDRESS))}`,
-      `${MIRROR}${mirrorPaths.tokenRelationship(HOLDER.accountId as `${number}.${number}.${number}`, sauce.id)}`,
-      `${MIRROR}${mirrorPaths.tokenAllowance(HOLDER.accountId as `${number}.${number}.${number}`, testnet.swapRouter.id, sauce.id)}`,
+      `${MIRROR}${mirrorPaths.tokenRelationship(HOLDER.accountId, sauce.id)}`,
+      `${MIRROR}${mirrorPaths.tokenAllowance(HOLDER.accountId, testnet.swapRouter.id, sauce.id)}`,
     ]);
   });
 });
@@ -288,9 +286,7 @@ describe("an account that does not exist", () => {
     expect(exitCodeOf(outcome)).toBe(0);
     const recipient = verdict(reported(outcome), "recipient", "recipientVerdict");
     expect(recipient.text).toContain("answers fail, do: fund");
-    expect(recipient.says).toBe(
-      recipientVerdict(refOf(NO_RELATION_ADDRESS) as `0x${string}`, null, null, sauce).message,
-    );
+    expect(recipient.says).toBe(recipientVerdict(refOf(NO_RELATION_ADDRESS) as EvmAddress, null, null, sauce).message);
   });
 
   it("asks the relay nothing about an allowance, and says why instead of inventing a verdict", async () => {
