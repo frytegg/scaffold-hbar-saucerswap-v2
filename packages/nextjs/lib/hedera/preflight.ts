@@ -137,7 +137,7 @@ export function recipientVerdict(
       "pass",
       "none",
       `${account.accountId} has unlimited automatic associations: its first ${token.symbol} associates it inside ` +
-        "the swap, which makes that swap cost more gas.",
+        "the swap, with no separate association transaction to send.",
       true,
     );
   }
