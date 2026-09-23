@@ -1,4 +1,4 @@
-import { entityIdOfLongZero, isLongZeroAddress, isSentBy } from "../addressForms";
+import { entityIdOfLongZero, isLongZeroAddress, isSentBy, longZeroAddressOf } from "../addressForms";
 import { type AddressBookEntry, testnet } from "../addresses";
 import { createMirrorClient } from "../mirror";
 import { mirrorPaths } from "../mirrorPaths";
@@ -58,6 +58,20 @@ describe("address forms", () => {
   it("reads the account id out of a long-zero address, and nothing out of another address", () => {
     expect(entityIdOfLongZero("0x0000000000000000000000000000000000a2719a")).toBe("0.0.10645914");
     expect(entityIdOfLongZero(main.evm_address as `0x${string}`)).toBeNull();
+  });
+
+  it("writes an account id back as the address form of that id", () => {
+    expect(longZeroAddressOf("0.0.10645914")).toBe("0x0000000000000000000000000000000000a2719a");
+    expect(entityIdOfLongZero(longZeroAddressOf("0.0.1") as `0x${string}`)).toBe("0.0.1");
+    for (const entry of entries.filter(([name]) => name !== "hbarSaucePool")) {
+      expect(longZeroAddressOf(entry[1].id)).toBe(entry[1].evmAddress.toLowerCase());
+    }
+  });
+
+  it("refuses an id whose parts no address can hold, which is what an account id is checked against", () => {
+    expect(longZeroAddressOf("0.0.99999999999999999999999" as `${number}.${number}.${number}`)).toBeNull();
+    expect(longZeroAddressOf("99999999999.0.1" as `${number}.${number}.${number}`)).toBeNull();
+    expect(longZeroAddressOf("0.0" as `${number}.${number}.${number}`)).toBeNull();
   });
 
   it("recognises the sender of a mirror result although `from` is long-zero, which a plain comparison misses", async () => {
