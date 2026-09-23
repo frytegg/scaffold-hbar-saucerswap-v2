@@ -27,11 +27,13 @@ The app answers on `http://localhost:3000` with no env file, no key and no accou
 
 Three commands, in this order.
 
-| command | what it proves | about |
-| --- | --- | --- |
-| `yarn test:unit` | the library, the two relay routes and everything the pages decide, replayed against answers captured from Hedera testnet and from a browser wallet. Every refusal named below has a test that states it as a rule. No network | a minute and a half, most of it the lint rule replayed against a file of planted violations |
-| `yarn check:docs` | every path, script, symbol and variable this file names exists in the repository; every figure below is the one its evidence record holds; the tree survives the CLI's rewrite for the other package manager. It fetches the published CLI | 20 seconds |
-| `yarn evidence:check` | re-reads every record of `docs/evidence/` from the mirror node: the result, the sender, the block, the gas, the fee taken from the transfer list, and the amount each swap returned. Reads the public mirror node | 20 seconds |
+| command | what it proves |
+| --- | --- |
+| `yarn test:unit` | the library, the two relay routes and everything the pages decide, replayed against answers captured from Hedera testnet and from a browser wallet. Every refusal named below has a test that states it as a rule. No network |
+| `yarn check:docs` | every path, link, script, symbol and variable this file names exists in the repository; every figure below is the one its evidence record holds; the tree survives the CLI's rewrite for the other package manager. It fetches the published CLI |
+| `yarn evidence:check` | re-reads every record of `docs/evidence/` from the mirror node: the result, the sender, the block, the gas, the fee taken from the transfer list, and the amount each swap returned. Reads the public mirror node |
+
+Three to four minutes for all three, and most of the first is the lint rule replayed against a file of planted violations. Measured on 23 September 2026 at 105, 32 and 39 seconds on Windows 11 with Node 24.13.0 and the dependencies already installed; in a project scaffolded that morning on the same machine, the same three took 155, 57 and 37. They are wall-clock readings of one machine, not a promise about yours.
 
 Then open the transactions themselves. Each was signed by this template's own code, on Hedera testnet, chain 296; the mirror link is the machine-readable one, Hashscan renders the same transaction for a person.
 
