@@ -151,6 +151,19 @@ Each file holds no key and nothing private: the scenario's `name`, `network` and
 
 To verify a file without a key, run `yarn evidence:check`, or open its `mirrorUrl` values: `result` must be `SUCCESS`. The check re-reads each transaction from the mirror node and fails on any difference: the result; the sender, which the mirror node names by the long-zero form of its account and the check resolves to the recorded EVM address; the block, the gas used, the fee and the sender's net HBAR movement from the transfer list; the approval's return value; and the swap's `amountOut`, decoded from its `call_result`.
 
+`yarn evidence:consumer` records the Solidity half the same way: the contract's own deployment and one swap sent to it rather than to the router. A deployment carries a fixed gas limit and no estimate is shown before it is signed, so its preview below is that limit at the gas price of the day, taken from the transaction record; the swap's is the page's own preview.
+
+<!-- checks:evidence -->
+What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-22-consumer-hbar-to-sauce.json`):
+
+| transaction | network fee | cost preview shown before signing | outcome |
+| --- | --- | --- | --- |
+| deploy 0.0.10671897 | 1.54330702 HBAR | up to 3.42 HBAR | `SUCCESS` |
+| swap 0.05 HBAR for SAUCE | 0.23072139 HBAR | up to 0.27011502 HBAR | 2.321545 SAUCE |
+
+1.77402841 HBAR of fees in all; the account's HBAR balance fell by 1.82402841 HBAR, the fees plus the 0.05 HBAR swapped.
+<!-- /checks:evidence -->
+
 `docs/hedera-behaviour.md` is what these checks exist for: the behaviours standard tooling reports wrongly or not at all, each with the testnet transactions that prove it, what the mistake costs in HBAR, the code that refuses it and the test that keeps that code honest.
 
 ## Working with a coding agent

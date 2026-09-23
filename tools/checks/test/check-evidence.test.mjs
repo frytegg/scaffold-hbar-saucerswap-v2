@@ -25,6 +25,7 @@ function records() {
       transactions: [
         {
           role: "swap",
+          result: "SUCCESS",
           feeTinybar: "21804796",
           previewFeeTinybar: "24452658",
           senderNetTinybar: "-31804796",
@@ -44,12 +45,14 @@ function records() {
       transactions: [
         {
           role: "approve",
+          result: "SUCCESS",
           feeTinybar: "79222944",
           previewFeeTinybar: "89212980",
           senderNetTinybar: "-79222944",
         },
         {
           role: "swap",
+          result: "SUCCESS",
           feeTinybar: "99717124",
           previewFeeTinybar: "110563584",
           senderNetTinybar: "-97576374",
@@ -95,6 +98,51 @@ test("the rendering is the block itself: every figure comes from the files, the 
   );
   assert.deepEqual(lines, BLOCK.slice(1, -1));
   assert.deepEqual(problems, []);
+});
+
+test("a record whose first transaction is the deployment renders it as one, not as a swap", () => {
+  const file = "docs/evidence/2026-09-22-consumer-hbar-to-sauce.json";
+  const { lines, problems } = renderEvidenceBlock([
+    {
+      file,
+      record: {
+        recordedAt: "2026-09-22T22:39:17.275Z",
+        software: { viem: "2.39.0", relay: "relay/0.78.5" },
+        swap: {
+          direction: "hbar-to-token",
+          amountIn: "5000000",
+          amountOut: "2321545",
+          tokenOut: "SAUCE 0.0.1183558",
+          summary: "0.05 HBAR -> 2.321545 SAUCE",
+          via: { contract: "0.0.10671897" },
+        },
+        transactions: [
+          {
+            role: "deploy",
+            result: "SUCCESS",
+            feeTinybar: "154330702",
+            previewFeeTinybar: "342000000",
+            senderNetTinybar: "-154330702",
+          },
+          {
+            role: "swap",
+            result: "SUCCESS",
+            feeTinybar: "23072139",
+            previewFeeTinybar: "27011502",
+            senderNetTinybar: "-28072139",
+          },
+        ],
+      },
+    },
+  ]);
+  assert.deepEqual(problems, []);
+  assert.equal(lines[4], "| deploy 0.0.10671897 | 1.54330702 HBAR | up to 3.42 HBAR | `SUCCESS` |");
+  assert.equal(lines[5], "| swap 0.05 HBAR for SAUCE | 0.23072139 HBAR | up to 0.27011502 HBAR | 2.321545 SAUCE |");
+  assert.equal(
+    lines.at(-1),
+    "1.77402841 HBAR of fees in all; the account's HBAR balance fell by 1.82402841 HBAR, the fees plus the 0.05 " +
+      "HBAR swapped.",
+  );
 });
 
 test("a figure typed differently from its file is refused at its line, with the line the file gives", () => {

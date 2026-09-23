@@ -5,7 +5,8 @@ import { listDocs, listTrackedFiles, readJson, readText } from "./lib/repo.mjs";
 
 /**
  * @typedef {object} EvidenceTransaction
- * @property {"approve" | "swap"} role
+ * @property {"approve" | "swap" | "deploy"} role
+ * @property {string} result
  * @property {string} feeTinybar
  * @property {string} previewFeeTinybar
  * @property {string} senderNetTinybar
@@ -14,7 +15,7 @@ import { listDocs, listTrackedFiles, readJson, readText } from "./lib/repo.mjs";
  * @typedef {object} EvidenceRecord the fields of a docs/evidence/ record that the docs quote
  * @property {string} recordedAt
  * @property {{ viem: string, relay: string }} software
- * @property {{ direction: "hbar-to-token" | "token-to-hbar", amountIn: string, amountOut: string, tokenOut: string, summary: string }} swap
+ * @property {{ direction: "hbar-to-token" | "token-to-hbar", amountIn: string, amountOut: string, tokenOut: string, summary: string, via?: { contract: string } }} swap
  * @property {EvidenceTransaction[]} transactions
  */
 
@@ -80,9 +81,21 @@ export function renderEvidenceBlock(evidence) {
     const outcome = record.swap.direction === "token-to-hbar" ? `${output}, native` : output;
     const outSymbol = record.swap.tokenOut.split(" ")[0];
     for (const transaction of record.transactions) {
+      // A deployment is sent with a fixed gas limit and shows no estimate, so its preview is that limit at the gas
+      // price of the day. The doc that quotes the block says so; the figure still comes from the record.
+      const deployed = record.swap.via?.contract ?? "the contract";
       const what =
-        transaction.role === "approve" ? `approve ${input} for the router` : `swap ${input} for ${outSymbol}`;
-      const result = transaction.role === "approve" ? "returned `true`" : outcome;
+        transaction.role === "approve"
+          ? `approve ${input} for the router`
+          : transaction.role === "deploy"
+            ? `deploy ${deployed}`
+            : `swap ${input} for ${outSymbol}`;
+      const result =
+        transaction.role === "approve"
+          ? "returned `true`"
+          : transaction.role === "deploy"
+            ? `\`${transaction.result}\``
+            : outcome;
       const preview = formatHbar(BigInt(transaction.previewFeeTinybar));
       lines.push(
         `| ${what} | ${formatHbar(BigInt(transaction.feeTinybar))} HBAR | up to ${preview} HBAR | ${result} |`,
