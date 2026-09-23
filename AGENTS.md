@@ -8,6 +8,7 @@ Stack: Node.js 20.18.3 or later, TypeScript in strict mode, Next.js 15 (app dire
 ## Commands
 
 ```bash
+yarn replay                     # print three captured Hedera failures and what the library says about each; no network
 yarn dev                        # development server, http://localhost:3000
 yarn build                      # production build of packages/nextjs
 yarn serve                      # production server for that build, http://localhost:3000
