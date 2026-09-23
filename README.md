@@ -27,9 +27,9 @@ With no wallet connected, `/swap` offers one button that runs the quote and the 
 
 ## Verify it yourself
 
-Two ways in. The short one shows you the failures themselves and asks for nothing: no key, no wallet, no account, no network. The long one re-runs every proof this repository makes, against the tests, against the tree and against the public mirror node. Take the short one first — it is the argument of this template in one screen.
+Three ways in. The first two are short and ask for no key, no wallet and no account of yours: one replays the failures themselves from the answers captured when they happened and touches no network at all, the other puts the same checks on an account you name. The third re-runs every proof this repository makes, against the tests, against the tree and against the public mirror node. Start with the first — it is the argument of this template in one screen.
 
-### The short one: three failures, replayed offline
+### The first one: three failures, replayed offline
 
 ```bash
 yarn replay
@@ -39,6 +39,18 @@ It replays three of the failures below from the answers captured when they happe
 
 Every sentence it shows in quotes is produced by the library while the command runs, from the captured answer printed above it, so what you read is what the app would have shown, and the command fails instead of printing when a captured answer stops producing the refusal it is shown for. The answers themselves are the committed files of `packages/nextjs/lib/hedera/__tests__/fixtures/`, and nothing leaves the process: `packages/nextjs/lib/hedera/__tests__/replayCaptured.test.ts` asserts that against a global `fetch` that throws.
 
+### The second one: the same checks, on an account you name
+
+```bash
+yarn preflight
+```
+
+The command above answers about a fixed account this repository chose. This one asks for an account — an EVM address (`0x…`) or a Hedera account id (`0.0.…`) — reads it on Hedera's public mirror node and its JSON-RPC relay, and prints what `recipientVerdict`, `checkAllowance` and the gas rule for the call no simulator prices answer about it: the same verdicts, the same sentences and the same actions a page shows for the address a wallet connects. Nothing is signed and no key is read, and it prints the mirror URLs it read for you to open yourself.
+
+It asks on standard input rather than taking the account after the command, because a project scaffolded for the other package manager forwards what follows a script name only for a few names this one is not among, and the account would be dropped there and kept here. A question behaves the same under both.
+
+It reads two third-party endpoints, which is why it is not part of `yarn check:all`, and it says which of two different things happened rather than guessing between them. It exits 0 when it printed a verdict, 1 when what you typed is neither an address nor an account id, 2 when the mirror node or the relay did not answer, and 3 for anything else. An endpoint that is down is reported as an endpoint that is down, never as an answer about the account.
+
 ### The whole thing, in three commands
 
 | command | what it proves |
@@ -47,7 +59,7 @@ Every sentence it shows in quotes is produced by the library while the command r
 | `yarn check:docs` | every path, link, script, symbol and variable this file names exists in the repository; every figure below is the one its evidence record holds; the tree survives the CLI's rewrite for the other package manager. It fetches the published CLI |
 | `yarn evidence:check` | re-reads every record of `docs/evidence/` from the mirror node: the result, the sender, the block, the gas, the fee taken from the transfer list, and the amount each swap returned. Reads the public mirror node |
 
-Three to four minutes for all three the first time, most of it the first command, which replays the lint rule against a file of planted violations. What they take depends on the machine and on what is already cached: on Windows 11 with Node 24.13.0, on 23 September 2026, they took 155, 57 and 37 seconds in a project scaffolded that morning, and 105, 32 and 39 on a warm checkout of the same machine, where a later run of the first command took 29. The short command above was timed separately, in a project scaffolded the same evening: 43 seconds on its first run there, straight after the install, and 4 to 5 seconds on every run after it. These are one machine's wall-clock readings, not a promise about yours.
+Three to four minutes for all three the first time, most of it the first command, which replays the lint rule against a file of planted violations. What they take depends on the machine and on what is already cached: on Windows 11 with Node 24.13.0, on 23 September 2026, they took 155, 57 and 37 seconds in a project scaffolded that morning, and 105, 32 and 39 on a warm checkout of the same machine, where a later run of the first command took 29. The offline command above was timed separately, in a project scaffolded the same evening: 43 seconds on its first run there, straight after the install, and 4 to 5 seconds on every run after it. These are one machine's wall-clock readings, not a promise about yours.
 
 Then open the transactions themselves. Each was signed by this template's own code, on Hedera testnet, chain 296; the mirror link is the machine-readable one, Hashscan renders the same transaction for a person.
 
