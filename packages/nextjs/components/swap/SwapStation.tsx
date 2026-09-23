@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccountCard } from "./AccountCard";
 import { OutcomeCard } from "./OutcomeCard";
 import { PreflightPanel } from "./PreflightPanel";
+import { SampleRunCard } from "./SampleRunCard";
 import { SwapForm } from "./SwapForm";
 import { type AccountState, readAccountState } from "./accountState";
 import { type Refusal, type SwapPlan, buildSwapPlan, createPlanReads } from "./swapPlan";
@@ -57,6 +58,9 @@ export const SwapStation = () => {
     () => (address !== undefined && isEvmAddress(address) ? toEvmAddress(address) : null),
     [address],
   );
+  // The reads both panels make: this page's own quote and pre-flight for a connected account, and the same ones
+  // against a fixed address for a reader who has connected nothing. Neither of them needs a key.
+  const planReads = useMemo(() => (client === undefined ? null : createPlanReads(client, mirror)), [client, mirror]);
 
   const [direction, setDirection] = useState<SwapDirection>("hbar-to-token");
   const [amount, setAmount] = useState("0.1");
@@ -130,7 +134,7 @@ export const SwapStation = () => {
   }, [plan]);
 
   const runQuote = useCallback(async (): Promise<void> => {
-    if (client === undefined || account === null) return;
+    if (planReads === null || account === null) return;
     setQuoting(true);
     setPlan(null);
     setPlanRefusal(null);
@@ -139,7 +143,7 @@ export const SwapStation = () => {
     setSendFailure(null);
     try {
       const result = await buildSwapPlan({
-        reads: createPlanReads(client, mirror),
+        reads: planReads,
         account,
         pool: POOL,
         direction,
@@ -160,7 +164,7 @@ export const SwapStation = () => {
     } finally {
       setQuoting(false);
     }
-  }, [client, account, mirror, direction, amount, slippage]);
+  }, [planReads, account, direction, amount, slippage]);
 
   const onApprove = useCallback(async (): Promise<void> => {
     if (plan === null || plan.approveAmount === null) return;
@@ -281,6 +285,8 @@ export const SwapStation = () => {
         )}
       </section>
 
+      {!ready && <SampleRunCard reads={planReads} token={TOKEN} />}
+
       {ready && (
         <>
           <AccountCard
@@ -352,7 +358,7 @@ export const SwapStation = () => {
       <p className="m-0 text-sm opacity-70">
         Hedera testnet only, through the addresses in <code>packages/nextjs/lib/hedera/addresses.ts</code>. Every
         request this page makes goes to its own origin, <code>/api/hedera/rpc</code> for JSON-RPC and{" "}
-        <code>/api/hedera/mirror</code> for the mirror node, and none of them is made before you ask for a quote.
+        <code>/api/hedera/mirror</code> for the mirror node, and none of them is made before you press a button here.
       </p>
     </div>
   );
