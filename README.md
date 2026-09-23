@@ -1,155 +1,161 @@
-# Hardhat base for Scaffold-HBAR templates
+# Swap and manage liquidity on SaucerSwap V2, from a Hedera dApp
 
-A Hedera dApp starting point with one Solidity framework, Hardhat, and a Next.js frontend whose pages load with no configuration and without the browser calling any third-party host.
-It is the blank template of Scaffold-HBAR as `create-scaffold-hbar` scaffolds it, minus its default keys, dead scripts and Foundry leftovers, plus the checks that keep it that way: repository checks for the docs and the manifest, a browser probe of every route, and a gate that scaffolds the template through the published CLI on pushes to `main` and every night.
-It ships no product of its own: templates are built on top of it.
+On Hedera a swap can pass `eth_call`, `eth_estimateGas` and the mirror node's own simulator and still be rejected by the network, which keeps the gas. The wallet has nothing to warn about, because every simulator it can ask said yes: it showed a fee, a Confirm button and nothing else. One such swap on 22 September 2026 burnt 0.13498778 HBAR, delivered nothing, and left a MetaMask history that says "Interaction failed" and nothing more.
 
-## Quick start
+This template is the path that knows. It refuses, before the wallet opens, what the network would refuse after taking the gas; it decodes the failures that happen anyway into one sentence and one action; it carries gas limits for the calls no simulator will price; and it puts a testnet transaction you can open behind every claim it makes. On that path you swap HBAR for an HTS token and back on SaucerSwap V2 — from a page, from a script, and from your own Solidity contract — and open, read and close a V2 liquidity position.
 
-```bash
-npx create-scaffold-hbar@latest my-app --template OWNER/REPO -s hardhat
-```
-
-The same through npm's `create` command; the `--` is required, since without it the options go to npm, not to the CLI:
+## One command
 
 ```bash
-npm "create" scaffold-hbar@latest my-app -- --template OWNER/REPO -s hardhat
+npx create-scaffold-hbar@latest my-app --template frytegg/scaffold-hbar-saucerswap-v2 -s hardhat
 ```
-
-Replace `OWNER/REPO` with the GitHub repository that holds this template. The CLI installs the dependencies and makes the first commit. Then:
 
 ```bash
 cd my-app
-yarn dev    # http://localhost:3000
+yarn dev
 ```
 
-## Prerequisites
+The app answers on `http://localhost:3000` with no env file, no key and no account. `/swap` and `/positions` load without asking the network for anything, and every read and write they make afterwards leaves from the app's own origin.
 
-| Needed | Why |
+The other form of the command needs the `--` separator, since without it the options go to the package manager instead of to the CLI:
+
+```bash
+npm "create" scaffold-hbar@latest my-app -- --template frytegg/scaffold-hbar-saucerswap-v2 -s hardhat
+```
+
+Keep the `--`. The shorter form, which is the one the bounty's brief prints, never gets `--template` as far as the CLI: majors 10 and 11 drop the flag (11 warns that it will stop working) and major 12 refuses it before the CLI starts, so no template is scaffolded. `tools/gate/literal-command-control.sh` runs that shorter form on all three majors and records how each one ends; `.github/workflows/gate-skeleton.yml` is where it runs.
+
+## Verify it yourself
+
+Three commands, in this order. None of them needs a key, an account or an env file.
+
+| command | what it proves | about |
+| --- | --- | --- |
+| `yarn test:unit` | the library, the two relay routes and everything the pages decide, replayed against answers captured from Hedera testnet and from a browser wallet. Every refusal named below has a test that states it as a rule. No network | a minute |
+| `yarn check:docs` | every path, script, symbol and variable this file names exists in the repository; every figure below is the one its evidence record holds; the tree survives the CLI's rewrite for the other package manager. It fetches the published CLI | 20 seconds |
+| `yarn evidence:check` | re-reads every record of `docs/evidence/` from the mirror node: the result, the sender, the block, the gas, the fee taken from the transfer list, and the amount each swap returned. Reads the public mirror node | 20 seconds |
+
+Then open the transactions themselves. Each was signed by this template's own code, on Hedera testnet, chain 296; the mirror link is the machine-readable one, Hashscan renders the same transaction for a person.
+
+| what was signed | transaction | record |
+| --- | --- | --- |
+| swap 0.1 HBAR for SAUCE | [0x25c637ca…3bfb](https://hashscan.io/testnet/tx/0x25c637ca7b28b39cb9964247d69cba2152b0e3d9aea07aa6303d107ed6093bfb) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x25c637ca7b28b39cb9964247d69cba2152b0e3d9aea07aa6303d107ed6093bfb)) | `docs/evidence/2026-09-22-hbar-to-sauce.json` |
+| swap 1 SAUCE back to native HBAR, one transaction, no wrapped token left behind | [0x71c08eab…3b20](https://hashscan.io/testnet/tx/0x71c08eabf61768476cd33a9c2b44c38a1b34d44406bdd66acbde85ecfafd3b20) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x71c08eabf61768476cd33a9c2b44c38a1b34d44406bdd66acbde85ecfafd3b20)) | `docs/evidence/2026-09-22-sauce-to-hbar.json` |
+| deploy the Solidity consumer, which associates itself with its output token in its constructor | [0x94f6173b…3e24](https://hashscan.io/testnet/tx/0x94f6173b6e86e84a2b7b22ffe9d2fd93636f111c53a5a298cb2d92d138783e24) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x94f6173b6e86e84a2b7b22ffe9d2fd93636f111c53a5a298cb2d92d138783e24)) | `docs/evidence/2026-09-22-consumer-hbar-to-sauce.json` |
+| the same swap sent to that contract instead of to the router | [0xfe12a2e3…3e87](https://hashscan.io/testnet/tx/0xfe12a2e32ea5157de9465af9a82de112c4d4adc2c8a729a07e2958481a5f3e87) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xfe12a2e32ea5157de9465af9a82de112c4d4adc2c8a729a07e2958481a5f3e87)) | the same record |
+| open a liquidity position, the call both simulators refuse to price | [0xac5b0609…d017](https://hashscan.io/testnet/tx/0xac5b06097841d492cad222545bd01eddc837099040bd1d5e5bb3abfd1e85d017) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xac5b06097841d492cad222545bd01eddc837099040bd1d5e5bb3abfd1e85d017)) | `docs/evidence/2026-09-23-position-cycle-361.json` |
+| empty it and take the payout as native HBAR, not as a wrapped token | [0xaa50b98a…0cf8](https://hashscan.io/testnet/tx/0xaa50b98ad3f2fced5548b30142a6314d93fd141517018185158bd6bda77b0cf8) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xaa50b98ad3f2fced5548b30142a6314d93fd141517018185158bd6bda77b0cf8)) | the same record |
+| the same life cycle from an account created 21 seconds before its first transaction | [0x7fb2cd0b…2353](https://hashscan.io/testnet/tx/0x7fb2cd0b65a60d9657cc162b84cb58017d333047a3becddbbbe5ce65968a2353) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x7fb2cd0b65a60d9657cc162b84cb58017d333047a3becddbbbe5ce65968a2353)) | `docs/evidence/2026-09-23-position-cycle-362.json` |
+
+Each record also carries the versions it ran on, what every pre-flight check answered before the send, and the sender's net HBAR movement. With a funded testnet key in the shell, `yarn evidence` signs the swap scenarios again and `yarn evidence:position` a whole life cycle; without one, both exit 0 and say they were skipped.
+
+## Eight things the network does that your tools report wrongly, or not at all
+
+Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.md), with the transactions that prove it, what the mistake costs in HBAR, the code that refuses it and the test that keeps that code honest.
+
+**[HBAR has two units, and the wrong one fails under another name](docs/hedera-behaviour.md#hbar-has-two-units-and-the-wrong-one-fails-under-another-name).** Inside the EVM every amount is tinybar; a transaction's `value` is weibar, 10^10 times larger. Write the calldata figure in both and a default viem flow dies with `INSUFFICIENT_TOKEN_BALANCE` — a message about a token balance for a mistake about HBAR. You get two branded types, one door (`payable`) from one to the other, and a lint rule that fails the build on a `value:` written anywhere else.
+
+**[The simulators approve a swap the network refuses](docs/hedera-behaviour.md#the-simulators-approve-a-swap-the-network-refuses).** An HTS allowance is held below the EVM, so `eth_call`, `eth_estimateGas` and the mirror node's simulator all accept a token-input swap the network then rejects with `SPENDER_DOES_NOT_HAVE_ALLOWANCE`. You get one keyless read before the send, `allowanceVerdict`, that refuses it and names the amount to approve — and a live check that fails the day the simulators stop being wrong.
+
+**[A token cannot reach an account that has never held it](docs/hedera-behaviour.md#a-token-cannot-reach-an-account-that-has-never-held-it-and-who-that-actually-bites).** The token service refuses a transfer to an account with no relation and no free automatic-association slot; the swap reverts and is charged anyway. You get `recipientVerdict`, which reads the recipient on the mirror node and answers one of six things — including the two cases a wallet cannot see, a recipient that is not the sender and an account whose slot budget the mirror node does not count.
+
+**[Some calls cannot be priced, and the wallet then cannot send them](docs/hedera-behaviour.md#some-calls-cannot-be-priced-and-the-wallet-then-cannot-send-them).** Opening a V2 position is refused by both simulators with `INVALID_NFT_ID` although the network executes it, so a wallet shows "network fee unavailable" and the send fails. A dApp that lets the wallet estimate cannot open a position on Hedera today. You get `packages/nextjs/lib/hedera/gasRules.ts`: the limit for each such call, the executed transactions it was derived from, and a builder that refuses to produce the call without one.
+
+**[The wallet prices the gas limit; the network charges the gas used](docs/hedera-behaviour.md#the-wallet-prices-the-gas-limit-the-network-charges-the-gas-used).** Over eight measured transactions the fee announced before the signature was larger than the fee charged every single time, by up to eight times. You get a cost preview of your own, always said as "up to", and `WALLET_FEE_NOTE`, the one sentence that explains the wallet's figure instead of arguing with it.
+
+**[A failed HTS operation can be a successful transaction](docs/hedera-behaviour.md#a-failed-hts-operation-can-be-a-successful-transaction).** The token service answers a response code rather than reverting, so a refused association is a `SUCCESS` with a green tick and a full fee. You get `facadeResultVerdict` and `explainResponseCode` in TypeScript, and a Solidity consumer whose constructor accepts code 22 and nothing else, so a contract that cannot hold its own output token never gets an address.
+
+**[Emptying a position pays a wrapped token, unless the call is split in three](docs/hedera-behaviour.md#emptying-a-position-pays-a-wrapped-token-unless-the-call-is-split-in-three).** The pattern a Uniswap reader writes first reverts; the documented pattern succeeds and leaves the user holding wrapped HBAR. You get `buildSplitCollect`, which builds the three calls in the only order that pays native HBAR, refuses a floor of zero on a sweep, and is checked afterwards against the sender's own transfer list.
+
+**[A burn the simulators accept, and the network refuses](docs/hedera-behaviour.md#a-burn-the-simulators-accept-and-the-network-refuses).** Closing a position needs `setApprovalForAll` on the position NFT, which is checked at consensus and not during a simulation. You get `buildBurn`, which will not build the call while the manager holds no approval, and `buildNftApproval`, which is the remedy.
+
+## What you get
+
+| Piece | What it does |
 | --- | --- |
-| Node.js 20.18.3 or later | `engines` in `package.json` |
-| git, with `user.name` and `user.email` set | the CLI commits the scaffold, and stops before creating anything when git has no identity |
-| the default package manager on your `PATH`, any release from 1.0 | the CLI checks for it before scaffolding; the project then runs the release pinned in `package.json` (`packageManager`). GitHub's Ubuntu runners and the official Node.js container images already have it |
+| `/swap` | a SaucerSwap V2 swap both ways: the account read from the mirror node, a quote on user action, one line per check the network would otherwise answer only after taking the gas, a cost preview, the send, and the outcome read back from the mirror node's DETAIL view |
+| `/positions` | the connected account's V2 positions, read-only: the range against the pool's live tick, what closing one would return, and both links per serial |
+| `/debug` | reads and writes every deployed contract, including this template's own consumer on Hedera testnet |
+| `packages/nextjs/lib/hedera/` | what the pages, the scripts and the tests share: the two units, the address book, original ABIs, error decoding, the mirror client, the pre-send checks, the swap and position builders, the gas rules |
+| `packages/hardhat/contracts/SaucerSwapHbarConsumer.sol` | a contract that swaps the HBAR sent with a call for an HTS token and keeps it; it associates itself in its constructor, so the deployer pays for that relation once instead of every swap paying for it |
+| `yarn test:unit` and `yarn test:mock` | the two offline tiers: captured testnet answers replayed through the pinned viem, and the contract against original mocks injected at the real addresses, which reproduce the response codes and the empty reverts a fork cannot |
+| `yarn test` and `yarn probe:routes` | the inherited samples on a fork of Hedera testnet, and every page route loaded in Chromium in three network modes with zero console errors and zero third-party requests |
+| `yarn check:live` | keyless reads that re-assert the address book, a quote, and the dated observation that three simulators still accept a swap with no allowance |
+| `.github/workflows/gate.yml` | scaffolds this repository through the published CLI, on every push to `main` that changes more than Markdown and again nightly, installs the result, and runs lint, types, build, tests, the route probe, the docs checks and a secret scan of the tree and the history inside the scaffolded project |
 
-Foundry (`forge`) is not needed: every command here passes `-s hardhat`. No key, account or env file is needed to scaffold, lint, build, serve or test.
+## Architecture
 
-## Scaffolding notes
+The write path, from a page to the network and back. The diagram is Mermaid rather than an ASCII block: GitHub renders it, and `yarn check:docs` replays the CLI's rewrite over this file, so it survives a scaffold for either package manager unchanged.
 
-- Name the project in lowercase, as a single path segment. With `--yes` the CLI replaces a name it rejects, one with a capital letter for instance, by `my-hedera-dapp` and still exits 0.
-- `--yes` accepts every default: the default package manager, and the Hedera Skills install, which adds agent skills under `.agents/`, `.claude/`, `agent/` and `skills-lock.json`. The repository checks and formatters leave those paths alone.
-- To scaffold for npm, end the command with `--package-manager "npm"`. The CLI then rewrites the new project's docs and scripts for npm, commands included.
-- Git Bash on Windows: when a `package.json` in a parent folder pins another package manager, Corepack refuses to run the default one outside a project, and the CLI reports it as not installed. Prefix the scaffold command with `COREPACK_ENABLE_STRICT=0`. Git Bash also turns an argument that starts with `/` into a Windows path: prefix a command that passes a route such as `/debug` to a script under `tools/` with `MSYS_NO_PATHCONV=1`, rather than exporting it, since Corepack's shims need the conversion.
-
-## Develop
-
-```bash
-yarn dev                        # development server on http://localhost:3000
+```mermaid
+flowchart TD
+  Page["a page: /swap"] --> Plan["swapPlan.ts: quote, pre-flight, cost preview"]
+  Plan --> Lib["lib/hedera: units, checks, builders, gas rules"]
+  Lib --> Wallet["the browser wallet signs"]
+  Wallet --> Rpc["/api/hedera/rpc, same origin"]
+  Rpc --> Relay["Hedera JSON-RPC relay"]
+  Relay --> Network["Hedera testnet"]
+  Network --> Mirror["Hedera Mirror Node"]
+  Mirror --> MirrorRoute["/api/hedera/mirror, same origin"]
+  MirrorRoute --> Outcome["postMortem: the DETAIL view, then /actions when multicall left 0x"]
+  Outcome --> Page
 ```
 
-The home page shows the connected wallet, a burner wallet unless you connect another, and `/debug` reads and writes the contracts listed in `packages/nextjs/contracts/deployedContracts.ts`. It ships with one entry for Hedera testnet: this template's own `SaucerSwapHbarConsumer` at `0x7E1a4337BEBB0cC8e231c6137Da17F04C7cd3409`, the contract `docs/hedera-behaviour.md` and `docs/evidence/` are about. Read it freely; `associate`, `withdrawToken` and `withdrawHbar` revert with `NotOwner` for anyone but the account that deployed it, and `swapExactHbarForToken` is payable and open to all, so the HBAR you send it buys SAUCE that stays in it. `yarn hardhat:deploy:consumer:testnet` gives you one of your own: every deploy rewrites the file from `packages/hardhat/deployments/`. With no env file both pages load, and on page load the browser talks to the app only: JSON-RPC goes through `/api/hedera/rpc` and account lookups through `/api/hedera/account`, two route handlers that answer HTTP 200 with a typed error body when the public Hedera endpoints behind them fail, since a browser logs every response of 400 or more as a console error.
+Nothing in the browser talks to a third party. Those route handlers, and the account lookup beside them, answer HTTP 200 with a typed error body when the public endpoints behind them fail, because a browser logs every response of 400 or more as a console error — and `yarn probe:routes` fails a route on any console error and on any request to a host that is not the app's own.
 
-Against a local fork of Hedera testnet:
-
-```bash
-yarn hardhat:chain              # terminal 1: the fork, JSON-RPC on http://127.0.0.1:8545
-yarn hardhat:deploy:localhost   # terminal 2: deploy the sample contracts to it
-yarn dev                        # terminal 3
-```
-
-On Hedera testnet, with a deployer account funded from the [Hedera Portal faucet](https://portal.hedera.com/faucet):
-
-```bash
-yarn hardhat:account:generate   # new key, stored encrypted in packages/hardhat/.env
-yarn hardhat:account            # asks for the password, prints the address and its balances
-yarn hardhat:deploy:testnet     # asks for the password, deploys, regenerates the frontend's contract list
-```
-
-Without a stored key the deploy stops with exit code 1 and names both ways to provide one. There is no fallback key: the upstream configuration fell back to Hardhat's well-known account #0, which is a funded account on Hedera testnet.
-
-## Using the swap route
-
-`/swap` swaps HBAR for an HTS token and the token back to HBAR on SaucerSwap V2, on Hedera testnet. It needs no deployment of your own and no env file: a browser wallet holding a little testnet HBAR is enough.
-
-On Hedera a swap can pass `eth_call`, `eth_estimateGas` and the mirror node's own simulator and still be rejected by the network, which keeps the gas, while the wallet shows a fee, a Confirm button and no warning at all. `docs/hedera-behaviour.md` has those transactions, what the mistake cost and the code that avoids it. This route is that code in front of a person.
-
-What the page does, in the order it shows it:
-
-1. **Connect.** It reads and sends through a browser wallet only, on chain 296. On another chain it offers one button, which switches the wallet and adds Hedera testnet to it when it is missing. Connected with the burner wallet — which connects by itself on a first visit — it reads nothing and sends nothing, and says why: that key lives in the browser, and every transaction here is a real one on a live network.
-2. **Your account**, from the mirror node through `/api/hedera/mirror`: the Hedera account id, the HBAR, the token balance, the allowance given to the SaucerSwap router, whether the account is associated with the token, and how many automatic association slots it has. Every line is something a swap depends on.
-3. **The form**: the direction, the amount, and how far the price may move before the swap is refused. Nothing is asked of the network until the quote button is pressed, so loading the route makes no request outside the app's own origin at all — which `yarn probe:routes` checks in three network modes, the harshest of them answering every third-party host 429 and then 400.
-4. **Before the wallet opens**: the quote, the least output you accept, and one line per check the network would otherwise answer only after taking the gas. Each line is one sentence and, when the page can act on it, a button: a missing allowance offers to approve exactly the amount of the swap. A blocked line blocks the send.
-5. **The cost preview**, from `estimateContractGas` for this sender and these arguments, always said as "up to", with the line that explains why the wallet will announce more: a wallet prices the gas limit at the current gas price, and the network charges the gas the call really uses.
-6. **The send and what happened.** The call reaches the wallet with its value already in weibar and, for a call no simulator prices, with the gas limit of a rule in `packages/nextjs/lib/hedera/gasRules.ts`. The outcome is then read from the mirror node's DETAIL view rather than from the receipt: on a failure the page fetches the transaction's `/actions` view, where the reason survives that SaucerSwap's `multicall` erased, and shows one sentence, the action to take, and both links — the mirror node's, which any checker can read, and Hashscan's, which renders it for a person.
-
-What it refuses, and why:
-
-| It refuses | Because |
+| Path | What |
 | --- | --- |
-| a token-input swap while the router's allowance is below the amount | all three simulators accept that swap and the network rejects it with `SPENDER_DOES_NOT_HAVE_ALLOWANCE`, having already charged the gas. One keyless read of the allowance costs nothing and prevents it |
-| an HBAR-input swap to an account not associated with the token and with no automatic association slot | the token cannot arrive, so the swap reverts and is still charged |
-| a swap after an approval whose HTS return value is not success | an HTS operation can fail inside a transaction the network reports as a success, so the receipt alone never says whether it happened |
-| an amount of zero, an amount larger than an HTS amount can be, or a slippage that leaves a minimum output of zero | a swap with no minimum accepts any price it is given, and an amount the router cannot carry fails at the token service |
-| a send on a quote more than a minute old | the price moves, and the minimum output was computed from a price nobody has looked at since |
-| a call neither simulator will price, without a gas limit from the page | a wallet that cannot price a call refuses to send it, and the limits, with the executed transactions each one comes from, live in `packages/nextjs/lib/hedera/gasRules.ts` |
-| anything at all, before it says so on the page | no failure on this route reaches the browser console: every one of them renders as a sentence with its action |
+| `packages/nextjs/app/` | the routes `/`, `/swap`, `/positions`, `/debug`, and the three handlers under `packages/nextjs/app/api/hedera/` |
+| `packages/nextjs/components/swap/` | the swap panel; `swapPlan.ts` takes its reads as an argument, so every refusal it can show is tested without a network |
+| `packages/nextjs/components/positions/` | the positions list, built the same way |
+| `packages/nextjs/components/hedera/` | what both routes share: the failure note, the words for the action to take, the two links, and `withRuleGasLimit`, the one door from a page to the gas rules |
+| `packages/nextjs/lib/hedera/` | the Hedera-specific library; `index.ts` is its public surface, `__live__/` holds the keyless and signed tiers |
+| `packages/hardhat/contracts/` | the consumer, its own minimal interfaces, the mocks the offline tier injects, and the inherited samples |
+| `docs/evidence/` | one JSON record per signed scenario, re-read by `yarn evidence:check` |
+| `docs/hedera-behaviour.md` | the eight sections above, in full |
+| `tools/checks/` | the repository checks behind `yarn check:docs` |
+| `tools/gate/` and `tools/route-probe/` | the scaffold gate, and the browser probe as a standalone package so that no install of the app downloads a browser |
 
-The route is testnet-only. Every address it calls comes from `packages/nextjs/lib/hedera/addresses.ts`, every check and every message from `packages/nextjs/lib/hedera`, and it never asks for a key: the wallet signs.
+## Environment variables
 
-## Using the positions route
+Nothing needs to be set: the app, the build and the tests run with no env file. Each variable goes in the file named below; a scaffolded project also gets a root `.env.example` listing them, but no package reads env files at the root.
 
-`/positions` lists the SaucerSwap V2 liquidity positions the connected account holds on Hedera testnet and changes none of them. A browser wallet is enough; nothing here is ever signed.
+| Variable | File | Required | Default | Read by |
+| --- | --- | --- | --- | --- |
+| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | `packages/nextjs/.env.local` | no | empty: WalletConnect is off, browser-injected and burner wallets are offered | `packages/nextjs/scaffold.config.ts` |
+| `HEDERA_RPC_TESTNET_URL` | `packages/nextjs/.env.local` | no | `https://testnet.hashio.io/api` | the `/api/hedera/rpc` relay, on the server |
+| `HEDERA_RPC_MAINNET_URL` | `packages/nextjs/.env.local` | no | `https://mainnet.hashio.io/api` | the same relay, for mainnet |
+| `HEDERA_MIRROR_TESTNET_URL` | `packages/nextjs/.env.local` | no | `https://testnet.mirrornode.hedera.com` | the `/api/hedera/account` and `/api/hedera/mirror` routes, on the server |
+| `HEDERA_MIRROR_MAINNET_URL` | `packages/nextjs/.env.local` | no | `https://mainnet.mirrornode.hedera.com` | the same routes, for mainnet |
+| `HEDERA_RPC_URL` | `packages/hardhat/.env` | no | `https://testnet.hashio.io/api` | the in-process Hardhat network, which forks it |
+| `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | `packages/hardhat/.env` | for a live deploy | none; written by `hardhat:account:generate` or `hardhat:account:import` | the deploy script, which asks for its password |
+| `__RUNTIME_DEPLOYER_PRIVATE_KEY` | never a file: the shell, for one command | no | none | `packages/hardhat/hardhat.config.ts`, the only key live networks sign with; the deploy script sets it from the encrypted key; `yarn evidence` signs with it and is skipped without it |
 
-A position is an HTS NFT, and the facade of that collection answers `ownerOf` but cannot be asked what one account holds: it has no enumeration. So the serials come from the mirror node through `/api/hedera/mirror`, and what is inside one comes from the position manager, whose `positions` answers ten fields where the Uniswap function of the same name answers twelve — the nonce and the operator are missing from the front, so an ABI taken from Uniswap does not merely lose two fields, it misreads every one of them. `packages/nextjs/lib/hedera/positionAbi.ts` is the shape this template reads it with.
+## Prerequisites and scaffolding notes
 
-Per serial, the page shows:
+Node.js 20.18.3 or later; git with `user.name` and `user.email` set, since the CLI makes the first commit and stops before creating anything when git has no identity; and the default package manager on your `PATH`, which the CLI checks for before scaffolding. Foundry is not needed: every command here passes `-s hardhat`. No key, account or env file is needed to scaffold, lint, build, serve or test.
 
-1. **The range**, as the two ticks the manager reports, next to the pool's own tick, so how far the price sits from the edge is visible rather than computed by the reader.
-2. **In range or not**, decided on the tick as a pool decides it: the lower tick is inside the range and the upper tick is not. Outside it a position is one of the two tokens alone and earns nothing.
-3. **The liquidity**, and the two amounts it is worth at today's price, rounded down the way a withdrawal is.
-4. **What closing it would return**: those two amounts plus what the manager already owes — fees earned, and whatever an earlier decrease left behind. The HBAR side is named HBAR and not WHBAR, because the collect this template builds unwraps it in the same transaction.
-5. **Both links**: the serial's own record on the mirror node, which reads `deleted: true` once the position is burnt, and the same serial on Hashscan.
+Name the project in lowercase, as a single path segment. `--yes` accepts every default, the Hedera Skills install among them, which adds agent skills under `.agents/`, `.claude/`, `agent/` and `skills-lock.json`; the repository checks and the formatters leave those paths alone. To scaffold for the other package manager, end the command with `--package-manager "npm"`: the CLI then rewrites the new project's docs and scripts, commands included.
 
-Nothing is read before the button is pressed, so loading the route makes no request outside the app's own origin, and every state renders instead of reaching the browser console: an account that holds none; a serial the manager no longer knows, burnt between the two reads; a serial of a pool other than the one in `packages/nextjs/lib/hedera/addresses.ts`, listed with its fields and no price; a pool that did not answer, which leaves every serial listed and unpriced; and a mirror node that did not answer, which leaves nothing to list and says so.
-
-Opening a position, taking liquidity out of it, collecting what it owes and burning the serial are writes, and this template keeps them out of the browser: `packages/nextjs/lib/hedera/position.ts` builds and checks those four calls, and the mint among them is the call no simulator will price, which is why it carries a gas limit from `packages/nextjs/lib/hedera/gasRules.ts`.
+On Git Bash: when a `package.json` in a parent folder pins another package manager, Corepack refuses to run the default one outside a project and the CLI reports it as not installed — prefix the scaffold command with `COREPACK_ENABLE_STRICT=0`. Git Bash also turns an argument that starts with `/` into a Windows path, so prefix a command that passes a route such as `/debug` to a script under `tools/` with `MSYS_NO_PATHCONV=1`.
 
 ## Check a change
 
 ```bash
-yarn lint:strict                # ESLint and Prettier on both packages, no warning allowed
-yarn typecheck                  # both packages; compiles the contracts first
-yarn test:unit                  # unit tests of the frontend's Hedera library, no network and no key
-yarn build                      # production build of the frontend
-yarn test                       # Hardhat tests on a fork of Hedera testnet (network needed)
-yarn check:all                  # lint:strict, typecheck, the tools' tests, the docs checks (registry needed)
+yarn format
+yarn check:all                  # lint, types, the tools' tests, the route probe's tests, the docs checks
+yarn test:unit                  # after a change under packages/nextjs
+yarn build
+yarn probe:routes               # every route in Chromium, after the build
+yarn test:mock                  # after a change under packages/hardhat
+yarn gate:local                 # after a change to a manifest, the lockfile or a workflow
 ```
 
-`yarn check:all` needs the package registry, like `yarn test` needs hashio: it reinstalls the route probe from its lockfile, and two docs checks download the published CLI to replay its npm-mode rewrite and its manifest schema.
+`yarn check:all` and `yarn gate:local` need the package registry: the first reinstalls the route probe from its own lockfile and fetches the published CLI, the second scaffolds the committed HEAD through that CLI into a temporary folder and checks the result, which takes well over 1 GB of disk while it runs. `AGENTS.md` is the same list for a coding agent, with the invariants a change has to keep.
 
-After `yarn build`, `yarn probe:routes` loads every page route in Chromium three times: third parties reachable, third parties failing at the network level, and third parties answering 429 then 400. A console error, a page error, or any request to a third-party host fails the route. It serves the build on port 3000 and stops the server afterwards.
+## What it costs
 
-`yarn gate:local` scaffolds the committed HEAD through the published CLI into a temporary folder, installs it, and runs `lint:strict`, `typecheck`, `build` and `test` in the new project, then boots it with no env file and requests every route. It needs well over 1 GB of disk while it runs. `.github/workflows/gate.yml` runs the same leg on every push to `main` of the template repository that changes more than Markdown, and nightly, with a failed `test` reported but not blocking since it depends on hashio; then the route probe, the docs checks and a secret scan of the tree and the history.
-
-## Live checks and testnet evidence
-
-```bash
-yarn check:live                 # keyless reads of Hedera testnet, then evidence:check (network needed)
-yarn evidence:check             # re-reads every file of docs/evidence/ from the mirror node, no key
-yarn evidence                   # signs two swaps on Hedera testnet and writes docs/evidence/
-```
-
-`yarn check:live` needs no key and nothing but network access to hashio and the testnet mirror node, which are third parties: a failure can be theirs, so run it again before you debug. It checks that every entry of the address book in `packages/nextjs/lib/hedera/addresses.ts` has code, that the SwapRouter's `factory()`, `whbar()` and `WHBAR()` and the factory's `getPool` for WHBAR, SAUCE and the 0.30 % fee agree with it, that the router and QuoterV2 are still associated with WHBAR and SAUCE, and that QuoterV2 quotes 1 HBAR for SAUCE. It also re-asserts a dated observation: on Hedera testnet (relay/0.78.5, 22 Sept 2026) `eth_call`, `eth_estimateGas` and the mirror node's own simulator all accept a SAUCE to HBAR swap from an account that has given the router no allowance. It simulates from 0.0.10650089, a testnet account of this project's research phase that holds SAUCE, has never approved a spender and signs nothing, and a control swap for more SAUCE than that account holds must still be refused. The day a simulator refuses the swap, the check fails: the observation has ended. If that account's state changes instead (an allowance, or less than 1 SAUCE), the check fails before simulating and says that the account no longer fits, not the platform or the code. `.github/workflows/gate.yml` runs `check:live` inside the scaffolded project on its nightly and manual runs, writes the outcome to the job summary, and never fails the run on it.
-
-`yarn evidence` signs with `__RUNTIME_DEPLOYER_PRIVATE_KEY`, set in the shell for this one command and never written to a file; without it both swaps are skipped with that message and the command exits 0. The key has to be an ECDSA key, and its account has to meet three conditions. Its EVM address is the one the key derives: the run looks the account up by that address and stops before signing when no account has it. It holds a few HBAR (the [Hedera Portal faucet](https://portal.hedera.com/faucet) funds one). And it is associated with SAUCE or has a free automatic association slot, since the first swap delivers SAUCE to it; the recipient check says which before anything is signed. In bash (Git Bash on Windows):
-
-```bash
-read -rs __RUNTIME_DEPLOYER_PRIVATE_KEY   # paste the key: it is not echoed, and not kept in the history
-export __RUNTIME_DEPLOYER_PRIVATE_KEY
-yarn evidence
-unset __RUNTIME_DEPLOYER_PRIVATE_KEY
-```
-
-It stops before signing when the JSON-RPC relay does not serve chain 296, and it refuses any send that could take the run above 5 HBAR. Then it swaps 0.1 HBAR for SAUCE, and 1 SAUCE back to native HBAR, through `packages/nextjs/lib/hedera`: quote, pre-flight checks (recipient, allowance, cost preview), builders, viem's default flow on the pinned 2.39.0, the outcome read from the mirror node's DETAIL view. When the allowance check fails it first approves exactly 1 SAUCE and checks that the approval returned `true`. Each record is re-checked the way `yarn evidence:check` does before it is written to `docs/evidence/`, one file per scenario, named after the date and the scenario.
+Every figure below is read from the record beside it, which `yarn evidence:check` re-reads from the mirror node without a key.
 
 <!-- checks:evidence -->
 What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-22-hbar-to-sauce.json` and `docs/evidence/2026-09-22-sauce-to-hbar.json`):
@@ -163,13 +169,24 @@ What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.
 2.00744864 HBAR of fees in all; the account's HBAR balance fell by 2.08604114 HBAR, the fees plus the 0.1 HBAR swapped minus the 0.0214075 HBAR received.
 <!-- /checks:evidence -->
 
-On testnet a 1 SAUCE swap returns far less HBAR than it costs: the cost check says so before signing, and the run goes on. `yarn check:docs` compares every figure above with the files it names, and fails once a newer record of either scenario exists.
+The two directions are not symmetrical: unwrapping HBAR at the end of a token-input swap is most of its gas, and the approval before it costs about as much again. The route says so before you sign, and warns when the fee is larger than the HBAR the swap returns.
 
-Each file holds no key and nothing private: the scenario's `name`, `network` and `chainId`; the sender's EVM address and account id, both public on the network; the versions of viem, of the relay (its `web3_clientVersion`) and of Node.js; what each pre-flight check said; the input parameters (router, pool and fee tier, tokens, `amountIn`, `quotedAmountOut`, `slippageBps`, `amountOutMinimum`, `deadline`, `recipient`) and the `amountOut` the swap returned; and per transaction its `hash`, its `mirrorUrl` (the mirror node's DETAIL view), `result`, `consensusTimestamp`, `blockNumber`, `gasUsed`, the cost preview, the fee read from the transaction record's HBAR transfer list and the sender's net HBAR movement. Amounts are integers in the smallest unit (tinybar for HBAR, 10^-6 for SAUCE).
+<!-- checks:evidence -->
+What a whole life cycle of a liquidity position cost, measured on 23 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-23-position-cycle-361.json`):
 
-To verify a file without a key, run `yarn evidence:check`, or open its `mirrorUrl` values: `result` must be `SUCCESS`. The check re-reads each transaction from the mirror node and fails on any difference: the result; the sender, which the mirror node names by the long-zero form of its account and the check resolves to the recorded EVM address; the block, the gas used, the fee and the sender's net HBAR movement from the transfer list; the approval's return value; and the swap's `amountOut`, decoded from its `call_result`.
+| transaction | network fee | cost preview shown before signing | gas used |
+| --- | --- | --- | --- |
+| mint position 361 | 0.83006879 HBAR | up to 1.14 HBAR | 761,531 |
+| take position 361's liquidity out | 0.18537303 HBAR | up to 0.23265234 HBAR | 170,067 |
+| collect position 361 as native HBAR | 0.96844865 HBAR | up to 1.07571312 HBAR | 888,485 |
+| burn position 361 | 0.08493389 HBAR | up to 0.09713598 HBAR | 77,921 |
 
-`yarn evidence:consumer` records the Solidity half the same way: the contract's own deployment and one swap sent to it rather than to the router. A deployment carries a fixed gas limit and no estimate is shown before it is signed, so its preview below is that limit at the gas price of the day, taken from the transaction record; the swap's is the page's own preview.
+Position 361 deposited 0.11 HBAR, was paid 0.10999999 HBAR back natively, and cost 0.64079561 HBAR of mint fee and 2.06882436 HBAR of network fees.
+<!-- /checks:evidence -->
+
+An account that has never touched SaucerSwap pays two approvals on top of that, once and not once per position; `docs/hedera-behaviour.md` has that cycle and two more. The mint fee is quoted in tinycent and converted on chain by the exchange-rate system contract, so it moves with the rate and is read from the contract rather than from a document.
+
+The Solidity half is recorded the same way by `yarn evidence:consumer`. A deployment carries a fixed gas limit and shows no estimate before it is signed, so its preview below is that limit at the gas price of the day, taken from the transaction record; the swap's is the page's own preview.
 
 <!-- checks:evidence -->
 What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-22-consumer-hbar-to-sauce.json`):
@@ -182,95 +199,24 @@ What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.
 1.77402841 HBAR of fees in all; the account's HBAR balance fell by 1.82402841 HBAR, the fees plus the 0.05 HBAR swapped.
 <!-- /checks:evidence -->
 
-`docs/hedera-behaviour.md` is what these checks exist for: eight behaviours standard tooling reports wrongly or not at all, each with the testnet transactions that prove it, what the mistake costs in HBAR, the code that refuses it and the test that keeps that code honest. The two units of HBAR and the misleading answer the wrong one gives; the simulators that accept a swap the network refuses; a token that cannot reach an account which has never held it, and who that actually bites; the calls no simulator will price, which a wallet then will not send; the fee a wallet announces against the fee the network charges; an HTS operation that fails inside a successful transaction; a collect that pays a wrapped token unless it is split in three; and a burn both simulators accept and the network refuses.
+What that deployment buys is the relation without which the contract could not hold its output token at all, and the mirror node shows it created in that same transaction. Every swap sent to the contract afterwards carries no association step, which is the whole reason the constructor pays for it.
 
-## Working with a coding agent
+## What this template does not do
 
-`AGENTS.md` is the briefing for coding agents: the commands, the checks to run before stopping, the invariants a change has to keep, and what to ask about first. Claude Code reads it through `CLAUDE.md`.
-
-## Scripts
-
-| Script | What it does |
-| --- | --- |
-| `yarn dev` | development server, port 3000 |
-| `yarn build` | production build of `packages/nextjs` |
-| `yarn serve` | production server for that build, port 3000 (`next:start` is the development server, despite its name) |
-| `yarn lint` | ESLint, with Prettier as a rule, on both packages |
-| `yarn lint:strict` | the same, failing on any warning |
-| `yarn format` | Prettier on both packages and on `tools/` |
-| `yarn typecheck` | TypeScript on both packages, after compiling the contracts |
-| `yarn test:mock` | Hardhat tests of the consumer against the injected mocks: no network, no key, about a second |
-| `yarn test` | Hardhat tests of the inherited samples, on a fork of Hedera testnet |
-| `yarn test:unit` | Vitest tests of `packages/nextjs/lib/hedera`, of the mirror relay and of the swap route's own logic, on captured testnet answers |
-| `yarn check:tools` | formatting of `tools/`, types and unit tests of `tools/checks` and `tools/gate` |
-| `yarn check:docs` | the repository checks of `tools/checks`: docs, manifest, npm-mode rewrite, evidence figures, hygiene |
-| `yarn check:all` | `lint:strict`, `typecheck`, `check:tools`, `probe:routes:check`, `check:docs` |
-| `yarn check:live` | keyless reads of Hedera testnet: the address book, a quote, a dated simulator observation, then `evidence:check` |
-| `yarn evidence:check` | re-reads every file of `docs/evidence/` from the mirror node, without a key |
-| `yarn evidence` | signs two swaps on Hedera testnet and writes `docs/evidence/`; needs `__RUNTIME_DEPLOYER_PRIVATE_KEY`, skipped without it |
-| `yarn evidence:consumer` | the same for one swap through the deployed Solidity consumer; it stops before signing unless the signer owns that contract, which keeps the tokens it buys |
-| `yarn probe:routes` | browser console probe of every route (after `build`) |
-| `yarn probe:routes:check` | unit tests and types of the route probe |
-| `yarn gate:local` | one gate leg against the committed HEAD |
-| `yarn hardhat:chain` | local fork of Hedera testnet, port 8545 |
-| `yarn hardhat:deploy:localhost` | deploy the sample contracts to that fork |
-| `yarn hardhat:deploy:testnet` | deploy them to Hedera testnet |
-| `yarn hardhat:deploy:consumer:testnet` | deploy the SaucerSwap consumer alone to Hedera testnet |
-| `yarn hardhat:verify:testnet` | show the source of every testnet deployment through Sourcify |
-| `yarn hardhat:account:generate` | create a deployer key, stored encrypted |
-| `yarn hardhat:account:import` | import an existing key, stored encrypted |
-| `yarn hardhat:account` | show the deployer address and its balances |
-
-The other scripts run one step of one package and carry its prefix, `next:` or `hardhat:`.
-
-## Environment variables
-
-Nothing needs to be set: the app, the build and the tests run with no env file. Each variable goes in the file named below; a scaffolded project also gets a root `.env.example` listing them, but no package reads env files at the root.
-
-| Variable | File | Required | Default | Read by |
-| --- | --- | --- | --- | --- |
-| `NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID` | `packages/nextjs/.env.local` | no | empty: WalletConnect is off, browser-injected and burner wallets are offered | `packages/nextjs/scaffold.config.ts` |
-| `HEDERA_RPC_TESTNET_URL` | `packages/nextjs/.env.local` | no | `https://testnet.hashio.io/api` | the `/api/hedera/rpc` relay, on the server |
-| `HEDERA_RPC_MAINNET_URL` | `packages/nextjs/.env.local` | no | `https://mainnet.hashio.io/api` | the same relay, for mainnet |
-| `HEDERA_MIRROR_TESTNET_URL` | `packages/nextjs/.env.local` | no | `https://testnet.mirrornode.hedera.com` | the `/api/hedera/account` and `/api/hedera/mirror` routes, on the server |
-| `HEDERA_MIRROR_MAINNET_URL` | `packages/nextjs/.env.local` | no | `https://mainnet.mirrornode.hedera.com` | the same routes, for mainnet |
-| `HEDERA_RPC_URL` | `packages/hardhat/.env` | no | `https://testnet.hashio.io/api` | the in-process Hardhat network, which forks it (`hardhat:chain`, `test`) |
-| `DEPLOYER_PRIVATE_KEY_ENCRYPTED` | `packages/hardhat/.env` | for a live deploy | none; written by `hardhat:account:generate` or `hardhat:account:import` | the deploy script, which asks for its password |
-| `__RUNTIME_DEPLOYER_PRIVATE_KEY` | never a file: the shell, for one command | no | none | `packages/hardhat/hardhat.config.ts`, the only key live networks sign with; the deploy script sets it from the encrypted key; `yarn evidence` signs with it and is skipped without it |
-
-## Architecture
-
-```mermaid
-flowchart LR
-  Browser -->|"POST /api/hedera/rpc?network=testnet"| Handlers["route handlers, packages/nextjs/app/api/hedera"]
-  Browser -->|"GET /api/hedera/account"| Handlers
-  Browser -->|"GET /api/hedera/mirror"| Handlers
-  Handlers -->|JSON-RPC| Relay["Hedera JSON-RPC relay (hashio by default)"]
-  Handlers -->|REST| Mirror["Hedera Mirror Node"]
-```
-
-- `packages/nextjs`: Next.js 15 with the app directory, RainbowKit 2.2.9, wagmi 2.19.5, viem 2.39.0 and the `@scaffold-hbar-ui` kit. Routes `/`, `/swap`, `/positions`, `/debug`, and the three route handlers above. Each route keeps what it decides in plain modules next to its components — `packages/nextjs/components/swap/swapPlan.ts` and `packages/nextjs/components/positions/positionsRead.ts` take their reads as an argument, so every refusal they can show is tested without a network — and what the two routes share sits in `packages/nextjs/components/hedera`: the failure note, the words for the one action to take, the mirror and Hashscan links, and `withRuleGasLimit`, the single door from a page to the gas rules, so that a limit is always a rule with its executed transactions and never a number typed into a page. `packages/nextjs/lib/hedera` holds the Hedera-specific code the app and scripts share: units, addresses, ABIs, error decoding, the mirror client and the checks run before a transaction is signed. It types every address as `EvmAddress`, `0x${string}`, in every project it is scaffolded into; an address that reaches your code as a plain string goes through its `toEvmAddress`, which returns the checksummed form and refuses anything that is not an address. viem's own address type still depends on the package manager that installed the project, so an address you take straight from viem or wagmi compiles into the library in one project and not in the other: `toEvmAddress` is the door that compiles in both.
-- `packages/hardhat`: Hardhat 2.22.19 with hardhat-deploy. `SaucerSwapHbarConsumer.sol` is the contract this template deploys, verifies and exercises: it swaps the HBAR sent with a call for SAUCE on SaucerSwap V2 and keeps the tokens, which only the account that deployed it can withdraw. Every HBAR amount it sees is tinybar, eight decimals, while a JSON-RPC caller signs `value` in weibar, which the network divides by 10^10 before the contract runs; and because a contract cannot receive an HTS token it has never held, the constructor associates it through the system contract at `0x167` and refuses to exist on any answer but 22, so the deployer pays for that relation once instead of every swap paying for it. The three interfaces it uses, `IHtsAssociate`, `IHtsFungibleToken` and `ISwapRouterExactInput`, are written from the deployed contracts' function shapes, under MIT: no SaucerSwap or Uniswap source file is vendored here. The fourth file of `packages/hardhat/contracts/interfaces/`, `IHederaTokenService.sol`, came with the scaffold under Apache-2.0 and serves the inherited sample alone. `packages/hardhat/contracts/mocks/` holds the three original mocks that `yarn test:mock` injects with `hardhat_setCode` at the addresses the token service, SAUCE and the router have on testnet, so that the contract under test is built with the real address book and meets the failures measured there — 194, `TransferFail(184)`, the empty data `multicall` leaves, `RespCode(178)` — with no network. `yarn test` keeps the inherited samples `HederaToken` and `HtsTokenCreator` on a fork of Hedera testnet where `@hashgraph/system-contracts-forking` emulates the token service; a fork reproduces none of the behaviour above, which is why it is not where that behaviour is checked. `packages/hardhat/scripts/verifySourcify.ts` shows the deployed source through Sourcify's v2 API, the v1 endpoints the inherited tooling calls having been removed.
-- `tools/checks`: the repository checks behind `check:docs`; `tools/route-probe`: the browser probe, a standalone package outside the workspaces, installed from its own lockfile by npm, so that no install of the app downloads a browser; `tools/gate`: the scaffold gate. Each has a README.
-- `.github/workflows`: `gate.yml` in the template repository; `gate-skeleton.yml` and `hosts-control.yml`, which a guard limits to the public skeleton repository of this base; `lint.yaml` on pushes and pull requests to `main`: `lint:strict`, `typecheck`, `test:unit`, `check:tools`, `probe:routes:check` and ShellCheck on `tools/gate`.
-
-## What this base does not do
-
-- Nothing here has been deployed to, or tested against, Hedera mainnet. The mainnet network entry comes from the upstream scaffold, and the `hardhat:deploy:mainnet` alias that targets it has never been run.
-- `yarn test` depends on a third party: the fork reads Hedera testnet through hashio, so a hashio outage fails the run.
-- `hardhat:deploy` without a network uses the in-process network, which has no token-service emulation: the HTS step (`02_create_hts_token.ts`) stops with `invalid opcode`. Use `hardhat:chain` with `hardhat:deploy:localhost`.
-- Only page load is checked for third-party calls. After user action, the UI kit's address input on `/debug` asks the public mirror node directly, and its write form logs a console error when a transaction fails.
-- `/positions` reads one page of the mirror node's NFT list, at most 100 serials, and prices a position only against the pool in `packages/nextjs/lib/hedera/addresses.ts`; a position of any other pool is listed with its own fields and no price.
+- Hedera testnet only. Every address it calls comes from `packages/nextjs/lib/hedera/addresses.ts`, which holds testnet entries and nothing else. Nothing here has been deployed to, or read from, mainnet: the mainnet network entry comes from the upstream scaffold and the `hardhat:deploy:mainnet` alias that targets it has never been run.
+- The position writes live in a script, not in a page. `/positions` reads; `packages/nextjs/lib/hedera/position.ts` builds and checks the four calls, and `yarn evidence:position` is what sends them. There is no position write UI.
+- It depends on a third party's testnet pools: SaucerSwap's own HBAR/SAUCE pool, its router and its position manager. Creating a pool is not something this template does, and a hashio or mirror-node outage fails the live tiers, which is why they are reported and never block the gate.
+- No browser-wallet signature is part of any check here. The wallet figures quoted above come from one session, on one wallet and one version, driven by hand against this library before the routes existed; they are kept as a fixture, and the route probe checks what a page loads, never what a wallet then does with it.
+- `/positions` reads one page of the mirror node's NFT list, at most 100 serials, and prices a position only against the pool in the address book; a position of any other pool is listed with its own fields and no price.
+- `yarn test` runs on a fork of Hedera testnet read through hashio, so an outage there fails it; and `hardhat:deploy` with no network named stops at the HTS step, which the in-process network cannot emulate.
 - The `/api/hedera/rpc` relay forwards any `eth_`, `net_` or `web3_` call and adds no rate limit of its own: every visitor's calls leave from the server's address.
-- No browser-wallet signature is part of any check here, and WalletConnect is off until a project id is set.
-- The unit tests cover `packages/nextjs/lib/hedera`, the mirror relay and the parts of the swap route that need no browser; what a page renders is checked by the route probe alone.
 - This code is experimental and has not been audited.
 
 ## Licence and provenance
 
-MIT, see `LICENCE`; the BuidlGuidl (Scaffold-ETH 2) and hedera-dev (Scaffold-HBAR) notices are kept above this template's own.
-One tracked source file carries another licence: `packages/hardhat/contracts/interfaces/IHederaTokenService.sol`, Apache-2.0, inherited with `packages/hardhat/contracts/HtsTokenCreator.sol` in the scaffold commit below and used by that sample alone.
-This base was scaffolded with `create-scaffold-hbar` 0.4.0 from the blank-template branch of hedera-dev/scaffold-hbar at commit 88c8837, with Hardhat selected and the skills install off. The `@x402/*` build guard in `packages/nextjs/next.config.ts` comes from that repository's main branch at commit 5eb46ef. `git log` lists every change made since, one commit per change.
+MIT, see `LICENCE`; the BuidlGuidl (Scaffold-ETH 2) and hedera-dev (Scaffold-HBAR) notices are kept above this template's own. No SaucerSwap or Uniswap source file is vendored: the ABIs in `packages/nextjs/lib/hedera/`, the tick and liquidity maths in `packages/nextjs/lib/hedera/tickMath.ts` and `packages/nextjs/lib/hedera/liquidityMath.ts`, and the three Solidity interfaces the consumer uses are written from the deployed contracts' function shapes, under MIT. One tracked source file carries another licence: `packages/hardhat/contracts/interfaces/IHederaTokenService.sol`, Apache-2.0, inherited with the sample `packages/hardhat/contracts/HtsTokenCreator.sol`.
+
+This template was scaffolded with `create-scaffold-hbar` 0.4.0 from the blank-template branch of hedera-dev/scaffold-hbar at commit 88c8837, with Hardhat selected. The `@x402/*` build guard in `packages/nextjs/next.config.ts` comes from that repository's main branch at commit 5eb46ef. `git log` lists every change made since, one commit per change, and `AGENTS.md` is the briefing a coding agent reads before making the next one.
 
 <!-- checks:allow
 paths: agent skills-lock.json
