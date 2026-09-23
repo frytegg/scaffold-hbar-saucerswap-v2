@@ -1,25 +1,12 @@
 "use client";
 
-import type { ReactNode } from "react";
-import {
-  type PanelCheck,
-  actionLabelFor,
-  hashscanTransactionUrl,
-  isInPageAction,
-  mirrorResultUrl,
-} from "./swapPresentation";
+import type { PanelCheck } from "./swapPresentation";
 import type { Hex } from "viem";
-import type { HederaFailure } from "~~/lib/hedera";
+import { isInPageAction } from "~~/components/hedera/failureText";
+import { hashscanTransactionUrl, mirrorResultUrl } from "~~/components/hedera/links";
 
-// The pieces every card of the swap route is built from. A failure is shown the same way wherever it happens: one
-// sentence, the one thing to do about it, and where to read the transaction.
-
-export const Row = ({ label, value }: { label: string; value: ReactNode }) => (
-  <div className="flex flex-wrap gap-x-2 text-sm">
-    <span className="font-semibold">{label}:</span>
-    <span className="font-mono break-all">{value}</span>
-  </div>
-);
+// The pieces the swap route adds to the shared cards of `components/hedera`: a pre-flight line, which carries the
+// one action this page can take itself, and the pair of links every transaction is read at.
 
 const BADGES: Record<PanelCheck["status"], { className: string; text: string }> = {
   pass: { className: "badge badge-success", text: "passed" },
@@ -47,22 +34,6 @@ export const CheckLine = ({ check, action }: { check: PanelCheck; action?: Check
         check.actionLabel !== null && <p className="m-0 text-sm font-medium">What to do: {check.actionLabel}</p>
       )}
     </li>
-  );
-};
-
-export const FailureNote = ({ headline, failure }: { headline: string; failure: HederaFailure }) => {
-  const advice = actionLabelFor(failure.action);
-  return (
-    <div className="alert alert-error flex flex-col items-start gap-1 text-sm">
-      <span className="font-semibold">{headline}</span>
-      <p className="m-0">{failure.message}</p>
-      {advice !== null && <p className="m-0 font-medium">What to do: {advice}</p>}
-      <p className="m-0 opacity-70">
-        {failure.kind}
-        {failure.statusName === null ? "" : ` · ${failure.statusName}`}
-        {failure.code === null ? "" : ` · code ${failure.code}`} · read from {failure.via}
-      </p>
-    </div>
   );
 };
 

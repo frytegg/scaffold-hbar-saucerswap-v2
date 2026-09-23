@@ -1,16 +1,15 @@
 import {
   type PanelCheck,
-  SAUCERSWAP_UNAVAILABLE,
   type SwapDirection,
   SwapFormError,
   checkOf,
   checkOfRefusal,
-  headlineFor,
   parseAmountInput,
   parseSlippagePercent,
   unitsOf,
 } from "./swapPresentation";
 import type { Hex, PublicClient } from "viem";
+import { SAUCERSWAP_UNAVAILABLE, headlineFor } from "~~/components/hedera/failureText";
 import {
   type BuiltCall,
   type CostVerdict,

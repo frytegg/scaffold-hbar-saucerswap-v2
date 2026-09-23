@@ -1,8 +1,9 @@
 "use client";
 
-import { type CheckAction, CheckLine, Row } from "./atoms";
+import { type CheckAction, CheckLine } from "./atoms";
 import type { SwapPlan } from "./swapPlan";
 import { type PanelCheck, type QuoteFreshness, blocks, sendIsBlocked, unitsOf } from "./swapPresentation";
+import { Row } from "~~/components/hedera/atoms";
 import { type TokenEntry, formatTokenAmount } from "~~/lib/hedera";
 
 // The checks the network would otherwise answer only after the swap was signed, paid for and rejected. A failing

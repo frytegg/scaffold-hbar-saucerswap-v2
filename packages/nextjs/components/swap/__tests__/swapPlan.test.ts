@@ -1,6 +1,7 @@
 import { type PlanInput, type PlanReads, buildSwapPlan } from "../swapPlan";
-import { SAUCERSWAP_UNAVAILABLE, blocks } from "../swapPresentation";
+import { blocks } from "../swapPresentation";
 import { describe, expect, it } from "vitest";
+import { SAUCERSWAP_UNAVAILABLE } from "~~/components/hedera/failureText";
 import {
   type EvmAddress,
   type MirrorAccount,

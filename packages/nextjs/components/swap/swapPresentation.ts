@@ -1,11 +1,11 @@
 import type { Hex } from "viem";
+import { actionLabelFor } from "~~/components/hedera/failureText";
 import {
   type FailureAction,
   type HederaFailure,
   type PreflightVerdict,
   type TokenEntry,
   facadeResultVerdict,
-  mirrorPaths,
 } from "~~/lib/hedera";
 
 // What the swap route turns library answers into: the text on the screen, the one action offered next to it, and
@@ -110,34 +110,6 @@ export type PanelCheck = {
   readonly actionLabel: string | null;
 };
 
-const ACTION_LABELS: Record<Exclude<FailureAction, "approve" | "none">, string> = {
-  associate: "Associate the token from that account first",
-  fund: "Send HBAR to that address first",
-  "scale-value": "The value this page built is not one the network carries: report it as a defect of the page",
-  requote: "Get a new quote",
-  retry: "Try again in a few seconds",
-  "supply-gas": "This call needs a gas limit from the page: the limits are in lib/hedera/gasRules.ts",
-};
-
-/** The actions this route can carry out itself, as a button next to the sentence. */
-const IN_PAGE_ACTIONS = new Set<FailureAction>(["approve", "requote", "retry"]);
-
-export function isInPageAction(action: FailureAction): boolean {
-  return IN_PAGE_ACTIONS.has(action);
-}
-
-/**
- * The imperative shown next to a verdict or a failure. `approve` names the amount, because approving less than the
- * swap spends is the mistake the network reports as a missing allowance.
- */
-export function actionLabelFor(action: FailureAction, approveAmount?: string): string | null {
-  if (action === "none") return null;
-  if (action === "approve") {
-    return approveAmount === undefined ? "Approve the router" : `Approve ${approveAmount} for the router`;
-  }
-  return ACTION_LABELS[action];
-}
-
 export function checkOf(id: string, label: string, verdict: PreflightVerdict, approveAmount?: string): PanelCheck {
   return {
     id,
@@ -184,21 +156,6 @@ export function sendIsBlocked({
   sendBusy: boolean;
 }): boolean {
   return blocks(checks) || freshness.stale || sendBusy;
-}
-
-export const SAUCERSWAP_UNAVAILABLE = "SaucerSwap testnet unavailable";
-export const MIRROR_UNAVAILABLE = "Hedera testnet unavailable";
-
-/**
- * The heading a failure gets. Something that did not answer is not a refusal: the page says so, because the person
- * can do nothing but wait, and the swap itself may be perfectly sound.
- */
-export function headlineFor(
-  failure: HederaFailure,
-  headlines: { readonly refused: string; readonly unavailable: string },
-): string {
-  const silent = failure.kind === "unavailable" || failure.kind === "rate-limited";
-  return silent ? headlines.unavailable : headlines.refused;
 }
 
 /**
@@ -255,17 +212,4 @@ export function quoteFreshness(quotedAt: number, now: number): QuoteFreshness {
       `This quote is ${secondsOld} seconds old, past the ${QUOTE_TTL_MS / 1000} seconds this page keeps one: the ` +
       "price moves, and the swap would be sent against a minimum nobody looked at. Get a new quote.",
   };
-}
-
-const MIRROR_TESTNET = "https://testnet.mirrornode.hedera.com";
-const HASHSCAN_TESTNET = "https://hashscan.io/testnet";
-
-/** The mirror node's DETAIL view of a transaction: machine-readable, and what every check of this project reads. */
-export function mirrorResultUrl(hash: Hex): string {
-  return `${MIRROR_TESTNET}${mirrorPaths.contractResult(hash)}`;
-}
-
-/** Hashscan renders the same transaction for a person; its deep links answer 404 to anything but a browser. */
-export function hashscanTransactionUrl(hash: Hex): string {
-  return `${HASHSCAN_TESTNET}/tx/${hash}`;
 }

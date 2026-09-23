@@ -1,8 +1,10 @@
 "use client";
 
-import { FailureNote, Row, TransactionLinks } from "./atoms";
-import { type AmountUnit, MIRROR_UNAVAILABLE, SAUCERSWAP_UNAVAILABLE, headlineFor } from "./swapPresentation";
+import { TransactionLinks } from "./atoms";
+import type { AmountUnit } from "./swapPresentation";
 import { type TransactionOutcome, deliveredAmount, succeeded } from "./transactionOutcome";
+import { FailureNote, Row } from "~~/components/hedera/atoms";
+import { MIRROR_UNAVAILABLE, SAUCERSWAP_UNAVAILABLE, headlineFor } from "~~/components/hedera/failureText";
 import { type HederaFailure, formatHbar, formatTokenAmount, tinybar } from "~~/lib/hedera";
 
 // What happened after the wallet sent it, read back from the mirror node. A failure is a sentence and an action,

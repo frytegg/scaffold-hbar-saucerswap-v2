@@ -1,8 +1,8 @@
 "use client";
 
 import { type AccountState, associationSummary } from "./accountState";
-import { FailureNote, Row } from "./atoms";
-import { MIRROR_UNAVAILABLE, headlineFor } from "./swapPresentation";
+import { FailureNote, Row } from "~~/components/hedera/atoms";
+import { MIRROR_UNAVAILABLE, headlineFor } from "~~/components/hedera/failureText";
 import { type HederaFailure, type TokenEntry, formatHbar, formatTokenAmount, testnet } from "~~/lib/hedera";
 
 // What the network says about the connected account, all of it read through this app's own origin. Every line is

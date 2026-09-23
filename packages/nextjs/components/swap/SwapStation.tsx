@@ -6,16 +6,13 @@ import { OutcomeCard } from "./OutcomeCard";
 import { PreflightPanel } from "./PreflightPanel";
 import { SwapForm } from "./SwapForm";
 import { type AccountState, readAccountState } from "./accountState";
-import { FailureNote } from "./atoms";
 import { type Refusal, type SwapPlan, buildSwapPlan, createPlanReads } from "./swapPlan";
 import {
   type PanelCheck,
-  SAUCERSWAP_UNAVAILABLE,
   type SwapDirection,
   checkOf,
   checkOfRefusal,
   facadeReturnVerdict,
-  headlineFor,
   quoteFreshness,
   sendIsBlocked,
   unitsOf,
@@ -24,6 +21,8 @@ import { type TransactionOutcome, succeeded, trackTransaction } from "./transact
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useAccount, useConfig, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "wagmi/actions";
+import { FailureNote } from "~~/components/hedera/atoms";
+import { SAUCERSWAP_UNAVAILABLE, headlineFor } from "~~/components/hedera/failureText";
 import {
   type HederaFailure,
   buildApproveCall,

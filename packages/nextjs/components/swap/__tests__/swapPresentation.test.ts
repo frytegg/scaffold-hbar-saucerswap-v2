@@ -1,17 +1,12 @@
 import {
   HBAR_UNIT,
   QUOTE_TTL_MS,
-  SAUCERSWAP_UNAVAILABLE,
   SwapFormError,
-  actionLabelFor,
   blocks,
   checkOf,
   checkOfRefusal,
   directionLabel,
   facadeReturnVerdict,
-  hashscanTransactionUrl,
-  headlineFor,
-  mirrorResultUrl,
   parseAmountInput,
   parseSlippagePercent,
   quoteFreshness,
@@ -19,14 +14,9 @@ import {
   unitsOf,
 } from "../swapPresentation";
 import { describe, expect, it } from "vitest";
-import { type HederaFailure, allowanceVerdict, formatTokenAmount, testnet } from "~~/lib/hedera";
+import { allowanceVerdict, formatTokenAmount, testnet } from "~~/lib/hedera";
 
 const SAUCE = testnet.sauce;
-const HASH = "0x756bfe6431ace6935b49bd415b53a2e29cee7b8df1f863adafe42b101e88dabc" as const;
-
-function failure(patch: Partial<HederaFailure>): HederaFailure {
-  return { kind: "unknown", code: null, statusName: null, message: "something", action: "none", via: "test", ...patch };
-}
 
 describe("the amount a person types", () => {
   it("becomes the token's smallest unit without going through floating point", () => {
@@ -97,27 +87,6 @@ describe("a verdict becomes a line of the panel", () => {
     expect(blocks([pass])).toBe(false);
     expect(blocks([pass, fail])).toBe(true);
   });
-
-  it("names the step the page cannot take itself", () => {
-    expect(actionLabelFor("associate")).toBe("Associate the token from that account first");
-    expect(actionLabelFor("fund")).toBe("Send HBAR to that address first");
-    expect(actionLabelFor("supply-gas")).toContain("lib/hedera/gasRules.ts");
-    expect(actionLabelFor("none")).toBeNull();
-    expect(actionLabelFor("approve")).toBe("Approve the router");
-  });
-});
-
-describe("a failure gets the right heading", () => {
-  it("is headed as unavailable when nothing answered, because the swap itself may be sound", () => {
-    const headlines = { refused: "Quote", unavailable: SAUCERSWAP_UNAVAILABLE };
-    expect(headlineFor(failure({ kind: "unavailable" }), headlines)).toBe(SAUCERSWAP_UNAVAILABLE);
-    expect(headlineFor(failure({ kind: "rate-limited" }), headlines)).toBe(SAUCERSWAP_UNAVAILABLE);
-  });
-
-  it("keeps the refusal's own heading when the network answered", () => {
-    const headlines = { refused: "Quote", unavailable: SAUCERSWAP_UNAVAILABLE };
-    expect(headlineFor(failure({ kind: "hts-response-code" }), headlines)).toBe("Quote");
-  });
 });
 
 describe("what the token facade returned after an approval", () => {
@@ -181,10 +150,5 @@ describe("the route's own vocabulary", () => {
     expect(directionLabel("hbar-to-token", SAUCE)).toBe("HBAR to SAUCE");
     expect(directionLabel("token-to-hbar", SAUCE)).toBe("SAUCE to HBAR");
     expect(unitsOf("token-to-hbar", SAUCE).output).toBe(HBAR_UNIT);
-  });
-
-  it("links a transaction to the mirror node's DETAIL view and to Hashscan", () => {
-    expect(mirrorResultUrl(HASH)).toBe(`https://testnet.mirrornode.hedera.com/api/v1/contracts/results/${HASH}`);
-    expect(hashscanTransactionUrl(HASH)).toBe(`https://hashscan.io/testnet/tx/${HASH}`);
   });
 });
