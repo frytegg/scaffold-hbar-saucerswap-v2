@@ -1,5 +1,7 @@
 # Use the checks in your app
 
+Each of these answers, before anything is signed, one question a Hedera transaction fails on: whether the recipient can receive the token, whether the router may spend it, whether the call can be priced at all. Those are the failures the network charges for and refuses anyway, and none of them is visible to a wallet. This template's pages are one caller of these functions; your app can be another.
+
 Every function below is exported by `packages/nextjs/lib/hedera/index.ts` and imported from `~~/lib/hedera`. The reads are keyless: an account, a token relation, an allowance, an NFT approval, a gas price.
 
 ```ts
