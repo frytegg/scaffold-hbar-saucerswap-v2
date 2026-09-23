@@ -263,3 +263,13 @@ Reading `isApprovedForAll` before signing costs nothing, which is the whole of t
 **How the template protects** — `buildBurn` in `packages/nextjs/lib/hedera/position.ts` takes what `isApprovedForAll` answered and refuses to build the call when it is false, naming the approval to send and why no simulator catches it; `readNftApproval` in `packages/nextjs/lib/hedera/positionReads.ts` is the read and `nftApprovalVerdict` in `packages/nextjs/lib/hedera/positionPreflight.ts` the verdict a panel shows, with the action `approve`, while `buildNftApproval` builds the remedy. `packages/nextjs/lib/hedera/__live__/positions.signed.ts` is that sequence run end to end: it asks `checkPositionBurn` first, sends the approval when the answer is `fail`, asks again, and `assertPreflightPasses` stops the run rather than send a burn the network would refuse.
 
 **The test that keeps it fixed** — `yarn test:unit`: "rebuilds the burn, and refuses to build one while the manager holds no approval" checks both halves against the calldata of the transaction above, and "refuses to start, naming every failing check and its action" holds the guard that stops the signed run. "reads the answer from the NFT facade, and reports whichever answer came back" is what keeps the read honest: it replays a captured `isApprovedForAll` of each kind — this project's account, which granted it, and a third party that holds positions and granted nothing — so a check that stopped reading the chain and always answered `pass` fails there rather than on chain, where it would send the first transaction of the table above again. "refuses a burn that left the position behind" and "fails a cycle that left the position on the account" are the other end of it: the serial has to be gone from the manager and from the account before a cycle may be recorded as closed. `yarn test:mock`: "reverts HederaFail(292) on a burn while the manager holds no approval on the position NFT" and "burns the position once the manager is approved, and the serial is gone" reproduce the refusal and its remedy offline.
+
+<!-- checks:allow
+Three of the transactions linked above were sent by the research probes of 21 September and by the browser session
+of 22 September, and their mirror answers were never captured, so nothing in this repository records their hashes.
+The link check refuses a hash it cannot corroborate; these three are declared here, and the freeze reads every
+proof link off the mirror node again with node tools/checks/check-links.mjs --resolve.
+links: 0xa304abb41b6f368268a2cfc43fe723a6450e5920c56f502d655bc235c4027eaa
+links: 0xc487907642d242b37ecd8997719e6aec0b42a00e931c55ba67b9490c9ecefc9e
+links: 0x22783ab27faf79022f24306365d4bf85efb2ffc7b52487c20f9b25b0e2bcec22
+-->
