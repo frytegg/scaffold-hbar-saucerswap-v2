@@ -1,0 +1,46 @@
+{
+  "note": "The three transactions that showed a burn needs the position manager approved on the position NFT: the refused burn, the approval, and the burn that then worked. Sent from 0.0.10645914 on 21 Sept 2026 for position serial 359, re-read from the mirror node on 2026-09-23. feeTinybar is this account line of the transaction record, not the record charged_tx_fee.",
+  "account": "0.0.10645914",
+  "lpNft": {
+    "id": "0.0.1310436",
+    "serial": 359
+  },
+  "transactions": [
+    {
+      "step": "burn-refused",
+      "transactionHash": "0x3aba6761bb3ccbb41e655dc8a48ad00f22f31f29a66224a19b8fc494fffe0046",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x3aba6761bb3ccbb41e655dc8a48ad00f22f31f29a66224a19b8fc494fffe0046",
+      "hashscanUrl": "https://hashscan.io/testnet/transaction/0x3aba6761bb3ccbb41e655dc8a48ad00f22f31f29a66224a19b8fc494fffe0046",
+      "consensusTimestamp": "1790006388.953850104",
+      "result": "CONTRACT_REVERT_EXECUTED",
+      "errorMessage": "0xa96886820000000000000000000000000000000000000000000000000000000000000124",
+      "gasLimit": 86851,
+      "gasUsed": 66809,
+      "feeTinybar": "7282181"
+    },
+    {
+      "step": "approve-nft",
+      "transactionHash": "0x56d4ab2b28f7b96b5b27cab838d0fee218e4933b497c8e2b1fe97670598e3e61",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x56d4ab2b28f7b96b5b27cab838d0fee218e4933b497c8e2b1fe97670598e3e61",
+      "hashscanUrl": "https://hashscan.io/testnet/transaction/0x56d4ab2b28f7b96b5b27cab838d0fee218e4933b497c8e2b1fe97670598e3e61",
+      "consensusTimestamp": "1790006395.733470155",
+      "result": "SUCCESS",
+      "errorMessage": null,
+      "gasLimit": 782546,
+      "gasUsed": 726792,
+      "feeTinybar": "79220328"
+    },
+    {
+      "step": "burn",
+      "transactionHash": "0x21c2aeb9bde5ce6cde161ffeee3b55b8f85b1b40e764f79a01bc4e3166f431c0",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x21c2aeb9bde5ce6cde161ffeee3b55b8f85b1b40e764f79a01bc4e3166f431c0",
+      "hashscanUrl": "https://hashscan.io/testnet/transaction/0x21c2aeb9bde5ce6cde161ffeee3b55b8f85b1b40e764f79a01bc4e3166f431c0",
+      "consensusTimestamp": "1790006403.325145470",
+      "result": "SUCCESS",
+      "errorMessage": null,
+      "gasLimit": 86851,
+      "gasUsed": 75921,
+      "feeTinybar": "8275389"
+    }
+  ]
+}

@@ -99,6 +99,7 @@ In `position/`, three files of amounts Hedera testnet itself reported, read from
 | `position/hbar-sauce-pool-events.json` | every `Mint` and `Burn` of the HBAR/SAUCE 0.30 % pool found in the windows searched, each with the pool's square-root price at the block before it                    |
 | `position/serial-360-lifecycle.json`   | the four transactions that opened and closed position 360 from a browser wallet on 22 Sept 2026, with the calldata the builders rebuild                               |
 | `position/serial-359-close.json`       | the decrease and the split collect that closed position 359 on 21 Sept 2026, whose collect paid out more than the liquidity held because the position had earned fees |
+| `position/burn-approval.json`          | the burn refused for want of an approval on the position NFT, the approval, and the burn that then worked, with the fee each took out of the account                  |
 
 ## What a browser wallet did
 
