@@ -144,9 +144,12 @@ async function allowanceBlock(): Promise<ReplayBlock> {
   );
   const afterwards = await postMortem(mirror, sent);
   const wallet = walletFixture("metamask-fee-display");
-  const walletRow = wallet.rows?.find(row => row.result !== "SUCCESS");
+  const walletRow = wallet.rows?.find(row => row.result !== "SUCCESS" && row.label.includes("allowance"));
   if (afterwards === null || walletRow === undefined) {
-    throw new Error("The captured answers no longer hold a swap the network refused.");
+    throw new Error("The captured answers no longer hold a swap the network refused for a missing allowance.");
+  }
+  if (typeof simulated.result !== "string" || typeof estimated.result !== "string") {
+    throw new Error("The captured simulators no longer accept the swap this block is about.");
   }
 
   return {
@@ -163,11 +166,11 @@ async function allowanceBlock(): Promise<ReplayBlock> {
     tooling: [
       {
         label: "eth_call",
-        text: `answered ${(String(simulated.result).length - 2) / 2} bytes of result, not an error: the swap simulates cleanly`,
+        text: `answered ${(simulated.result.length - 2) / 2} bytes of result, not an error: the swap simulates cleanly`,
       },
       {
         label: "eth_estimateGas",
-        text: `answered ${thousands(BigInt(String(estimated.result)))} gas, so the wallet had a fee to show`,
+        text: `answered ${thousands(BigInt(estimated.result))} gas, so the wallet had a fee to show`,
       },
       {
         label: wallet.wallet.split(" on ")[0],
@@ -383,8 +386,8 @@ export function renderReport(blocks: readonly ReplayBlock[]): string {
     "",
     `${INDENT}${fixtures.size} captured answers replayed, from lib/hedera/__tests__/fixtures/.`,
     `${INDENT}The test:unit script asserts these same answers as tests; the evidence:check script re-reads every`,
-    `${INDENT}transaction above from the public mirror node without a key; and docs/hedera-behaviour.md has all`,
-    `${INDENT}eight behaviours in full, with what each mistake costs and the code that refuses it.`,
+    `${INDENT}transaction above from the public mirror node without a key; and docs/hedera-behaviour.md carries`,
+    `${INDENT}every behaviour in full, with what each mistake costs and the code that refuses it.`,
     "",
   ].join("\n");
 }

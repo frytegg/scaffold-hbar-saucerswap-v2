@@ -83,6 +83,13 @@ describe("the swap the simulators accepted", () => {
     expect(line("allowance", "tooling", "afterwards").text).toContain("0.13498778 HBAR");
     expect(line("allowance", "tooling", "eth_estimateGas").text).toContain("957,076 gas");
   });
+
+  it("shows the wallet's own swap first, and the script's run of the same miss beside it", () => {
+    expect(block("allowance").proof.map(({ hash }) => hash)).toEqual([
+      "0xdf368443228e69c4ed1a2a7192d0978b15a51f219981cdd2d5f63250d1582352",
+      "0x756bfe6431ace6935b49bd415b53a2e29cee7b8df1f863adafe42b101e88dabc",
+    ]);
+  });
 });
 
 describe("the call no simulator prices", () => {
