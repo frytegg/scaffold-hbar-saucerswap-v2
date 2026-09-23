@@ -23,7 +23,7 @@ Three commands, in this order.
 
 | command | what it proves | about |
 | --- | --- | --- |
-| `yarn test:unit` | the library, the two relay routes and everything the pages decide, replayed against answers captured from Hedera testnet and from a browser wallet. Every refusal named below has a test that states it as a rule. No network | a minute |
+| `yarn test:unit` | the library, the two relay routes and everything the pages decide, replayed against answers captured from Hedera testnet and from a browser wallet. Every refusal named below has a test that states it as a rule. No network | a minute and a half, most of it the lint rule replayed against a file of planted violations |
 | `yarn check:docs` | every path, script, symbol and variable this file names exists in the repository; every figure below is the one its evidence record holds; the tree survives the CLI's rewrite for the other package manager. It fetches the published CLI | 20 seconds |
 | `yarn evidence:check` | re-reads every record of `docs/evidence/` from the mirror node: the result, the sender, the block, the gas, the fee taken from the transfer list, and the amount each swap returned. Reads the public mirror node | 20 seconds |
 
