@@ -27,17 +27,7 @@ With no wallet connected, `/swap` offers one button that runs the quote and the 
 
 ## Verify it yourself
 
-Two ways in. The short one shows you the failures themselves and asks for nothing: no key, no wallet, no account, no network. The long one re-runs every proof this repository makes, against the tests, against the tree and against the public mirror node. Take the short one first — it is the argument of this template in one screen.
-
-### One command
-
-```bash
-yarn replay
-```
-
-It replays three of the failures below from the answers captured when they happened: the swap every simulator accepted and the network refused, the call no wallet can price, and the response code hiding inside a successful transaction. For each one it prints what a developer's own tools reported, what this template says instead, and the transaction it comes from. Every sentence it shows in quotes is produced by the library while the command runs, from the captured answer printed above it, so what you read is what the app would have shown; the answers themselves are the committed files of `packages/nextjs/lib/hedera/__tests__/fixtures/`, and nothing leaves the process — `packages/nextjs/lib/hedera/__tests__/replayCaptured.test.ts` asserts that against a global `fetch` that throws.
-
-### The whole thing, in three commands
+Three commands, in this order.
 
 | command | what it proves |
 | --- | --- |
@@ -45,7 +35,7 @@ It replays three of the failures below from the answers captured when they happe
 | `yarn check:docs` | every path, link, script, symbol and variable this file names exists in the repository; every figure below is the one its evidence record holds; the tree survives the CLI's rewrite for the other package manager. It fetches the published CLI |
 | `yarn evidence:check` | re-reads every record of `docs/evidence/` from the mirror node: the result, the sender, the block, the gas, the fee taken from the transfer list, and the amount each swap returned. Reads the public mirror node |
 
-Three to four minutes for all three the first time, most of it the first command, which replays the lint rule against a file of planted violations. What they take depends on the machine and on what is already cached: on Windows 11 with Node 24.13.0, on 23 September 2026, they took 155, 57 and 37 seconds in a project scaffolded that morning, and 105, 32 and 39 on a warm checkout of the same machine, where a later run of the first command took 29. The short command above took 4 seconds in that same fresh project. These are one machine's wall-clock readings, not a promise about yours.
+Three to four minutes for all three the first time, most of it the first command, which replays the lint rule against a file of planted violations. What they take depends on the machine and on what is already cached: on Windows 11 with Node 24.13.0, on 23 September 2026, they took 155, 57 and 37 seconds in a project scaffolded that morning, and 105, 32 and 39 on a warm checkout of the same machine, where a later run of the first command took 29. These are one machine's wall-clock readings, not a promise about yours.
 
 Then open the transactions themselves. Each was signed by this template's own code, on Hedera testnet, chain 296; the mirror link is the machine-readable one, Hashscan renders the same transaction for a person.
 
