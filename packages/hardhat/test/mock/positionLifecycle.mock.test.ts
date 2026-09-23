@@ -159,6 +159,36 @@ describe("a SaucerSwap V2 position, opened and closed", function () {
     expect(await hts.balanceOf(WHBAR, holder.address)).to.equal(0n);
   });
 
+  it("refuses the unwrap when the manager holds less wrapped HBAR than the floor the collect names", async function () {
+    await (await mint()).wait();
+    const position = await manager.positions(FIRST_SERIAL);
+    await (
+      await manager.connect(holder).decreaseLiquidity({
+        tokenId: FIRST_SERIAL,
+        liquidity: position[5],
+        amount0Min: 1n,
+        amount1Min: 1n,
+        deadline: DEADLINE,
+      })
+    ).wait();
+
+    // The unwrap is a sweep of whatever the manager holds, so a floor is the only thing that tells a collect which
+    // paid out from one which pulled nothing: here the wrapped HBAR is never collected in, and the floor catches it.
+    const unwrap = manager.interface.encodeFunctionData("unwrapWHBAR", [HBAR_LEG, holder.address]);
+    const toHolder = manager.interface.encodeFunctionData("collect", [
+      { tokenId: FIRST_SERIAL, recipient: holder.address, amount0Max: 0n, amount1Max: UINT128_MAX },
+    ]);
+    await expect(manager.connect(holder).multicall([unwrap, toHolder])).to.be.revertedWith("Insufficient WHBAR");
+
+    // The control: the same two calls with no floor succeed, having moved no HBAR at all.
+    const before = await ethers.provider.getBalance(holder.address);
+    const noFloor = manager.interface.encodeFunctionData("unwrapWHBAR", [0n, holder.address]);
+    const receipt = await (await manager.connect(holder).multicall([noFloor, toHolder])).wait();
+    if (receipt === null) throw new Error("the collect was mined");
+    const received = (await ethers.provider.getBalance(holder.address)) - before + receipt.gasUsed * receipt.gasPrice;
+    expect(received).to.equal(0n);
+  });
+
   it("reverts TransferFail(184) when a collect sends both sides to the manager, as the Uniswap pattern does", async function () {
     await (await mint()).wait();
     const position = await manager.positions(FIRST_SERIAL);

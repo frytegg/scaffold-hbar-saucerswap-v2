@@ -1,5 +1,5 @@
 import { testnet } from "../addresses";
-import { toEvmAddress } from "../evmAddress";
+import { type EvmAddress, toEvmAddress } from "../evmAddress";
 import { GasRuleError } from "../gasRules";
 import {
   MINT_FEE_MARGIN_BPS,
@@ -131,6 +131,13 @@ describe("the mint, against the transaction that opened position 360", () => {
 });
 
 describe("the close, against the three transactions that emptied position 360", () => {
+  /** The position and the account the recorded collect paid out to, read from its own last inner call. */
+  const collected = (): { readonly tokenId: bigint; readonly recipient: EvmAddress } => {
+    const last = decodeFunctionData({ abi: positionManagerAbi, data: innerCalls(step("collect"))[2] });
+    if (last.functionName !== "collect") throw new Error("the last inner call of the collect is a collect");
+    return { tokenId: last.args[0].tokenId, recipient: toEvmAddress(last.args[0].recipient) };
+  };
+
   it("rebuilds the decreaseLiquidity the wallet sent", () => {
     const decoded = decodeFunctionData({ abi: positionManagerAbi, data: step("decrease").functionParameters });
     if (decoded.functionName !== "decreaseLiquidity") throw new Error("the decrease is a decreaseLiquidity");
@@ -146,17 +153,32 @@ describe("the close, against the three transactions that emptied position 360", 
   });
 
   it("rebuilds the split collect, whose three calls are what deliver native HBAR", () => {
-    const recorded = innerCalls(step("collect"));
-    const last = decodeFunctionData({ abi: positionManagerAbi, data: recorded[2] });
-    if (last.functionName !== "collect") throw new Error("the last inner call of the collect is a collect");
-    const { tokenId, recipient } = last.args[0];
-    expect(callData(buildSplitCollect({ tokenId, recipient: toEvmAddress(recipient) }))).toBe(
-      step("collect").functionParameters,
-    );
+    // The wallet sent this one with no floor at all, which is what `acceptAnyAmount` says out loud.
+    const sent = { ...collected(), hbarMinimum: tinybar(0n), acceptAnyAmount: true };
+    expect(callData(buildSplitCollect(sent))).toBe(step("collect").functionParameters);
     // The control: the recipient really is in those bytes, so the rebuild above is not matching by accident.
-    expect(callData(buildSplitCollect({ tokenId, recipient: testnet.swapRouter.evmAddress }))).not.toBe(
+    expect(callData(buildSplitCollect({ ...sent, recipient: testnet.swapRouter.evmAddress }))).not.toBe(
       step("collect").functionParameters,
     );
+  });
+
+  it("carries the floor into the unwrap, which is the only guard that call has", () => {
+    const { recipient } = collected();
+    const built = innerCallsOf(buildSplitCollect({ ...collected(), hbarMinimum: tinybar(22_870_889n) }));
+    const unwrap = decodeFunctionData({ abi: positionManagerAbi, data: built[1] });
+    if (unwrap.functionName !== "unwrapWHBAR") throw new Error("the middle inner call is the unwrap");
+    expect(unwrap.args).toEqual([22_870_889n, recipient]);
+  });
+
+  it("refuses a floor of zero, because the unwrap sends whatever the manager holds", () => {
+    const refusal = (): unknown => buildSplitCollect({ ...collected(), hbarMinimum: tinybar(0n) });
+    expect(refusal).toThrow(PositionBuildError);
+    expect(refusal).toThrow(/a collect that pulled nothing still succeeds and is charged its whole gas/);
+    try {
+      refusal();
+    } catch (error: unknown) {
+      expect((error as PositionBuildError).code).toBe("zero-minimum");
+    }
   });
 
   it("sends the wrapped HBAR to the manager first, because collecting both sides at once reverts", () => {

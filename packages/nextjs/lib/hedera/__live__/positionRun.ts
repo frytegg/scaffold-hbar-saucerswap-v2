@@ -99,6 +99,16 @@ export function minimumsUnder(needed: PoolAmounts, pool: HbarPoolEntry, toleranc
   return { amount0Min: amount0, amount1Min: amount1 };
 }
 
+/**
+ * The floor the split collect's unwrap refuses to go under: what the manager owes the position on the HBAR side,
+ * the same tolerance under it as a mint's minimums. That middle call sends the manager's whole wrapped balance and
+ * checks nothing else, so this is what tells a collect that paid out from one that pulled nothing and was charged
+ * its 888,485 gas anyway.
+ */
+export function collectFloor(owed: PoolAmounts, toleranceBps: number): Tinybar {
+  return tinybar(scaled(owed, BASIS_POINTS - assertBasisPoints(toleranceBps, "A tolerance")).hbar);
+}
+
 /** The serial the mint created: the one the account holds now and did not hold before. */
 export function newSerial(before: readonly bigint[], after: readonly bigint[]): bigint {
   const held = new Set(before.map(serial => serial.toString()));
@@ -164,7 +174,9 @@ export function assertEmptied(position: PositionFields | null, tokenId: bigint):
 /**
  * The HBAR the collect paid, from the account's own line in the transaction record. It is the proof the split
  * collect delivers HBAR and not the wrapped token: a collect that paid WHBAR moves no HBAR into the account, so
- * the account's net movement is the fee alone and this refuses.
+ * the account's net movement is the fee alone and this refuses. More than the position was owed is not an error
+ * but a sweep — the unwrap empties the manager's wrapped balance, leftovers of earlier callers included — so the
+ * excess is named rather than refused.
  */
 export function hbarPaidByCollect({
   senderNetTinybar,
@@ -174,15 +186,15 @@ export function hbarPaidByCollect({
   senderNetTinybar: bigint;
   feeTinybar: bigint;
   owed: bigint;
-}): Tinybar {
+}): { readonly paid: Tinybar; readonly sweptFromManager: Tinybar } {
   const paid = senderNetTinybar + feeTinybar;
-  if (paid !== owed) {
+  if (paid < owed) {
     throw new EvidenceRunRefusal(
       `The collect moved ${paid} tinybar into the account while the position was owed ${owed}: the HBAR side did ` +
         "not arrive as HBAR. The three calls of the split collect are what unwraps it.",
     );
   }
-  return tinybar(paid);
+  return { paid: tinybar(paid), sweptFromManager: tinybar(paid - owed) };
 }
 
 /** The position after the burn: the manager must no longer know the serial, and the account must no longer hold it. */

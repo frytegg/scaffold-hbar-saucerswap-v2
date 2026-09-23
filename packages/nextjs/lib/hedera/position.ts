@@ -236,20 +236,47 @@ function collectCall(recipient: EvmAddress, tokenId: bigint, amount0Max: bigint,
 /** The address a collect names when the tokens are to stay inside the manager. */
 const MANAGER_ITSELF = "0x0000000000000000000000000000000000000000" as const;
 
+export type SplitCollectRequest = {
+  readonly tokenId: bigint;
+  readonly recipient: EvmAddress;
+  /**
+   * The least the unwrap accepts to find in the manager, in tinybar: what the position is owed on the HBAR side,
+   * a tolerance under it. It is the only guard the middle call has, so a zero floor makes a collect that pulled
+   * nothing succeed at the full price of its gas.
+   */
+  readonly hbarMinimum: Tinybar;
+  /** A position owed nothing on the HBAR side has no floor to set: say so out loud rather than pass zero. */
+  readonly acceptAnyAmount?: boolean;
+};
+
 /**
  * Empties a position into `recipient`, with the HBAR side arriving as HBAR. Three calls in one transaction: the
  * wrapped HBAR is collected into the manager, `unwrapWHBAR` sends it on natively, and the token side is collected
  * straight to the recipient. The two patterns a reader would try first both fail on Hedera — collecting both sides
  * into the manager reverts `TransferFail(184)` because the manager is not associated with the token, and collecting
  * both sides to the recipient hands over WHBAR tokens, which the recipient then has to unwrap itself.
+ *
+ * The middle call is a sweep, as `refundETH` is: it sends the manager's whole wrapped-HBAR balance, whoever put it
+ * there, and refuses only a balance under `hbarMinimum`. So the payout can be larger than the position was owed —
+ * the manager held 0.19788729 HBAR of earlier callers' leftovers on 21 September 2026 — and a collect that pulled
+ * nothing at all is stopped by the floor rather than by the amounts.
  */
-export function buildSplitCollect(request: { readonly tokenId: bigint; readonly recipient: EvmAddress }): PositionCall {
-  const { tokenId, recipient } = request;
+export function buildSplitCollect(request: SplitCollectRequest): PositionCall {
+  const { tokenId, recipient, hbarMinimum, acceptAnyAmount = false } = request;
+  assertHtsAmount(hbarMinimum, "The HBAR floor of a collect");
+  if (!acceptAnyAmount && hbarMinimum === 0n) {
+    throw new PositionBuildError(
+      "zero-minimum",
+      "This collect puts no floor on the HBAR it unwraps, and unwrapWHBAR sends whatever the manager holds: with " +
+        "a floor of zero, a collect that pulled nothing still succeeds and is charged its whole gas. Pass what the " +
+        "position is owed on the HBAR side, a tolerance under it, or acceptAnyAmount: true.",
+    );
+  }
   const hbarToManager = collectCall(MANAGER_ITSELF, tokenId, MAX_UINT128, 0n);
   const unwrap = encodeFunctionData({
     abi: positionManagerAbi,
     functionName: "unwrapWHBAR",
-    args: [0n, recipient],
+    args: [hbarMinimum, recipient],
   });
   const tokenToRecipient = collectCall(recipient, tokenId, 0n, MAX_UINT128);
   return {

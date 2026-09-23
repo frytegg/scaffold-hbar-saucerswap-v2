@@ -42,6 +42,7 @@ import {
   assertBurnt,
   assertEmptied,
   assertPreflightPasses,
+  collectFloor,
   hbarPaidByCollect,
   minimumsUnder,
   newSerial,
@@ -232,7 +233,10 @@ describe.skipIf(!KEY)(title, () => {
         }
         const emptied = await readPosition(testnetClient, tokenId);
         if (emptied !== null && (emptied.tokensOwed0 > 0n || emptied.tokensOwed1 > 0n)) {
-          await send(buildSplitCollect({ tokenId, recipient: signer }));
+          // At any amount, as the decrease above is at any price: an abandoned position may be owed nothing at all
+          // on the HBAR side, and getting the tokens out matters more here than what the unwrap finds.
+          const anyAmount = { hbarMinimum: tinybar(0n), acceptAnyAmount: true };
+          await send(buildSplitCollect({ tokenId, recipient: signer, ...anyAmount }));
         }
         const approvedForAll = await readNftApproval(testnetClient, signer);
         if (approvedForAll) await send(buildBurn({ tokenId, approvedForAll }));
@@ -394,16 +398,26 @@ describe.skipIf(!KEY)(title, () => {
 
       const emptied = assertEmptied(await readPosition(testnetClient, tokenId), tokenId);
       const owed = fromPair({ amount0: emptied.tokensOwed0, amount1: emptied.tokensOwed1 });
-      const collect = buildSplitCollect({ tokenId, recipient: signer });
+      const collect = buildSplitCollect({
+        tokenId,
+        recipient: signer,
+        hbarMinimum: collectFloor(owed, TOLERANCE_BPS),
+      });
       const collectFee = await preview(collect, preflight, "The collect");
       const collected = await entry("collect", await send(collect), collectFee);
-      const hbarReceived = hbarPaidByCollect({
+      const { paid: hbarReceived, sweptFromManager } = hbarPaidByCollect({
         senderNetTinybar: BigInt(collected.senderNetTinybar),
         feeTinybar: BigInt(collected.feeTinybar),
         owed: owed.hbar,
       });
       transactions.push(collected);
       console.info(`the collect paid ${formatHbar(hbarReceived)} natively and ${formatTokenAmount(owed.token, sauce)}`);
+      if (sweptFromManager > 0n) {
+        console.info(
+          `${formatHbar(sweptFromManager)} of that was wrapped HBAR earlier callers had left in the manager: the ` +
+            "unwrap sends its whole balance, as refundETH does",
+        );
+      }
 
       let burnCheck = report(await checkPositionBurn(testnetClient, signer), preflight);
       if (burnCheck.status === "fail") {

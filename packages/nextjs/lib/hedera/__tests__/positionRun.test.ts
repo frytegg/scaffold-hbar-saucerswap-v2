@@ -2,6 +2,7 @@ import {
   assertBurnt,
   assertEmptied,
   assertPreflightPasses,
+  collectFloor,
   hbarPaidByCollect,
   minimumsUnder,
   newSerial,
@@ -195,9 +196,10 @@ describe("the HBAR a collect pays", () => {
   // Position 360, closed from a browser wallet: the manager owed 25,412,098 tinybar and the account's own line in
   // the transaction record moved 24,443,613 while it paid 968,485 of fee.
   it("is what the account gained plus the fee it paid, and it equals what the position was owed", () => {
-    expect(hbarPaidByCollect({ senderNetTinybar: -71_432_767n, feeTinybar: 96_844_865n, owed: 25_412_098n })).toBe(
-      25_412_098n,
-    );
+    expect(hbarPaidByCollect({ senderNetTinybar: -71_432_767n, feeTinybar: 96_844_865n, owed: 25_412_098n })).toEqual({
+      paid: 25_412_098n,
+      sweptFromManager: 0n,
+    });
   });
 
   it("refuses a collect that paid the wrapped token instead: the account gained nothing but the fee", () => {
@@ -208,6 +210,26 @@ describe("the HBAR a collect pays", () => {
     ).toBe(
       "The collect moved 0 tinybar into the account while the position was owed 25412098: the HBAR side did not " +
         "arrive as HBAR. The three calls of the split collect are what unwraps it.",
+    );
+  });
+
+  it("names, rather than refuses, wrapped HBAR the unwrap swept out of the manager", () => {
+    // The 19,788,729 tinybar earlier callers had left in the manager on 21 Sept 2026, on top of what was owed.
+    expect(hbarPaidByCollect({ senderNetTinybar: -51_644_038n, feeTinybar: 96_844_865n, owed: 25_412_098n })).toEqual({
+      paid: 45_200_827n,
+      sweptFromManager: 19_788_729n,
+    });
+  });
+});
+
+describe("the floor the collect's unwrap refuses to go under", () => {
+  it("is what the position is owed on the HBAR side, the run's tolerance under it", () => {
+    expect(collectFloor({ hbar: 25_412_098n, token: 20_000_000n }, 1_000)).toBe(22_870_888n);
+  });
+
+  it("refuses a tolerance that is not a whole number of basis points under one hundred per cent", () => {
+    expect(refusalOf(() => collectFloor({ hbar: 25_412_098n, token: 0n }, 10_000))).toBe(
+      "A tolerance of 10000 basis points is not a whole number between 1 and 9999.",
     );
   });
 });
