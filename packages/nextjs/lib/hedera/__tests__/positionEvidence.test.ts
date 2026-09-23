@@ -34,7 +34,7 @@ const OWED_SAUCE = "20000000";
 const hashOf = (step: (typeof STEPS)[number]) => mirrorBody(`result-position-${step}`).hash as Hex;
 const timestampOf = (step: (typeof STEPS)[number]) => mirrorBody(`result-position-${step}`).timestamp as string;
 
-function mirrorWith(nfts: string): MirrorClient {
+function mirrorWith(nfts: string, serial = "nft-serial-360-burnt"): MirrorClient {
   return createMirrorClient({
     transport: replayMirror({
       ...Object.fromEntries(
@@ -45,6 +45,9 @@ function mirrorWith(nfts: string): MirrorClient {
       ),
       [mirrorPaths.account(LONG_ZERO_MAIN)]: mirrorFixture("account-by-long-zero-address"),
       [mirrorPaths.accountNfts(MAIN.accountId, testnet.lpNft.id, 100)]: mirrorFixture(nfts),
+      [mirrorPaths.nft(testnet.lpNft.id, "360")]: mirrorFixture(serial),
+      [mirrorPaths.nft(testnet.lpNft.id, "9999")]: mirrorFixture("nft-serial-not-found"),
+      [mirrorPaths.nft(testnet.lpNft.id, "358")]: mirrorFixture("nft-serial-358-held"),
     }),
   });
 }
@@ -104,10 +107,12 @@ const position: EvidencePosition = {
   sqrtPriceX96AtMint: "54140056176914625121425215591",
   liquidity: "15562884336",
   toleranceBps: 1_000,
-  amount0Desired: "27953308",
-  amount1Desired: "22000000",
-  amount0Min: "22870889",
-  amount1Min: "18000000",
+  // What the wallet's own mint asked for, decoded from the calldata that reached consensus: it named no minimum
+  // on either side, which is what this template's builder refuses unless the caller accepts any price out loud.
+  amount0Desired: "100000000",
+  amount1Desired: "20000000",
+  amount0Min: "0",
+  amount1Min: "0",
   mintFeeTinybar: "64079561",
   mintValueTinybar: "165361153",
   depositedHbar: "25412099",
@@ -190,14 +195,66 @@ describe("what a position record is checked against", () => {
     ]);
   });
 
+  it("fails a record that names a serial this cycle never minted", async () => {
+    const record = await cycleRecord();
+    const invented = { ...record, position: { ...record.position, tokenId: "9999" } };
+    expect(await checkPositionEvidence(invented, mirror)).toEqual([
+      "position 9999: the serial the decrease emptied is 360 on the mirror node, 9999 in the file.",
+      "position 9999: the serial the burn destroyed is 360 on the mirror node, 9999 in the file.",
+      `position 9999: ${testnet.lpNft.id} has no such serial on the mirror node.`,
+    ]);
+  });
+
+  it("fails a range, a deposit or a mint fee the mint did not ask for", async () => {
+    const record = await cycleRecord();
+    const edited = {
+      ...record,
+      position: {
+        ...record.position,
+        tickLower: -12000,
+        amount0Min: "9000000",
+        depositedHbar: "99000000",
+        mintFeeTinybar: "1",
+        mintValueTinybar: "1",
+        liquidity: "1",
+      },
+    };
+    expect(await checkPositionEvidence(edited, mirror)).toEqual([
+      "position 360: the value the mint carried is 165361153 on the mirror node, 1 in the file.",
+      "position 360: the lower tick the mint asked for is -7680 on the mirror node, -12000 in the file.",
+      "position 360: amount0Min in the mint is 0 on the mirror node, 9000000 in the file.",
+      "position 360: the mint credited 25412099 tinybar to 0.0.15057, which is the HBAR the position deposits, " +
+        "and the file says 99000000.",
+      "position 360: the mint credited 64079562 tinybar to the pool 0.0.2661057 as its fee, outside the 1 to 2 " +
+        "tinybar the file's own mint fee allows.",
+      "position 360: the liquidity the decrease took out is 15562884336 on the mirror node, 1 in the file.",
+    ]);
+  });
+
+  it("fails a serial the mirror node says is still alive, or was minted by another transaction", async () => {
+    // The same four transactions, read against a serial of the collection that a third party still holds.
+    const stillAlive = mirrorWith("nfts-none", "nft-serial-358-held");
+    const record = await cycleRecord(stillAlive);
+    expect(await checkPositionEvidence(record, stillAlive)).toEqual([
+      "position 360: the mirror node still has the serial, so it was never burnt.",
+      "position 360: 0.0.10542434 holds the serial the cycle burnt.",
+      "position 360: the serial was minted at 1789408631.907476305 and the cycle's mint reached consensus at " +
+        "1790110138.767890847.",
+      "position 360: the serial was last changed at 1789408631.907476306 and the cycle's burn reached consensus " +
+        "at 1790110358.293712734.",
+    ]);
+  });
+
   it("fails a cycle that left the position on the account", async () => {
     // The same four transactions, read against an account that still holds serials 357 and 358.
     const stillHeld = mirrorWith("nfts-two-positions");
     const record = await cycleRecord(stillHeld);
     const open = { ...record, position: { ...record.position, tokenId: "358" } };
-    expect(await checkPositionEvidence(open, stillHeld)).toEqual([
+    // Everything else about serial 358 is wrong in this record too, which is the point of the checks above; this
+    // one is about the account still listing it.
+    expect(await checkPositionEvidence(open, stillHeld)).toContain(
       "position 358: 0.0.10645914 still holds it, so the cycle this file records did not close.",
-    ]);
+    );
   });
 
   it("fails a transaction the mirror node does not know", async () => {
@@ -207,11 +264,13 @@ describe("what a position record is checked against", () => {
       transport: replayMirror({
         [mirrorPaths.contractResult(`0x${"ab".repeat(32)}`)]: mirrorFixture("result-not-found"),
         [mirrorPaths.accountNfts(MAIN.accountId, testnet.lpNft.id, 100)]: mirrorFixture("nfts-none"),
+        [mirrorPaths.nft(testnet.lpNft.id, "360")]: mirrorFixture("nft-serial-360-burnt"),
       }),
     });
-    expect(await checkPositionEvidence(unknown, withoutResult)).toEqual([
+    // The record holds that one transaction only, so the calldata of the decrease and of the burn is missing too.
+    expect(await checkPositionEvidence(unknown, withoutResult)).toContain(
       `burn 0x${"ab".repeat(32)}: the mirror node has no result for this hash.`,
-    ]);
+    );
   });
 });
 

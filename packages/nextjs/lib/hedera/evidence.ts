@@ -1,11 +1,13 @@
-import type { EntityId } from "./addresses";
+import { type EntityId, testnet } from "./addresses";
 import { type EvmAddress, isEvmAddress } from "./evmAddress";
 import type { MirrorClient, MirrorContractResult, MirrorTransaction } from "./mirror";
 import { mirrorPaths } from "./mirrorPaths";
+import { mintValue } from "./position";
+import { positionManagerAbi } from "./positionAbi";
 import { approvalGranted, swapAmountOut } from "./swap";
 import { netTransfer, networkFee } from "./transfers";
-import { type Tinybar, formatHbar } from "./units";
-import { type Hex, decodeAbiParameters, isHex } from "viem";
+import { type Tinybar, formatHbar, tinybar } from "./units";
+import { type Hex, decodeAbiParameters, decodeFunctionData, isHex } from "viem";
 
 // A file of docs/evidence/ records one thing the signed evidence runs did on Hedera testnet — a swap, or the life
 // cycle of one liquidity position — with what was asked, what the network did, and the software that did it. Nothing
@@ -494,12 +496,164 @@ export function parsePositionEvidence(json: unknown, file: string): PositionEvid
   };
 }
 
+/** The arguments of one call the manager executed, decoded from the calldata that reached consensus. */
+function decodedCall(data: Hex | null): { name: string; args: readonly unknown[] } | null {
+  if (data === null) return null;
+  try {
+    const { functionName, args } = decodeFunctionData({ abi: positionManagerAbi, data });
+    return { name: functionName, args: args ?? [] };
+  } catch {
+    // Calldata the position manager's own ABI does not describe: the caller reports it as a transaction that is
+    // not the call the record says it is, which is more useful than the decoder's message.
+    return null;
+  }
+}
+
+/** The one inner call of a multicall that runs `name`, so that the mint inside `multicall[mint, refundETH]` is read. */
+function innerCall(data: Hex | null, name: string): { name: string; args: readonly unknown[] } | null {
+  const outer = decodedCall(data);
+  if (outer === null) return null;
+  if (outer.name === name) return outer;
+  if (outer.name !== "multicall") return null;
+  const inner = (outer.args[0] as readonly Hex[] | undefined) ?? [];
+  return inner.map(call => decodedCall(call)).find(call => call?.name === name) ?? null;
+}
+
+type MintArguments = {
+  fee: number;
+  tickLower: number;
+  tickUpper: number;
+  amount0Desired: bigint;
+  amount1Desired: bigint;
+  amount0Min: bigint;
+  amount1Min: bigint;
+  recipient: string;
+};
+
+/** Everything the `position` block claims that the chain answers on its own, on top of the transactions. */
+async function checkPositionBlock(
+  record: PositionEvidenceRecord,
+  results: Map<EvidenceRole, MirrorContractResult>,
+  mirror: MirrorClient,
+): Promise<string[]> {
+  const { position, sender } = record;
+  const at = `position ${position.tokenId}`;
+  const findings: string[] = [];
+  const compare = (what: string, onChain: string, inFile: string) => {
+    if (onChain !== inFile) findings.push(`${at}: ${what} is ${onChain} on the mirror node, ${inFile} in the file.`);
+  };
+
+  const mint = results.get("mint");
+  if (mint !== undefined) {
+    compare("the value the mint carried", mint.amount.toString(), position.mintValueTinybar);
+    const opened = innerCall(mint.functionParameters, "mint");
+    if (opened === null) {
+      findings.push(`${at}: the calldata of ${mint.hash} does not run a mint on the position manager.`);
+    } else {
+      const asked = opened.args[0] as MintArguments;
+      compare("the pool fee the mint asked for", asked.fee.toString(), position.poolFee.toString());
+      compare("the lower tick the mint asked for", asked.tickLower.toString(), position.tickLower.toString());
+      compare("the upper tick the mint asked for", asked.tickUpper.toString(), position.tickUpper.toString());
+      compare("amount0Desired in the mint", asked.amount0Desired.toString(), position.amount0Desired);
+      compare("amount1Desired in the mint", asked.amount1Desired.toString(), position.amount1Desired);
+      compare("amount0Min in the mint", asked.amount0Min.toString(), position.amount0Min);
+      compare("amount1Min in the mint", asked.amount1Min.toString(), position.amount1Min);
+      compare("the recipient of the position", asked.recipient.toLowerCase(), sender.evmAddress.toLowerCase());
+    }
+    findings.push(...(await checkMintTransfers(record, mint, mirror)));
+  }
+
+  const liquidityTaken = innerCall(results.get("decrease")?.functionParameters ?? null, "decreaseLiquidity");
+  if (liquidityTaken === null) {
+    findings.push(`${at}: the calldata of the decrease does not run decreaseLiquidity on the position manager.`);
+  } else {
+    const taken = liquidityTaken.args[0] as { tokenId: bigint; liquidity: bigint };
+    compare("the serial the decrease emptied", taken.tokenId.toString(), position.tokenId);
+    compare("the liquidity the decrease took out", taken.liquidity.toString(), position.liquidity);
+  }
+
+  const burnt = innerCall(results.get("burn")?.functionParameters ?? null, "burn");
+  if (burnt === null) findings.push(`${at}: the calldata of the burn does not run burn on the position manager.`);
+  else compare("the serial the burn destroyed", String(burnt.args[0]), position.tokenId);
+
+  findings.push(...(await checkSerialLifetime(record, results, mirror)));
+  return findings;
+}
+
+/** What the mint's own HBAR transfer list paid out: the pool's token wrapper took the deposit, the pool the fee. */
+async function checkMintTransfers(
+  record: PositionEvidenceRecord,
+  mint: MirrorContractResult,
+  mirror: MirrorClient,
+): Promise<string[]> {
+  const { position } = record;
+  const at = `position ${position.tokenId}`;
+  const transaction = await mirror.getTransaction(mint.timestamp);
+  if (transaction === null) return [`${at}: the mirror node has no transaction record for the mint.`];
+  const findings: string[] = [];
+
+  const wrapped = netTransfer(transaction.transfers, testnet.whbarContract.id);
+  if (wrapped.toString() !== position.depositedHbar) {
+    findings.push(
+      `${at}: the mint credited ${wrapped} tinybar to ${testnet.whbarContract.id}, which is the HBAR the position ` +
+        `deposits, and the file says ${position.depositedHbar}.`,
+    );
+  }
+
+  // The fee is quoted in tinycent and converted again at execution, so what the pool was credited can be a little
+  // above the figure the run read a moment earlier: the margin mintValue adds is exactly how much a mint tolerates.
+  const charged = netTransfer(transaction.transfers, position.pool);
+  const read = BigInt(position.mintFeeTinybar);
+  const mostItCanBe = mintValue({ hbarAmount: tinybar(0n), mintFeeTinybar: tinybar(read) });
+  if (charged < read || charged > mostItCanBe) {
+    findings.push(
+      `${at}: the mint credited ${charged} tinybar to the pool ${position.pool} as its fee, outside the ` +
+        `${read} to ${mostItCanBe} tinybar the file's own mint fee allows.`,
+    );
+  }
+  return findings;
+}
+
+/** The serial itself: minted by this cycle's mint, destroyed by its burn, and held by nobody afterwards. */
+async function checkSerialLifetime(
+  record: PositionEvidenceRecord,
+  results: Map<EvidenceRole, MirrorContractResult>,
+  mirror: MirrorClient,
+): Promise<string[]> {
+  const { position } = record;
+  const at = `position ${position.tokenId}`;
+  const serial = await mirror.getNft(position.lpNft, position.tokenId);
+  if (serial === null) return [`${at}: ${position.lpNft} has no such serial on the mirror node.`];
+
+  const findings: string[] = [];
+  // The mirror node gives the serial its own consensus timestamp, a few nanoseconds after the transaction's own:
+  // the second is what identifies the transaction that minted or burnt it.
+  const second = (timestamp: string) => timestamp.split(".")[0];
+  const sameSecondAs = (role: EvidenceRole, timestamp: string, what: string) => {
+    const result = results.get(role);
+    if (result === undefined) return;
+    if (second(timestamp) !== second(result.timestamp)) {
+      findings.push(
+        `${at}: the serial was ${what} at ${timestamp} and the cycle's ${role} reached consensus at ${result.timestamp}.`,
+      );
+    }
+  };
+  if (!serial.deleted) findings.push(`${at}: the mirror node still has the serial, so it was never burnt.`);
+  if (serial.accountId !== null) findings.push(`${at}: ${serial.accountId} holds the serial the cycle burnt.`);
+  sameSecondAs("mint", serial.createdTimestamp, "minted");
+  sameSecondAs("burn", serial.modifiedTimestamp, "last changed");
+  return findings;
+}
+
 /**
  * Re-reads a position cycle from the mirror node: every transaction as a swap record's is re-read, the HBAR the
- * split collect paid out natively, and that the account no longer holds the serial. Empty when all of it holds.
+ * split collect paid out natively, everything the `position` block claims that the chain can answer — the value and
+ * the calldata of the mint, what its transfer list paid the pool and the token wrapper, the serial's own life and
+ * death — and that the account no longer holds the serial. Empty when all of it holds.
  */
 export async function checkPositionEvidence(record: PositionEvidenceRecord, mirror: MirrorClient): Promise<string[]> {
   const findings: string[] = [];
+  const results = new Map<EvidenceRole, MirrorContractResult>();
   for (const recorded of record.transactions) {
     const at = `${recorded.role} ${recorded.hash}`;
     const result = await mirror.getContractResult(recorded.hash);
@@ -509,6 +663,7 @@ export async function checkPositionEvidence(record: PositionEvidenceRecord, mirr
     }
     findings.push(...(await checkAgainstMirror(record.sender, recorded, result, mirror)));
     if (result.result !== "SUCCESS") continue;
+    results.set(recorded.role, result);
     if (recorded.role === "approve") findings.push(...checkApprovalReturn(recorded, result));
     if (recorded.role !== "collect") continue;
     // The collect's own transfer list is what proves the HBAR arrived as HBAR: what the account gained, plus the
@@ -521,6 +676,17 @@ export async function checkPositionEvidence(record: PositionEvidenceRecord, mirr
       );
     }
   }
+
+  // The unwrap sweeps the manager's whole wrapped balance, so a payout above what the position was owed is a sweep
+  // and not a mismatch; a payout below it is a collect that did not pay the position out.
+  if (BigInt(record.position.hbarReceivedTinybar) < BigInt(record.position.collectedHbar)) {
+    findings.push(
+      `position ${record.position.tokenId}: the collect paid ${record.position.hbarReceivedTinybar} tinybar of ` +
+        `native HBAR while the manager owed the position ${record.position.collectedHbar}.`,
+    );
+  }
+
+  findings.push(...(await checkPositionBlock(record, results, mirror)));
 
   const held = await mirror.getAccountNfts(record.sender.accountId, record.position.lpNft);
   if (held.nfts.some(nft => nft.serialNumber.toString() === record.position.tokenId)) {

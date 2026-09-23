@@ -38,6 +38,8 @@ export type MirrorContractResult = {
   /** Raw revert data ("0x" when a multicall dropped it), or null on success. */
   errorMessage: string | null;
   callResult: Hex | null;
+  /** The calldata that reached consensus, null for a contract creation: what the transaction really asked for. */
+  functionParameters: Hex | null;
   /** The sender in long-zero form, even for an account with an EVM address of its own: compare account ids. */
   from: EvmAddress;
   gasUsed: bigint;
@@ -77,6 +79,18 @@ export type MirrorTokenRelationship = {
 /** One NFT an account holds, from the mirror node's own list: the HTS facade cannot enumerate serials. */
 export type MirrorNft = { tokenId: EntityId; serialNumber: bigint };
 
+/**
+ * One serial of a collection, asked for by itself. A burnt serial is still answered, with `deleted` true and no
+ * holder, which is how a closed position can be re-read long after the account stopped listing it.
+ */
+export type MirrorNftDetail = MirrorNft & {
+  accountId: EntityId | null;
+  deleted: boolean;
+  /** The consensus timestamps at which the serial was minted and last changed, "seconds.nanoseconds". */
+  createdTimestamp: string;
+  modifiedTimestamp: string;
+};
+
 /** One page of that list, with whether the mirror node has more of it than the page holds. */
 export type MirrorNftPage = { nfts: MirrorNft[]; hasMore: boolean };
 
@@ -95,6 +109,8 @@ export type MirrorClient = {
   getTokenAllowance(owner: AccountRef, spender: EntityId, token: EntityId): Promise<bigint>;
   /** The serials of one collection the account holds, oldest first; an empty page for an account that has none. */
   getAccountNfts(account: AccountRef, token: EntityId, limit?: number): Promise<MirrorNftPage>;
+  /** One serial of a collection, burnt or not; null for a serial the collection never had. */
+  getNft(token: EntityId, serialNumber: bigint | string): Promise<MirrorNftDetail | null>;
   /** The record at a contract result's `timestamp`; null while the mirror has not ingested it. */
   getTransaction(consensusTimestamp: string): Promise<MirrorTransaction | null>;
   waitForResult(hash: Hex, options?: WaitOptions): Promise<MirrorContractResult>;
@@ -175,6 +191,7 @@ function parseContractResult(body: unknown, path: string): MirrorContractResult 
     result: stringAt(result, "result", path),
     errorMessage: errorMessage ?? null,
     callResult: optionalHexAt(result, "call_result", path),
+    functionParameters: optionalHexAt(result, "function_parameters", path),
     from: addressAt(result, "from", path),
     gasUsed: integerAt(result, "gas_used", path),
     amount: tinybar(integerAt(result, "amount", path)),
@@ -216,6 +233,19 @@ function parseAccount(body: unknown, path: string): MirrorAccount {
 function parseNft(value: unknown, path: string): MirrorNft {
   const nft = objectAt(value, path, "nft");
   return { tokenId: entityIdAt(nft, "token_id", path), serialNumber: integerAt(nft, "serial_number", path) };
+}
+
+function parseNftDetail(body: unknown, path: string): MirrorNftDetail {
+  const nft = objectAt(body, path, "nft");
+  const holder = nft.account_id;
+  if (holder !== null && typeof holder !== "string") throw unexpected(path, "account_id");
+  return {
+    ...parseNft(body, path),
+    accountId: holder === null ? null : entityIdAt(nft, "account_id", path),
+    deleted: nft.deleted === true,
+    createdTimestamp: stringAt(nft, "created_timestamp", path),
+    modifiedTimestamp: stringAt(nft, "modified_timestamp", path),
+  };
 }
 
 function parseTokenRelationship(value: unknown, path: string): MirrorTokenRelationship {
@@ -322,6 +352,12 @@ export function createMirrorClient({ transport, sleep = wait, now = Date.now }: 
       const links = listed.links;
       const next = typeof links === "object" && links !== null ? (links as { next?: unknown }).next : null;
       return { nfts, hasMore: typeof next === "string" && next.length > 0 };
+    },
+
+    async getNft(token, serialNumber) {
+      const path = mirrorPaths.nft(token, serialNumber);
+      const body = await getFound(path);
+      return body === null ? null : parseNftDetail(body, path);
     },
 
     async getTransaction(consensusTimestamp) {

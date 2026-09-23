@@ -51,6 +51,9 @@ In `mirror/`, each file holds the HTTP status and the JSON body that https://tes
 | `mirror/nfts-two-positions.json`                            | /api/v1/accounts/0.0.10542434/nfts?token.id=0.0.1310436, captured on 2026-09-23: the two positions a third party holds, which the token facade cannot enumerate                       |
 | `mirror/nfts-none.json`                                     | the same list for 0.0.10645914, whose own position was burnt: an empty list, not a 404                                                                                                |
 | `mirror/nfts-first-of-two-pages.json`                       | the same list with `limit=1`, captured on 2026-09-23: one serial and a `links.next`, which is what `hasMore` reads. No testnet account holds more than 100 of this collection today, so one page of two is the only paged answer it can give |
+| `mirror/nft-serial-360-burnt.json`                          | /api/v1/tokens/0.0.1310436/nfts/360, captured on 2026-09-23: the position this project opened and closed from a browser wallet, `deleted` with no holder, minted and last changed in the seconds its mint and its burn reached consensus |
+| `mirror/nft-serial-358-held.json`                           | the same read for serial 358: a position of the same collection that a third party still holds                                                                                                                                         |
+| `mirror/nft-serial-not-found.json`                          | the same read for a serial the collection never had: 404                                                                                                                                                                                |
 
 ## JSON-RPC answers
 

@@ -62,6 +62,9 @@ describe("the mirror client reads the captured payloads into typed results", () 
       [mirrorPaths.tokenAllowance(MAIN, testnet.swapRouter.id, testnet.sauce.id)]:
         mirrorFixture("allowances-router-none"),
       [mirrorPaths.tokenAllowance(MAIN, "0.0.1308184", testnet.sauce.id)]: mirrorFixture("allowances-position-manager"),
+      [mirrorPaths.nft(testnet.lpNft.id, "360")]: mirrorFixture("nft-serial-360-burnt"),
+      [mirrorPaths.nft(testnet.lpNft.id, "358")]: mirrorFixture("nft-serial-358-held"),
+      [mirrorPaths.nft(testnet.lpNft.id, "9999")]: mirrorFixture("nft-serial-not-found"),
       [mirrorPaths.transaction(SWAP_AT)]: mirrorFixture("transaction-token-to-hbar-success"),
       [mirrorPaths.transaction("1790023842.760213409")]: {
         status: 200,
@@ -76,6 +79,7 @@ describe("the mirror client reads the captured payloads into typed results", () 
       result: "CONTRACT_REVERT_EXECUTED",
       errorMessage: "0x",
       callResult: "0x",
+      functionParameters: mirrorBody("result-token-to-hbar-no-allowance-292").function_parameters,
       from: "0x0000000000000000000000000000000000a2719a",
       gasUsed: 136_618n,
       amount: 0n,
@@ -86,6 +90,22 @@ describe("the mirror client reads the captured payloads into typed results", () 
 
   it("null for a result the mirror does not have (404)", async () => {
     expect(await mirror.getContractResult(`0x${"ab".repeat(32)}`)).toBeNull();
+  });
+
+  it("one serial of a collection, burnt or held, and null for one the collection never had", async () => {
+    expect(await mirror.getNft(testnet.lpNft.id, 360n)).toEqual({
+      tokenId: testnet.lpNft.id,
+      serialNumber: 360n,
+      accountId: null,
+      deleted: true,
+      createdTimestamp: "1790110138.767890856",
+      modifiedTimestamp: "1790110358.293712738",
+    });
+    expect(await mirror.getNft(testnet.lpNft.id, 358n)).toMatchObject({
+      accountId: "0.0.10542434",
+      deleted: false,
+    });
+    expect(await mirror.getNft(testnet.lpNft.id, 9999n)).toBeNull();
   });
 
   it("the call tree of that transaction", async () => {
