@@ -33,7 +33,7 @@ export function feeTierLabel(fee: number): string {
   return `${(fee / 10_000).toFixed(2)} %`;
 }
 
-export type RangeLine = { readonly label: string; readonly sentence: string };
+type RangeLine = { readonly label: string; readonly sentence: string };
 
 /**
  * Where the live price sits against the position's range, and what that makes of it. A position out of range earns

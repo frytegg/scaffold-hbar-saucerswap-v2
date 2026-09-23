@@ -161,7 +161,7 @@ const Home: NextPage = () => {
                 <div>
                   <p className="m-0 font-medium">Edit your contract</p>
                   <code className="text-xs bg-base-200 px-2 py-1 rounded">
-                    packages/hardhat/contracts/HederaToken.sol
+                    packages/hardhat/contracts/SaucerSwapHbarConsumer.sol
                   </code>
                 </div>
               </div>
