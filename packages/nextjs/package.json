@@ -14,6 +14,7 @@
     "format": "prettier --write . \"!(node_modules|.next|contracts)/**/*\"",
     "lint": "next lint",
     "lint:all": "next lint --dir app --dir components --dir hooks --dir lib --dir services --dir utils",
+    "preflight": "node lib/hedera/__live__/preflight.mjs",
     "replay": "node lib/hedera/__live__/replay.mjs",
     "serve": "next start",
     "start": "next dev",
