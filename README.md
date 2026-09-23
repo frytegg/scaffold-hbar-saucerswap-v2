@@ -73,7 +73,7 @@ Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.m
 | `yarn test:unit` and `yarn test:mock` | the two offline tiers: captured testnet answers replayed through the pinned viem, and the contract against original mocks injected at the real addresses, which reproduce the response codes and the empty reverts a fork cannot |
 | `yarn test` and `yarn probe:routes` | the inherited samples on a fork of Hedera testnet, and every page route loaded in Chromium in three network modes with zero console errors and zero third-party requests |
 | `yarn check:live` | keyless reads that re-assert the address book, a quote, and the dated observation that three simulators still accept a swap with no allowance |
-| `.github/workflows/gate.yml` | scaffolds this repository through the published CLI, on every push to `main` that changes more than Markdown and again nightly, installs the result, and runs lint, types, build, tests, the route probe, the docs checks and a secret scan of the tree and the history inside the scaffolded project |
+| `.github/workflows/gate.yml` | scaffolds this checkout through the published CLI, on every push to `main` that changes more than Markdown and again nightly, installs the result, and runs lint, types, build, tests, the route probe, the docs checks and a secret scan of the tree and the history inside the scaffolded project |
 
 ## Architecture
 
@@ -209,6 +209,7 @@ What that deployment buys is the relation without which the contract could not h
 - Every transaction linked above was signed by a script. The Swap page builds, checks and previews the same calls, and every decision it makes has a test, but no browser wallet has signed through it, so what a wallet does with what the page hands it is not something this repository has measured. The wallet figures quoted above come from one session, on one wallet and one version, driven by hand against this library before the routes existed; they are kept as a fixture, and the route probe checks what a page loads, never what a wallet then does with it.
 - `/positions` reads one page of the mirror node's NFT list, at most 100 serials, and prices a position only against the pool in the address book; a position of any other pool is listed with its own fields and no price.
 - `yarn test` runs on a fork of Hedera testnet read through hashio, so an outage there fails it; and `hardhat:deploy` with no network named stops at the HTS step, which the in-process network cannot emulate.
+- The gate hands the CLI this checkout through its local-template seam, which is what works while the repository is private. The `--template` form printed at the top of this file, the one that has the CLI fetch the template from GitHub, is run in CI against a public skeleton repository instead, by `.github/workflows/gate-skeleton.yml`.
 - The `/api/hedera/rpc` relay forwards any `eth_`, `net_` or `web3_` call and adds no rate limit of its own: every visitor's calls leave from the server's address.
 - This code is experimental and has not been audited.
 
