@@ -40,6 +40,8 @@ In `mirror/`, each file holds the HTTP status and the JSON body that https://tes
 | `mirror/tokens-no-relation.json`                            | /api/v1/accounts/0.0.10574825/tokens?token.id=0.0.1183558: an empty list                                                                                                              |
 | `mirror/allowances-router-none.json`                        | /api/v1/accounts/0.0.10645914/allowances/tokens for the SwapRouter: no row                                                                                                            |
 | `mirror/allowances-position-manager.json`                   | the same for the position manager 0.0.1308184: 40 SAUCE left                                                                                                                          |
+| `mirror/nfts-two-positions.json`                            | /api/v1/accounts/0.0.10542434/nfts?token.id=0.0.1310436, captured on 2026-09-23: the two positions a third party holds, which the token facade cannot enumerate                       |
+| `mirror/nfts-none.json`                                     | the same list for 0.0.10645914, whose own position was burnt: an empty list, not a 404                                                                                                |
 
 ## JSON-RPC answers
 
@@ -73,6 +75,30 @@ The last three were captured on 22 Sept 2026 at 21:20 UTC, from the same address
 | `rpc/call-mint-not-estimable.json`           | eth_call, a position mint: CONTRACT_REVERT_EXECUTED, INVALID_NFT_ID, although the network executes it |
 | `rpc/estimate-mint-not-estimable.json`       | eth_estimateGas of the same call: the same answer, so no wallet can price it                          |
 | `rpc/call-multicall-mint-not-estimable.json` | the same mint through multicall, the shape a position is opened with: the same answer                 |
+
+The nine below were captured on 2026-09-23 at 07:06 UTC, by reads through viem's own transport so that the recorded request is the one the library sends. Every one is an `eth_call`; nothing was signed for them.
+
+| file                                  | request, and what it shows                                                                                  |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `rpc/call-pool-slot0.json`            | slot0 of the HBAR/SAUCE 0.30 % pool: its square-root price and the tick it sits in                          |
+| `rpc/call-pool-tick-spacing.json`     | that pool's tick spacing, 60                                                                                |
+| `rpc/call-pool-liquidity.json`        | that pool's liquidity at the current tick                                                                   |
+| `rpc/call-positions-open.json`        | positions(357) on the position manager: the ten fields of a position a third party holds                    |
+| `rpc/call-positions-burnt.json`       | positions(360) after the burn: the manager reverts "Invalid token ID" rather than answering an empty struct |
+| `rpc/call-factory-mint-fee.json`      | mintFee() on the V2 factory, in tinycent. The position manager itself reverts on the same call              |
+| `rpc/call-tinycents-to-tinybars.json` | that fee through the exchange-rate system contract at 0x168: the rate the network charges at                |
+| `rpc/call-lp-nft-approved.json`       | isApprovedForAll on the position NFT facade for the manager: what a burn needs and no simulator checks      |
+| `rpc/call-manager-allowance.json`     | the SAUCE allowance of 0.0.10645914 to the position manager, which is not the router's                      |
+
+## Position figures, from the chain
+
+In `position/`, three files of amounts Hedera testnet itself reported, read from the mirror node on 2026-09-23. They are the oracles of the tick and liquidity maths: no expectation in `tickMath.test.ts`, `liquidityMath.test.ts` or `positionBuilders.test.ts` is a figure this library computed.
+
+| file                                   | what it holds                                                                                                                                                         |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `position/hbar-sauce-pool-events.json` | every `Mint` and `Burn` of the HBAR/SAUCE 0.30 % pool found in the windows searched, each with the pool's square-root price at the block before it                    |
+| `position/serial-360-lifecycle.json`   | the four transactions that opened and closed position 360 from a browser wallet on 22 Sept 2026, with the calldata the builders rebuild                               |
+| `position/serial-359-close.json`       | the decrease and the split collect that closed position 359 on 21 Sept 2026, whose collect paid out more than the liquidity held because the position had earned fees |
 
 ## What a browser wallet did
 

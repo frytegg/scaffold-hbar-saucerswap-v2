@@ -14,7 +14,18 @@ import type { PublicClient } from "viem";
 // Checks for what a simulation passes wrongly or does not show, run before the wallet is asked to sign. "fail" blocks
 // the send, "warn" lets it go with the message shown.
 
-export type PreflightCheck = "allowance" | "recipient" | "facade-result" | "cost";
+export type PreflightCheck =
+  | "allowance"
+  | "recipient"
+  | "facade-result"
+  | "cost"
+  // The four a position adds, in positionPreflight.ts: the position manager's own allowance on the pool's token,
+  // room for the position NFT, the NFT approval a burn needs, and the value that has to cover the mint fee.
+  | "manager-allowance"
+  | "lp-nft-slot"
+  | "nft-approval"
+  | "mint-value"
+  | "minimums";
 
 export type PreflightVerdict = {
   check: PreflightCheck;

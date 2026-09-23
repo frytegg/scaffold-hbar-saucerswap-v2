@@ -83,6 +83,16 @@ export {
   v2FactoryFeeAbi,
   v2PoolAbi,
 } from "./positionAbi";
+export type { PositionMintChecks } from "./positionPreflight";
+export {
+  checkPositionBurn,
+  checkPositionMint,
+  lpNftSlotVerdict,
+  managerAllowanceVerdict,
+  mintValueVerdict,
+  minimumsVerdict,
+  nftApprovalVerdict,
+} from "./positionPreflight";
 export type { PoolState, PositionFields, PositionStatus } from "./positionReads";
 export {
   positionStatus,
