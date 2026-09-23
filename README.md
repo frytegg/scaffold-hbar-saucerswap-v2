@@ -19,7 +19,7 @@ The app answers on `http://localhost:3000` with no env file, no key and no accou
 
 ## Verify it yourself
 
-Three commands, in this order. None of them needs a key, an account or an env file.
+Three commands, in this order.
 
 | command | what it proves | about |
 | --- | --- | --- |
@@ -77,7 +77,7 @@ Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.m
 
 ## Architecture
 
-The write path, from a page to the network and back. The diagram is Mermaid rather than an ASCII block: GitHub renders it, and `yarn check:docs` replays the CLI's rewrite over this file, so it survives a scaffold for either package manager unchanged.
+The write path, from a page to the network and back.
 
 ```mermaid
 flowchart TD
@@ -125,7 +125,7 @@ Nothing needs to be set: the app, the build and the tests run with no env file. 
 
 ## Prerequisites and scaffolding notes
 
-Node.js 20.18.3 or later; git with `user.name` and `user.email` set, since the CLI makes the first commit and stops before creating anything when git has no identity; and the default package manager on your `PATH`, which the CLI checks for before scaffolding. Foundry is not needed: every command here passes `-s hardhat`. No key, account or env file is needed to scaffold, lint, build, serve or test.
+Node.js 20.18.3 or later; git with `user.name` and `user.email` set, since the CLI makes the first commit and stops before creating anything when git has no identity; and the default package manager on your `PATH`, which the CLI checks for before scaffolding. Foundry is not needed: every command here passes `-s hardhat`.
 
 Name the project in lowercase, as a single path segment. `--yes` accepts every default, the Hedera Skills install among them, which adds agent skills under `.agents/`, `.claude/`, `agent/` and `skills-lock.json`; the repository checks and the formatters leave those paths alone. To scaffold for the other package manager, end the command with `--package-manager "npm"`: the CLI then rewrites the new project's docs and scripts, commands included.
 
@@ -169,7 +169,7 @@ What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.
 2.00744864 HBAR of fees in all; the account's HBAR balance fell by 2.08604114 HBAR, the fees plus the 0.1 HBAR swapped minus the 0.0214075 HBAR received.
 <!-- /checks:evidence -->
 
-The two directions are not symmetrical: unwrapping HBAR at the end of a token-input swap is most of its gas, and the approval before it costs about as much again. The route says so before you sign, and warns when the fee is larger than the HBAR the swap returns.
+The two directions are not symmetrical: unwrapping HBAR at the end of a token-input swap is most of its gas, and the approval before it costs about as much again.
 
 <!-- checks:evidence -->
 What a whole life cycle of a liquidity position cost, measured on 23 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-23-position-cycle-361.json`):
@@ -199,7 +199,7 @@ What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.
 1.77402841 HBAR of fees in all; the account's HBAR balance fell by 1.82402841 HBAR, the fees plus the 0.05 HBAR swapped.
 <!-- /checks:evidence -->
 
-What that deployment buys is the relation without which the contract could not hold its output token at all, and the mirror node shows it created in that same transaction. Every swap sent to the contract afterwards carries no association step, which is the whole reason the constructor pays for it.
+The mirror node shows that relation created in the deployment transaction itself, which is why the swap beside it carries no association step.
 
 ## What this template does not do
 
