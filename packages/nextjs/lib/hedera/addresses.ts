@@ -18,7 +18,10 @@ export type TokenEntry = AddressBookEntry & { readonly symbol: string; readonly 
 export type HbarPoolEntry = AddressBookEntry & { readonly token: TokenEntry; readonly fee: number };
 
 const SAUCERSWAP_DOCS = "https://docs.saucerswap.finance/developers/contracts#hedera-testnet";
+const HEDERA_SYSTEM_CONTRACTS = "https://docs.hedera.com/hedera/core-concepts/smart-contracts/system-smart-contracts";
 const CHECKED_ON = "2026-09-22";
+/** The entries the position slice added: token metadata, pool getters and the fee conversion read on that day. */
+const CHECKED_ON_POSITIONS = "2026-09-23";
 
 const sauce: TokenEntry = {
   id: "0.0.1183558",
@@ -78,6 +81,25 @@ export const testnet = {
     source: SAUCERSWAP_DOCS,
     checkedOn: CHECKED_ON,
   },
+  /** A position is an HTS NFT, and its facade has no enumeration: the serials come from the mirror node. */
+  lpNft: {
+    id: "0.0.1310436",
+    evmAddress: "0x000000000000000000000000000000000013feE4",
+    symbol: "SSV2-LP",
+    decimals: 0,
+    source: SAUCERSWAP_DOCS,
+    checkedOn: CHECKED_ON_POSITIONS,
+  },
+  /**
+   * The exchange-rate system contract. A position's mint fee is quoted in tinycent and charged in HBAR at the rate
+   * this contract answers, which is not the rate the mirror node's REST endpoint serves.
+   */
+  exchangeRate: {
+    id: "0.0.360",
+    evmAddress: "0x0000000000000000000000000000000000000168",
+    source: HEDERA_SYSTEM_CONTRACTS,
+    checkedOn: CHECKED_ON_POSITIONS,
+  },
   /** Checked as what the V2 factory (0.0.1197038) returns for getPool(WHBAR, SAUCE, 3000). */
   hbarSaucePool: {
     id: "0.0.2661057",
@@ -96,5 +118,7 @@ export const testnet = {
   whbarContract: AddressBookEntry;
   sauce: TokenEntry;
   positionManager: AddressBookEntry;
+  lpNft: TokenEntry;
+  exchangeRate: AddressBookEntry;
   hbarSaucePool: HbarPoolEntry;
 };
