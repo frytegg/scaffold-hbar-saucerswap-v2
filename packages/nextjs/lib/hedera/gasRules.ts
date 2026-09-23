@@ -66,7 +66,7 @@ export const gasRules: readonly GasRule[] = [
         hash: "0x87a4940c26dba471e1c73b19520bbc38d78cfbf015fbb523de5635d6c12a937e",
         mirrorUrl: `${MIRROR_RESULT}/0x87a4940c26dba471e1c73b19520bbc38d78cfbf015fbb523de5635d6c12a937e`,
         sentOn: "2026-09-22",
-        sentBy: "MetaMask 13.48.0, gas limit 2,500,000 supplied by the page",
+        sentBy: "MetaMask 13.48.0, gas limit 2,500,000 from a page written for that session",
       },
       {
         gasUsed: 761_531n,
