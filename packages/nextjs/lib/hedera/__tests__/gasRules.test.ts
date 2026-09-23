@@ -50,6 +50,20 @@ describe("the calls Hedera will not price", () => {
       }
     }
   });
+
+  it("counts the mint this template's own command sent, which is the largest of the three", () => {
+    const rule = gasRuleFor(testnet.positionManager.evmAddress, ["mint"]);
+    if (rule === null) throw new Error("the mint has a rule");
+    // docs/evidence/2026-09-23-position-cycle-361.json, re-read from the mirror node by yarn evidence:check.
+    expect(rule.measurements).toContainEqual(
+      expect.objectContaining({
+        gasUsed: 761_531n,
+        hash: "0xac5b06097841d492cad222545bd01eddc837099040bd1d5e5bb3abfd1e85d017",
+        sentBy: "yarn evidence:position, gas limit 1,000,000",
+      }),
+    );
+    expect(largestMeasuredGas(rule)).toBe(761_531n);
+  });
 });
 
 describe("withGasLimit refuses to build a call nothing can price without one", () => {
@@ -58,7 +72,7 @@ describe("withGasLimit refuses to build a call nothing can price without one", (
     expect(refusal).toThrow(GasRuleError);
     expect(refusal).toThrow(/cannot be estimated on Hedera/);
     expect(refusal).toThrow(/CONTRACT_REVERT_EXECUTED, INVALID_NFT_ID/);
-    expect(refusal).toThrow(/Pass gas: this template sends 1000000, above the 761459 gas/);
+    expect(refusal).toThrow(/Pass gas: this template sends 1000000, above the 761531 gas/);
     expect(refusal).toThrow(new RegExp(GAS_RULES_MODULE.replace(/\//g, "\\/")));
     try {
       withGasLimit(MINT, { functions: ["mint"] });

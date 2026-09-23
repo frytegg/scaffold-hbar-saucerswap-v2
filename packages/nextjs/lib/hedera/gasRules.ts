@@ -36,10 +36,12 @@ export const GAS_RULES_MODULE = "packages/nextjs/lib/hedera/gasRules.ts";
 const MIRROR_RESULT = "https://testnet.mirrornode.hedera.com/api/v1/contracts/results";
 
 /**
- * A third more than the largest execution below. The margin is that wide because no estimate exists to size it
- * from, and that tight because a wallet displays the limit at the current gas price: the 2,500,000 of the first
- * two executions made MetaMask announce 2.85 HBAR for a call that cost 0.82781031. Unused gas was not charged on
- * any transaction this project has sent, which is a dated observation of Hedera testnet, not a rule of the network.
+ * A round million, which leaves every execution below about a third of itself in room. The margin is that wide
+ * because no estimate exists to size it from, and that tight because a wallet displays the limit at the current gas
+ * price: the 2,500,000 of the first two executions made MetaMask announce 2.85 HBAR for a call that cost
+ * 0.82781031. `largestMeasuredGas` is what the refusal message quotes, so the room left is read from the list
+ * rather than from this comment. Unused gas was not charged on any transaction this project has sent, which is a
+ * dated observation of Hedera testnet, not a rule of the network.
  */
 const POSITION_MINT_GAS_LIMIT = 1_000_000n;
 
@@ -65,6 +67,13 @@ export const gasRules: readonly GasRule[] = [
         mirrorUrl: `${MIRROR_RESULT}/0x87a4940c26dba471e1c73b19520bbc38d78cfbf015fbb523de5635d6c12a937e`,
         sentOn: "2026-09-22",
         sentBy: "MetaMask 13.48.0, gas limit 2,500,000 supplied by the page",
+      },
+      {
+        gasUsed: 761_531n,
+        hash: "0xac5b06097841d492cad222545bd01eddc837099040bd1d5e5bb3abfd1e85d017",
+        mirrorUrl: `${MIRROR_RESULT}/0xac5b06097841d492cad222545bd01eddc837099040bd1d5e5bb3abfd1e85d017`,
+        sentOn: "2026-09-23",
+        sentBy: "yarn evidence:position, gas limit 1,000,000",
       },
     ],
   },
