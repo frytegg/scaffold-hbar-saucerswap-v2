@@ -38,8 +38,8 @@ const MIRROR_RESULT = "https://testnet.mirrornode.hedera.com/api/v1/contracts/re
 /**
  * A round million, which leaves every execution below about a third of itself in room. The margin is that wide
  * because no estimate exists to size it from, and that tight because a wallet displays the limit at the current gas
- * price: the 2,500,000 of the first two executions made MetaMask announce 2.85 HBAR for a call that cost
- * 0.82781031. `largestMeasuredGas` is what the refusal message quotes, so the room left is read from the list
+ * price: the 2,500,000 of the one execution below that a wallet sent made MetaMask announce 2.85 HBAR for a call
+ * that cost 0.82781031. `largestMeasuredGas` is what the refusal message quotes, so the room left is read from the list
  * rather than from this comment. Unused gas was not charged on any transaction this project has sent, which is a
  * dated observation of Hedera testnet, not a rule of the network.
  */
