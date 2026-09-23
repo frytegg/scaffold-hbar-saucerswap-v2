@@ -14,6 +14,7 @@ yarn dev                        # development server, http://localhost:3000
 yarn build                      # production build of packages/nextjs
 yarn serve                      # production server for that build, http://localhost:3000
 yarn lint:strict                # ESLint and Prettier on both packages, no warning allowed
+yarn lint                       # the same with warnings allowed: what to run while a change is still in progress
 yarn typecheck                  # TypeScript on both packages, after compiling the contracts
 yarn test:unit                  # Vitest tests of packages/nextjs/lib/hedera and the mirror relay; no network, no key
 yarn test                       # Hardhat tests on a fork of Hedera testnet: needs the network
@@ -186,4 +187,5 @@ TypeScript strict; `type` over `interface`; no `T` prefix on type names. Prettie
 <!-- checks:allow
 paths: agent skills-lock.json template.json
 symbols: useScaffoldContractRead useScaffoldContractWrite AddressInput EtherInput
+scripts: postinstall precommit lint-staged
 -->

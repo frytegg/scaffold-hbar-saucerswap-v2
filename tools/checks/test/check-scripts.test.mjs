@@ -1,11 +1,15 @@
 // @ts-check
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { inspectDocCommands, inspectManifest } from "../check-scripts.mjs";
-import { parseMarkdown } from "../lib/markdown.mjs";
+import { inspectDocCommands, inspectManifest, inspectUndocumented } from "../check-scripts.mjs";
+import { createAllowlist, parseMarkdown } from "../lib/markdown.mjs";
 import { fixtureDoc, linesOf } from "./support.mjs";
 
 const ROOT_SCRIPTS = new Set(["dev", "lint:strict", "deploy", "verify", "hardhat:compile"]);
+
+/** @param {string} script */
+const undocumented = script =>
+  `"${script}" is a root script no doc names: document it, or declare it in a checks:allow "scripts" entry`;
 
 /** @param {{ label?: string, command?: string, text?: string }[]} steps */
 function manifestWith(steps) {
@@ -60,6 +64,47 @@ test("npm's --prefix picks the package a documented script must belong to, and i
     ],
   );
   assert.equal(shownWithArguments.size, 0);
+});
+
+test("a doc names the root scripts it runs, and never a script of another package", () => {
+  const { named } = inspectDocCommands(fixtureDoc("commands.markdown"), ROOT_SCRIPTS);
+  assert.deepEqual([...named].sort(), ["deploy", "dev", "lint:strict", "verify"]);
+});
+
+test("a root script no doc names is refused, which is how a working command ships invisible", () => {
+  const findings = inspectUndocumented({
+    rootScripts: ROOT_SCRIPTS,
+    named: new Set(["dev"]),
+    permits: () => false,
+  });
+  assert.deepEqual(
+    findings.map(finding => finding.message),
+    [undocumented("deploy"), undocumented("lint:strict"), undocumented("verify")],
+  );
+  assert.deepEqual(new Set(findings.map(finding => finding.file)), new Set(["package.json"]));
+});
+
+test("a workspace alias is the seam a flag goes through, not a command to document", () => {
+  const rootScripts = new Set(["next:build", "hardhat:test", "hardhat:deploy:testnet"]);
+  assert.deepEqual(inspectUndocumented({ rootScripts, named: new Set(), permits: () => false }), []);
+});
+
+test("an exception is declared in a doc, and reported when it stops excusing anything", () => {
+  const doc = parseMarkdown("AGENTS.md", "<!-- checks:allow\nscripts: postinstall gone\n-->");
+  const allowlist = createAllowlist(doc, "scripts");
+  const findings = inspectUndocumented({
+    rootScripts: new Set(["postinstall", "deploy"]),
+    named: new Set(),
+    permits: script => allowlist.permits(script),
+  });
+  assert.deepEqual(
+    findings.map(finding => finding.message),
+    [undocumented("deploy")],
+  );
+  assert.deepEqual(
+    allowlist.staleEntries().map(finding => finding.message),
+    ['allowlist entry "scripts: gone" excuses nothing in this file: remove it'],
+  );
 });
 
 test("a placeholder needs a root script, framework placeholders included", () => {

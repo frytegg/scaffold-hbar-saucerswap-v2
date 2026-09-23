@@ -1,19 +1,29 @@
 // @ts-check
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { codeLines, parseMarkdown } from "./lib/markdown.mjs";
+import { codeLines, createAllowlist, parseMarkdown } from "./lib/markdown.mjs";
 import { findScriptCommands, isSharedBuiltin } from "./lib/package-manager.mjs";
 import { isMainModule, resultFrom, runCli } from "./lib/report.mjs";
 import { listDocs, listTrackedFiles, readJson, readRootScripts, readText } from "./lib/repo.mjs";
 
 const MANIFEST = "template.json";
+/** Where a root script nobody names is reported: the file that declares it. */
+const ROOT_MANIFEST = "package.json";
 /** A placeholder and the words after it, up to the next shell separator or placeholder. */
 const INVOCATION = /\{run:([^{}]+)\}((?:[ \t]+[^\s&|;{]+)*)/g;
 const FLAG = /^-{1,2}[A-Za-z]/;
 
 /**
+ * A root script whose whole job is to reach into a workspace, and whose name is the seam the CLI's npm-mode rewrite
+ * forwards a flag through: `lint:strict` runs `next:lint:all --max-warnings=0`, and the alias is machinery rather
+ * than a command anyone is meant to find. Every other root script is one a reader should be able to reach.
+ */
+const WORKSPACE_ALIAS = /^(?:next|hardhat):/;
+
+/**
  * @typedef {object} DocCommands
  * @property {import("./lib/report.mjs").Finding[]} findings
+ * @property {Set<string>} named the root scripts this doc names
  * @property {Map<string, string>} shownWithArguments script name to the place a doc passes it an argument
  */
 
@@ -26,7 +36,7 @@ const FLAG = /^-{1,2}[A-Za-z]/;
  */
 export function inspectDocCommands(doc, rootScripts, scriptsIn = () => undefined) {
   /** @type {DocCommands} */
-  const result = { findings: [], shownWithArguments: new Map() };
+  const result = { findings: [], named: new Set(), shownWithArguments: new Map() };
   for (const { line, text } of codeLines(doc)) {
     for (const command of findScriptCommands(text)) {
       if (isSharedBuiltin(command)) continue;
@@ -37,9 +47,14 @@ export function inspectDocCommands(doc, rootScripts, scriptsIn = () => undefined
       const owner = command.packageDir === undefined ? "a root" : `a ${command.packageDir}`;
       if (scripts === undefined) {
         report(`"${command.packageDir}" holds no tracked package.json for "${command.script}" to run in`);
-      } else if (!scripts.has(command.script)) {
+        continue;
+      }
+      if (!scripts.has(command.script)) {
         report(`"${command.script}" is not ${owner} script`);
-      } else if (command.flags.length > 0) {
+        continue;
+      }
+      if (command.packageDir === undefined) result.named.add(command.script);
+      if (command.flags.length > 0) {
         report(`"${shown}" carries a flag, which npm-mode drops: document a flag-free alias script`);
       } else if (command.positionals.length > 0 && command.packageDir === undefined) {
         result.shownWithArguments.set(command.script, `${doc.file}:${line}`);
@@ -100,6 +115,34 @@ export function inspectManifest({ manifest, rootScripts, shownWithArguments }) {
   return findings;
 }
 
+/**
+ * The other direction of this check. Every script a doc names has to exist, and a script that exists has to be
+ * named: a command nobody documents is one only a reader of `package.json` will ever run, which is how a working
+ * command can ship invisible with every check green.
+ * @param {object} input
+ * @param {Set<string>} input.rootScripts
+ * @param {Set<string>} input.named every root script a doc or the manifest names
+ * @param {(script: string) => boolean} input.permits a deliberate exception, declared in a doc's `checks:allow`
+ * @returns {import("./lib/report.mjs").Finding[]}
+ */
+export function inspectUndocumented({ rootScripts, named, permits }) {
+  return [...rootScripts]
+    .filter(script => !WORKSPACE_ALIAS.test(script) && !named.has(script) && !permits(script))
+    .sort()
+    .map(script => ({
+      file: ROOT_MANIFEST,
+      message: `"${script}" is a root script no doc names: document it, or declare it in a checks:allow "scripts" entry`,
+    }));
+}
+
+/**
+ * @param {any} manifest parsed `template.json`
+ * @returns {string[]} the script each `{run:…}` placeholder of it runs
+ */
+function manifestScripts(manifest) {
+  return stringLeaves(manifest).flatMap(({ text }) => [...text.matchAll(INVOCATION)].map(([, name]) => name));
+}
+
 /** @type {import("./lib/report.mjs").Check} */
 export const check = {
   name: "check-scripts",
@@ -116,11 +159,20 @@ export const check = {
     const inspected = docs.map(doc => inspectDocCommands(doc, rootScripts, scriptsIn));
     const findings = inspected.flatMap(result => result.findings);
     const shownWithArguments = new Map(inspected.flatMap(result => [...result.shownWithArguments]));
+    const named = new Set(inspected.flatMap(result => [...result.named]));
 
     const hasManifest = existsSync(path.join(repoRoot, MANIFEST));
     if (hasManifest) {
-      findings.push(...inspectManifest({ manifest: readJson(repoRoot, MANIFEST), rootScripts, shownWithArguments }));
+      const manifest = readJson(repoRoot, MANIFEST);
+      findings.push(...inspectManifest({ manifest, rootScripts, shownWithArguments }));
+      for (const script of manifestScripts(manifest)) named.add(script);
     }
+
+    const allowlists = docs.map(doc => createAllowlist(doc, "scripts"));
+    /** @param {string} script */
+    const permits = script => allowlists.some(allowlist => allowlist.permits(script));
+    findings.push(...inspectUndocumented({ rootScripts, named, permits }));
+    findings.push(...allowlists.flatMap(allowlist => allowlist.staleEntries()));
     const scope = hasManifest
       ? `${docs.length} docs and ${MANIFEST}`
       : `${docs.length} docs (no ${MANIFEST}: a scaffold)`;
