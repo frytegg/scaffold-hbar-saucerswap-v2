@@ -98,7 +98,7 @@ export function readyToSend(call: BuiltCall): BuiltCall & { gas?: bigint } {
 
 **Real cause** — a `collect` is paid out by the pool, not by the manager, and every token movement on Hedera goes through the token service, which refuses to send a token to an account that has never held it. The position manager is associated with the wrapped HBAR and with the position NFT, and with nothing else, so asking it to receive the pool's other token is refused with `TOKEN_NOT_ASSOCIATED_TO_ACCOUNT` and comes back as the pool's `TransferFail(184)`. `unwrapWHBAR`, for its part, unwraps what the **manager** holds: run after the tokens have already left for the user, it has nothing to unwrap and succeeds without moving anything. The order that works asks for one token at a time: the wrapped HBAR into the manager, the unwrap that turns it into native HBAR for the user, then the other token straight to the user. That middle call is a sweep and not a transfer of a named amount: it sends the manager's **whole** wrapped-HBAR balance to the recipient, whoever left it there, and its `amountMinimum` argument is the only thing it checks. It is the shape `refundETH` has — in the mint of serial 359 above, `refundETH` returned this project more HBAR than the margin it had sent, because earlier callers had left theirs in the manager — so a collect can pay out more than the position was owed, and with a floor of zero a collect that pulled nothing at all succeeds and is charged in full.
 
-**Proof** — the same three-call `multicall` has closed five positions, from two accounts and three ways of signing, and every one of them paid out natively:
+**Proof** — the same three-call `multicall` has closed six positions, from two accounts and three ways of signing, and every one of them paid out natively:
 
 | position | sent by | transaction | outcome |
 | --- | --- | --- | --- |
@@ -107,15 +107,16 @@ export function readyToSend(call: BuiltCall): BuiltCall & { gas?: bigint } {
 | serial 361, 23 September 2026 | `yarn evidence:position`, from the same account | [0xaa50b98a…0cf8](https://hashscan.io/testnet/tx/0xaa50b98ad3f2fced5548b30142a6314d93fd141517018185158bd6bda77b0cf8) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xaa50b98ad3f2fced5548b30142a6314d93fd141517018185158bd6bda77b0cf8)) | `SUCCESS`, 888,485 gas, the payout **arrived as native HBAR** with the SAUCE beside it; the amounts are in the record, and in the table further down |
 | serial 362, 23 September 2026 | the same command, from `0.0.10678882`, created that morning | [0x0ba087aa…3ace](https://hashscan.io/testnet/tx/0x0ba087aa523ba0470d5aa0c96c337ee919099967ebbfd726a436f9427f4b3ace) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x0ba087aa523ba0470d5aa0c96c337ee919099967ebbfd726a436f9427f4b3ace)) | `SUCCESS`, 888,485 gas, the same payout to a sender that had never held a position |
 | serial 363, 23 September 2026 | the same command, from `0.0.10645914` again | [0xb2e0199c…53f7](https://hashscan.io/testnet/tx/0xb2e0199c489f63305e6477b81dad5cc6388cd7127b211e5b90195239051f53f7) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xb2e0199c489f63305e6477b81dad5cc6388cd7127b211e5b90195239051f53f7)) | `SUCCESS`, 888,485 gas, the same payout again |
+| serial 364, 23 September 2026, the first with a floor on its unwrap | the same command, from `0.0.10645914` | [0x2b4467e0…4dde](https://hashscan.io/testnet/tx/0x2b4467e0fd537ff4c7c4e77752478c2ce20629a82c78b7b7d3e25f60cbe04dde) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x2b4467e0fd537ff4c7c4e77752478c2ce20629a82c78b7b7d3e25f60cbe04dde)) | `SUCCESS`, 888,521 gas, the same payout with `unwrapWHBAR` refusing anything under 9,899,999 tinybar |
 
 The mirror node reports a sender in the long-zero form of its account id, not as the account's own EVM address, so the `sent by` column above is what `/api/v1/accounts/{id}` answers for the `from` of each of those five transactions.
 
-The last three are `docs/evidence/2026-09-23-position-cycle-361.json`, `docs/evidence/2026-09-23-position-cycle-362.json` and `docs/evidence/2026-09-23-position-cycle-363.json`, and `yarn evidence:check` re-reads each one. The two patterns that do not work were established at simulation level only, on 21 September 2026: nobody sent either of them, and this document claims no more than that.
+The last four are `docs/evidence/2026-09-23-position-cycle-361.json`, `docs/evidence/2026-09-23-position-cycle-362.json`, `docs/evidence/2026-09-23-position-cycle-363.json` and `docs/evidence/2026-09-23-position-cycle-364.json`, and `yarn evidence:check` re-reads each one. The two patterns that do not work were established at simulation level only, on 21 September 2026: nobody sent either of them, and this document claims no more than that.
 
-**What it costs** — the split collect is 888,485 gas whatever the amounts, on 22 September as on 23. Two of the cycles of 23 September are below, the third in the section after this one; each figure comes from the record named beside it, which `yarn evidence:check` re-reads from the mirror node.
+**What it costs** — the amounts do not change what the split collect is charged: 888,485 gas on 22 September and on the cycles of 23 September that named no floor, and 888,521 on the one that did, which is what the floor costs. Three of the four cycles of 23 September are below, the fourth in the section after this one; every figure comes from the record named beside it, which `yarn evidence:check` re-reads from the mirror node.
 
 <!-- checks:evidence -->
-What a whole life cycle of a liquidity position cost, measured on 23 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-23-position-cycle-361.json` and `docs/evidence/2026-09-23-position-cycle-363.json`):
+What a whole life cycle of a liquidity position cost, measured on 23 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-23-position-cycle-361.json`, `docs/evidence/2026-09-23-position-cycle-363.json` and `docs/evidence/2026-09-23-position-cycle-364.json`):
 
 | transaction | network fee | cost preview shown before signing | gas used |
 | --- | --- | --- | --- |
@@ -127,11 +128,17 @@ What a whole life cycle of a liquidity position cost, measured on 23 Sept 2026 t
 | take position 363's liquidity out | 0.18537303 HBAR | up to 0.22005306 HBAR | 170,067 |
 | collect position 363 as native HBAR | 0.96844865 HBAR | up to 1.07571312 HBAR | 888,485 |
 | burn position 363 | 0.08493389 HBAR | up to 0.09713598 HBAR | 77,921 |
+| approve the position manager for the token the position deposits | 0.79222944 HBAR | up to 0.8921298 HBAR | 726,816 |
+| mint position 364 | 0.83006879 HBAR | up to 1.14 HBAR | 761,531 |
+| take position 364's liquidity out | 0.18537303 HBAR | up to 0.22005306 HBAR | 170,067 |
+| collect position 364 as native HBAR | 0.96848789 HBAR | up to 1.07575302 HBAR | 888,521 |
+| burn position 364 | 0.08493389 HBAR | up to 0.09713598 HBAR | 77,921 |
 
 Position 361 deposited 0.11 HBAR, was paid 0.10999999 HBAR back natively, and cost 0.64079561 HBAR of mint fee and 2.06882436 HBAR of network fees.
 Position 363 deposited 0.11 HBAR, was paid 0.10999999 HBAR back natively, and cost 0.64079561 HBAR of mint fee and 2.06882436 HBAR of network fees.
+Position 364 deposited 0.11 HBAR, was paid 0.10999999 HBAR back natively, and cost 0.64079561 HBAR of mint fee and 2.86109304 HBAR of network fees.
 
-4.13764872 HBAR of network fees over 2 life cycles.
+6.99874176 HBAR of network fees over 3 life cycles.
 <!-- /checks:evidence -->
 
 The collect is the whole payout in one transaction and one signature, and its fee is more than eight times what the HBAR side of those positions was worth — a range this small is for proving the path, not for earning on it. The documented pattern leaves the user with a wrapped token, so the HBAR only arrives after a second transaction that this project has not measured. The Uniswap pattern costs whatever the reverted transaction's gas comes to and delivers nothing.

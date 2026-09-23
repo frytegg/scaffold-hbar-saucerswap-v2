@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "name": "position-cycle-364",
+  "network": "testnet",
+  "chainId": 296,
+  "recordedAt": "2026-09-23T10:27:30.778Z",
+  "sender": {
+    "evmAddress": "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01",
+    "accountId": "0.0.10645914"
+  },
+  "software": {
+    "viem": "2.39.0",
+    "relay": "relay/0.78.5",
+    "node": "v24.13.0"
+  },
+  "preState": {
+    "balanceTinybar": "89583775328",
+    "balanceHbar": "895.83775328 HBAR",
+    "tokenBalance": "283650787",
+    "maxAutomaticTokenAssociations": -1,
+    "holdsLpNftRelation": true,
+    "positions": [],
+    "managerAllowance": "2827222",
+    "nftApproval": true
+  },
+  "postState": {
+    "balanceTinybar": "89233586461",
+    "balanceHbar": "892.33586461 HBAR",
+    "tokenBalance": "283650786",
+    "maxAutomaticTokenAssociations": -1,
+    "holdsLpNftRelation": true,
+    "positions": [],
+    "managerAllowance": "0",
+    "nftApproval": true
+  },
+  "preflight": [
+    {
+      "check": "manager-allowance",
+      "status": "fail",
+      "message": "The position manager may spend only 2.827222 SAUCE, less than the 8.586389 SAUCE this position deposits. Approve 8.586389 SAUCE to 0x000000000000000000000000000000000013F618 first: without it the network rejects the mint and still charges the gas."
+    },
+    {
+      "check": "lp-nft-slot",
+      "status": "pass",
+      "message": "0.0.10645914 already holds SSV2-LP positions."
+    },
+    {
+      "check": "mint-value",
+      "status": "pass",
+      "message": "The transaction carries 0.76361153 HBAR: the deposit, the mint fee and 0.01281592 HBAR of margin that refundETH returns."
+    },
+    {
+      "check": "minimums",
+      "status": "pass",
+      "message": "The call refuses a price that would deposit less than the minimums it names."
+    },
+    {
+      "check": "cost",
+      "status": "pass",
+      "message": "Network fee: up to 0.8921298 HBAR."
+    },
+    {
+      "check": "manager-allowance",
+      "status": "pass",
+      "message": "The position manager may spend the 8.586389 SAUCE this position deposits."
+    },
+    {
+      "check": "lp-nft-slot",
+      "status": "pass",
+      "message": "0.0.10645914 already holds SSV2-LP positions."
+    },
+    {
+      "check": "mint-value",
+      "status": "pass",
+      "message": "The transaction carries 0.76361153 HBAR: the deposit, the mint fee and 0.01281592 HBAR of margin that refundETH returns."
+    },
+    {
+      "check": "minimums",
+      "status": "pass",
+      "message": "The call refuses a price that would deposit less than the minimums it names."
+    },
+    {
+      "check": "cost",
+      "status": "pass",
+      "message": "Network fee: up to 1.14 HBAR, the gas limit this template supplies for a call no simulator prices."
+    },
+    {
+      "check": "cost",
+      "status": "pass",
+      "message": "Network fee: up to 0.22005306 HBAR."
+    },
+    {
+      "check": "cost",
+      "status": "pass",
+      "message": "Network fee: up to 1.07575302 HBAR."
+    },
+    {
+      "check": "nft-approval",
+      "status": "pass",
+      "message": "The position manager may move your SSV2-LP positions, which a burn needs."
+    },
+    {
+      "check": "cost",
+      "status": "pass",
+      "message": "Network fee: up to 0.09713598 HBAR."
+    }
+  ],
+  "position": {
+    "manager": "0.0.1308184",
+    "lpNft": "0.0.1310436",
+    "pool": "0.0.2661057",
+    "poolFee": 3000,
+    "tokenId": "364",
+    "tickLower": -7680,
+    "tickUpper": -7620,
+    "tickSpacing": 60,
+    "tickAtMint": -7643,
+    "sqrtPriceX96AtMint": "54067332674614406773309430295",
+    "liquidity": "6701960087",
+    "toleranceBps": 1000,
+    "amount0Desired": "11000000",
+    "amount1Desired": "8586389",
+    "amount0Min": "9000000",
+    "amount1Min": "7025228",
+    "mintFeeTinybar": "64079561",
+    "mintValueTinybar": "76361153",
+    "depositedHbar": "11000000",
+    "depositedToken": "8586389",
+    "collectedHbar": "10999999",
+    "collectedToken": "8586388",
+    "hbarReceivedTinybar": "10999999",
+    "summary": "0.11 HBAR and 8.586389 SAUCE into position 364, 0.10999999 HBAR and 8.586388 SAUCE back out"
+  },
+  "transactions": [
+    {
+      "role": "approve",
+      "hash": "0x31543acce9709de57695cb080cd299fb00ee8eb67ae2724db374248b6390112c",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x31543acce9709de57695cb080cd299fb00ee8eb67ae2724db374248b6390112c",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1790159217.661164104",
+      "blockNumber": 40878557,
+      "gasUsed": 726816,
+      "previewFeeTinybar": "89212980",
+      "feeTinybar": "79222944",
+      "feeHbar": "0.79222944 HBAR",
+      "senderNetTinybar": "-79222944"
+    },
+    {
+      "role": "mint",
+      "hash": "0xb7c511b0e9baec734b5ded36b2877c61aaece18ff1724ab0aec5fc4d6f6c990f",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xb7c511b0e9baec734b5ded36b2877c61aaece18ff1724ab0aec5fc4d6f6c990f",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1790159223.838971104",
+      "blockNumber": 40878560,
+      "gasUsed": 761531,
+      "previewFeeTinybar": "114000000",
+      "feeTinybar": "83006879",
+      "feeHbar": "0.83006879 HBAR",
+      "senderNetTinybar": "-158086441"
+    },
+    {
+      "role": "decrease",
+      "hash": "0x7586a6bc82cce070b702635f9313d4765921f45aedca73aa855753eee8a76d0b",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x7586a6bc82cce070b702635f9313d4765921f45aedca73aa855753eee8a76d0b",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1790159232.428035104",
+      "blockNumber": 40878564,
+      "gasUsed": 170067,
+      "previewFeeTinybar": "22005306",
+      "feeTinybar": "18537303",
+      "feeHbar": "0.18537303 HBAR",
+      "senderNetTinybar": "-18537303"
+    },
+    {
+      "role": "collect",
+      "hash": "0x2b4467e0fd537ff4c7c4e77752478c2ce20629a82c78b7b7d3e25f60cbe04dde",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x2b4467e0fd537ff4c7c4e77752478c2ce20629a82c78b7b7d3e25f60cbe04dde",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1790159239.628022104",
+      "blockNumber": 40878567,
+      "gasUsed": 888521,
+      "previewFeeTinybar": "107575302",
+      "feeTinybar": "96848789",
+      "feeHbar": "0.96848789 HBAR",
+      "senderNetTinybar": "-85848790"
+    },
+    {
+      "role": "burn",
+      "hash": "0x0ec21cfc14d3411ada37067dadc8d05b7eeabaabad08c65651616914a3791e04",
+      "mirrorUrl": "https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x0ec21cfc14d3411ada37067dadc8d05b7eeabaabad08c65651616914a3791e04",
+      "result": "SUCCESS",
+      "consensusTimestamp": "1790159246.407984842",
+      "blockNumber": 40878571,
+      "gasUsed": 77921,
+      "previewFeeTinybar": "9713598",
+      "feeTinybar": "8493389",
+      "feeHbar": "0.08493389 HBAR",
+      "senderNetTinybar": "-8493389"
+    }
+  ]
+}
