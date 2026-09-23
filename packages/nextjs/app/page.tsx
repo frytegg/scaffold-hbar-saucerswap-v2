@@ -5,7 +5,7 @@ import Link from "next/link";
 import { HederaPortalFaucet } from "@scaffold-hbar-ui/components";
 import type { NextPage } from "next";
 import { useAccount } from "wagmi";
-import { ArrowsRightLeftIcon, BugAntIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
+import { ArrowsRightLeftIcon, BugAntIcon, MagnifyingGlassIcon, RectangleStackIcon } from "@heroicons/react/24/outline";
 import { HederaAddress } from "~~/components/scaffold-hbar";
 import { useTargetNetwork } from "~~/hooks/scaffold-hbar";
 
@@ -94,6 +94,23 @@ const Home: NextPage = () => {
             </p>
             <Link href="/swap" passHref className="btn btn-primary btn-sm">
               Open the swap route
+            </Link>
+          </div>
+
+          <div className="bg-base-100 rounded-2xl shadow-md p-8 border border-base-300 flex flex-col items-start gap-3 mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-full hedera-gradient flex items-center justify-center shrink-0">
+                <RectangleStackIcon className="h-7 w-7 text-white" />
+              </div>
+              <h3 className="font-bold text-lg m-0">Your SaucerSwap V2 positions</h3>
+            </div>
+            <p className="text-base-content/70 text-sm m-0">
+              A liquidity position is an HTS NFT whose facade cannot be asked what an account holds, so the serials come
+              from the mirror node and their contents from the position manager. The route reads both, says whether the
+              pool&apos;s price is inside each range, and what closing one would return.
+            </p>
+            <Link href="/positions" passHref className="btn btn-primary btn-sm">
+              Open the positions route
             </Link>
           </div>
 
