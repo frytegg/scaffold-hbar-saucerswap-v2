@@ -1,18 +1,20 @@
+import { testnet } from "../addresses";
 import { createMirrorClient } from "../mirror";
 import { mirrorPaths } from "../mirrorPaths";
 import { facadeResultVerdict } from "../preflight";
 import { swapAmountOut } from "../swap";
 import { netTransfer, networkFee } from "../transfers";
-import { UnitError, WEIBAR_PER_TINYBAR, toTinybar } from "../units";
+import { UnitError, WEIBAR_PER_TINYBAR, formatHbar, tinybar, toTinybar } from "../units";
 import { mirrorBody, mirrorFixture, replayClient, replayMirror, rpcFixture } from "./replay";
-import type { Hex } from "viem";
+import { type Hex, decodeAbiParameters, parseAbiParameters } from "viem";
 import { describe, expect, it } from "vitest";
 
 /**
- * Three proof rows of docs/hedera-behaviour.md whose answers nothing else in this repository held: two from the
- * research probes of 21 September 2026 and one from the browser session of 22 September. The link check refuses a
- * hash it cannot corroborate, and these three were declared as exceptions to it until this file captured them. Each
- * test asserts what its row's outcome column claims, so a row that stops being true fails here first.
+ * What the docs say that no other artifact in this repository held. Three of them are proof rows of
+ * docs/hedera-behaviour.md — two from the research probes of 21 September 2026 and one from the browser session of
+ * 22 September — whose mirror answers were never kept, so the link check had to be told to allow their hashes; the
+ * fourth is the fee the README's limitations rest on. Each test asserts what its row or sentence claims, so a claim
+ * that stops being true fails here first.
  */
 
 /** The account every transaction of this project was signed by. */
@@ -85,6 +87,31 @@ describe("a redundant association", () => {
     const verdict = facadeResultVerdict(responseCode);
     expect(verdict.status).toBe("fail");
     expect(verdict.message).toContain("194 (TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT)");
+  });
+});
+
+describe("the two fees the V2 factory charges", () => {
+  const answer = (name: string): bigint =>
+    decodeAbiParameters(parseAbiParameters("uint256"), rpcFixture(name).body.result as Hex)[0];
+
+  it("prices creating a pool out of reach of a testnet account, and minting into one at a fee every record holds", () => {
+    // Both fees are asked of the factory in the address book, and both come back in tinycent: hundredths of a US
+    // cent, times 10^8. Only the exchange-rate contract at 0x168 can say what a tinycent is worth in HBAR right now.
+    expect(rpcFixture("call-factory-pool-create-fee").request.params?.[0]).toMatchObject({
+      to: testnet.v2Factory.evmAddress,
+      data: "0x84147984",
+    });
+    expect(answer("call-factory-pool-create-fee")).toBe(10n ** 16n);
+    expect(answer("call-factory-mint-fee")).toBe(5n * 10n ** 8n);
+
+    const poolCreateFee = tinybar(answer("call-tinycents-to-tinybars-pool-create-fee"));
+    expect(formatHbar(poolCreateFee)).toBe("12815912.236633 HBAR");
+
+    // The same conversion for the mint fee, which the four position records of 23 September all charged to the
+    // tinybar: minting into a pool that exists is what this template does, and creating one is what it never tries.
+    const mintFee = tinybar(answer("call-tinycents-to-tinybars"));
+    expect(formatHbar(mintFee)).toBe("0.64079561 HBAR");
+    expect(poolCreateFee / mintFee).toBe(20_000_000n);
   });
 });
 
