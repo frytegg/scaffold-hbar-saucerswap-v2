@@ -106,7 +106,7 @@ export function readyToSend(call: BuiltCall): BuiltCall & { gas?: bigint } {
 
 The two patterns that do not work were established at simulation level only, on 21 September 2026: nobody sent either of them, and this document claims no more than that.
 
-**What it costs** — the split collect was charged **0.96844865 HBAR** on 22 September 2026, and it is the whole payout: one transaction, one signature. The documented pattern simulates at 119,727 gas and then leaves the user with a wrapped token, so the HBAR only arrives after a second transaction that this project has not measured. The Uniswap pattern costs whatever the reverted transaction's gas comes to and delivers nothing.
+**What it costs** — the split collect was charged **0.96844865 HBAR** on 22 September 2026, and it is the whole payout: one transaction, one signature. The documented pattern leaves the user with a wrapped token, so the HBAR only arrives after a second transaction that this project has not measured. The Uniswap pattern costs whatever the reverted transaction's gas comes to and delivers nothing.
 
 **How the template protects** — `buildSplitCollect` in `packages/nextjs/lib/hedera/position.ts` builds the three calls in that order and takes the recipient as its only address, so the other two patterns cannot be written by mistake. `explainError` in `packages/nextjs/lib/hedera/failure.ts` names the 184 when one of them is tried anyway, reading it out of the mirror node's `/actions` when the `multicall` erased it.
 
