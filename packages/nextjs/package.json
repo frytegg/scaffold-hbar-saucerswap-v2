@@ -10,6 +10,7 @@
     "evidence": "vitest run --config vitest.evidence.config.ts",
     "evidence:check": "vitest run --config vitest.live.config.ts evidence",
     "evidence:consumer": "vitest run --config vitest.evidence.config.ts consumer",
+    "evidence:position": "vitest run --config vitest.evidence.config.ts positions",
     "format": "prettier --write . \"!(node_modules|.next|contracts)/**/*\"",
     "lint": "next lint",
     "lint:all": "next lint --dir app --dir components --dir hooks --dir lib --dir services --dir utils",

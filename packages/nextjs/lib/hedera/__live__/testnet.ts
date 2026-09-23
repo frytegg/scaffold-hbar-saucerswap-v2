@@ -1,4 +1,10 @@
-import { type EvidenceRecord, parseEvidence } from "../evidence";
+import {
+  type EvidenceRecord,
+  type PositionEvidenceRecord,
+  isPositionEvidence,
+  parseEvidence,
+  parsePositionEvidence,
+} from "../evidence";
 import type { EvmAddress } from "../evmAddress";
 import { type MirrorClient, createMirrorClient, directMirrorTransport } from "../mirror";
 import { readFileSync, readdirSync } from "node:fs";
@@ -22,13 +28,15 @@ export const testnetMirror: MirrorClient = createMirrorClient({ transport: direc
 
 export const EVIDENCE_DIR = fileURLToPath(new URL("../../../../../docs/evidence/", import.meta.url));
 
-export function readEvidence(): { file: string; record: EvidenceRecord }[] {
+/** Every record of docs/evidence/, each parsed as the shape it holds: a swap, or a position life cycle. */
+export function readEvidence(): { file: string; record: EvidenceRecord | PositionEvidenceRecord }[] {
   return readdirSync(EVIDENCE_DIR)
     .filter(name => name.endsWith(".json"))
     .sort()
     .map(name => {
       const file = `docs/evidence/${name}`;
-      return { file, record: parseEvidence(JSON.parse(readFileSync(path.join(EVIDENCE_DIR, name), "utf8")), file) };
+      const json: unknown = JSON.parse(readFileSync(path.join(EVIDENCE_DIR, name), "utf8"));
+      return { file, record: isPositionEvidence(json) ? parsePositionEvidence(json, file) : parseEvidence(json, file) };
     });
 }
 
