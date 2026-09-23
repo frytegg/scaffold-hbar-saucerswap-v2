@@ -6,7 +6,7 @@
   "sessionDate": "2026-09-22",
   "gasPriceTinybarPerGas": 114,
   "effectiveGasPriceTinybarPerGas": 109,
-  "walletShownNote": "walletShownHbar is what MetaMask displayed as the network fee before the signature, read from the screenshots of the session; every other figure comes from the mirror node.",
+  "walletShownNote": "walletShownHbar is what MetaMask displayed as the network fee before the signature, read from the screenshots of the session; every other figure comes from the mirror node. Those screenshots are in this repository's history, at commit cddc214, and not in the tree: the pictures under docs/images/ were taken in English on 2026-09-23.",
   "rows": [
     {
       "label": "mint a V2 position, gas limit supplied by the dapp",
