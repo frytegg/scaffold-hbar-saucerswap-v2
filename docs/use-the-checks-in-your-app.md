@@ -4,6 +4,10 @@ Each of these answers, before anything is signed, one question a Hedera transact
 
 Every function below is exported by `packages/nextjs/lib/hedera/index.ts` and imported from `~~/lib/hedera`. The reads are keyless: an account, a token relation, an allowance, an NFT approval, a gas price.
 
+To call them from a project of your own, copy the modules at the top of `packages/nextjs/lib/hedera/` into it — its two subdirectories are this repository's own test and script tiers, and nothing you call is in them. Then point one of your own path aliases at where you put them, or replace `~~/lib/hedera` in the example below with that path: `~~` is this template's own alias and resolves to nothing outside a Scaffold-HBAR project. There is no package to install; copying is how you take it.
+
+Nothing else has to come with them. Each of those modules imports from that same directory and from `viem`, and from nothing else: no Next.js, no React, no wagmi, and no page, hook or component of this template. `packages/nextjs/lib/hedera/__tests__/libraryDependencies.test.ts` reads them and fails on any import that is neither, so that sentence is checked rather than remembered. What they need while they run is the two public endpoints the example names, and no key.
+
 ```ts
 import { createPublicClient, http } from "viem";
 import {
