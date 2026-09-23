@@ -33,7 +33,7 @@ export const SampleRunCard = ({ reads, token }: { reads: PlanReads | null; token
 
   return (
     <section className="card bg-base-100 shadow p-5 flex flex-col gap-3">
-      <h2 className="text-xl font-semibold m-0">Watch it refuse a swap, with no wallet</h2>
+      <h2 className="text-xl font-semibold m-0">The same checks, with no wallet</h2>
       <p className="m-0 text-sm">
         These checks take an address, not a key. This runs the quote and the whole pre-flight for {SAMPLE_AMOUNT}{" "}
         {token.symbol} against {SAMPLE_ACCOUNT_ID}, the account the transactions in{" "}
