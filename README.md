@@ -182,7 +182,7 @@ What one run cost, measured on 22 Sept 2026 through relay/0.78.5 with viem 2.39.
 1.77402841 HBAR of fees in all; the account's HBAR balance fell by 1.82402841 HBAR, the fees plus the 0.05 HBAR swapped.
 <!-- /checks:evidence -->
 
-`docs/hedera-behaviour.md` is what these checks exist for: the behaviours standard tooling reports wrongly or not at all, each with the testnet transactions that prove it, what the mistake costs in HBAR, the code that refuses it and the test that keeps that code honest.
+`docs/hedera-behaviour.md` is what these checks exist for: eight behaviours standard tooling reports wrongly or not at all, each with the testnet transactions that prove it, what the mistake costs in HBAR, the code that refuses it and the test that keeps that code honest. The two units of HBAR and the misleading answer the wrong one gives; the simulators that accept a swap the network refuses; a token that cannot reach an account which has never held it, and who that actually bites; the calls no simulator will price, which a wallet then will not send; the fee a wallet announces against the fee the network charges; an HTS operation that fails inside a successful transaction; a collect that pays a wrapped token unless it is split in three; and a burn both simulators accept and the network refuses.
 
 ## Working with a coding agent
 
