@@ -2,16 +2,18 @@
 import { check as env } from "./check-env.mjs";
 import { check as evidence } from "./check-evidence.mjs";
 import { check as hygiene } from "./check-hygiene.mjs";
+import { check as links } from "./check-links.mjs";
 import { check as manifest } from "./check-manifest.mjs";
 import { check as paths } from "./check-paths.mjs";
 import { check as rewrite } from "./check-rewrite.mjs";
 import { check as scripts } from "./check-scripts.mjs";
 import { check as snippets } from "./check-snippets.mjs";
 import { check as symbols } from "./check-symbols.mjs";
+import { check as traps } from "./check-traps.mjs";
 import { check as vocab } from "./check-vocab.mjs";
 import { exitCodeFor, printResult, readContext, runCheck } from "./lib/report.mjs";
 
-const CHECKS = [paths, scripts, symbols, snippets, env, evidence, rewrite, manifest, vocab, hygiene];
+const CHECKS = [paths, links, scripts, symbols, snippets, env, evidence, traps, rewrite, manifest, vocab, hygiene];
 
 const context = readContext();
 if (context) {

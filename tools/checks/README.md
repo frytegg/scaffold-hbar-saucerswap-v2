@@ -1,6 +1,6 @@
 # Repository checks
 
-Ten checks that compare what the docs and the template manifest say with what the repository holds, and one runner.
+Twelve checks that compare what the docs and the template manifest say with what the repository holds, and one runner.
 They are plain Node ESM modules whose JSDoc types `tsc` checks in strict mode through `tools/checks/tsconfig.json`: `node` alone runs them on Node 20.18.3, before any install or build, and they add no dependency.
 
 ## Run
@@ -9,10 +9,11 @@ They are plain Node ESM modules whose JSDoc types `tsc` checks in strict mode th
 node tools/checks/run-all.mjs
 node tools/checks/run-all.mjs --allow-offline
 node tools/checks/check-paths.mjs --repo ../another-checkout
+node tools/checks/check-links.mjs --resolve
 node tools/checks/run-tests.mjs
 ```
 
-From the repository root, `yarn check:docs` runs the ten checks, and `yarn check:tools` runs their tests with the other tools' checks.
+From the repository root, `yarn check:docs` runs the twelve checks, and `yarn check:tools` runs their tests with the other tools' checks.
 The runner prints the findings of each check that did not pass, then one table.
 Exit codes are the same for every command: 0 when the check passes or has nothing to judge, 1 when it has findings, 2 when it reached no verdict (registry unreachable, dependencies not installed, shallow clone, or a published CLI whose code no longer matches what the checks cut out of it).
 
@@ -23,11 +24,13 @@ The docs are every README.md and AGENTS.md of the repository, these tool READMEs
 | Check | Refuses |
 | --- | --- |
 | `check-paths.mjs` | a path in backticks, or an entry of a drawn directory tree, that git does not track unless the ignore rules explain its absence; a reference to a file the CLI deletes from scaffolds |
+| `check-links.mjs` | a Markdown link or image whose local target no tracked path holds, or whose `#anchor` names no heading of the file it points at; a mirror-node or Hashscan link that carries no 32-byte transaction hash, or one no evidence record and no test fixture knows; a link whose own text shows another hash than its destination |
 | `check-scripts.mjs` | a documented command or a manifest placeholder that names no root script, or, after npm's `--prefix <dir>`, no script of the package in that directory; a documented command with a flag; a flag after a placeholder; an outro command that runs bare a script the docs show with arguments |
 | `check-symbols.mjs` | a code identifier in backticks that is neither in the tracked source nor exported by a dependency named on the same line |
 | `check-snippets.mjs` | a TypeScript fence that does not type-check inside `packages/nextjs`, or inside the workspace its info string names |
 | `check-env.mjs` | a variable that the code, the `.env.example` files, the docs and the manifest do not all know; a variable called required although the code has a default for it |
 | `check-evidence.mjs` | a doc that names a record of `docs/evidence/` when a newer record of the same scenario exists; between `<!-- checks:evidence -->` and `<!-- /checks:evidence -->`, any line that differs from the cost table and totals the named records give |
+| `check-traps.mjs` | a `##` section of `docs/hedera-behaviour.md` that does not carry the six parts of a behaviour once each and in order; a Proof part that links to no transaction; a "The test that keeps it fixed" part that quotes a title no committed test file declares; a screenshot whose caption does not name the wallet, the browser, their versions and the day the picture was taken |
 | `check-rewrite.mjs` | any line that the CLI's npm-mode rewrite turns into something other than a clean script conversion; a changed line count; a converted command that keeps a flag; any change to a source file |
 | `check-manifest.mjs` | a template manifest that the CLI's schema rejects or silently trims, as committed and after the rewrite |
 | `check-vocab.mjs` | wording the Hedera docs avoid; a package manager named anywhere but in an exact script command |
@@ -35,6 +38,12 @@ The docs are every README.md and AGENTS.md of the repository, these tool READMEs
 
 `check-rewrite.mjs` and `check-manifest.mjs` download the latest published `create-scaffold-hbar`, and the zod version it installs with, from the registry on every run. Each tarball is verified against the registry's digest and cached under `scaffold-hbar-checks` in the OS temp directory. The checks then evaluate the rewrite functions and the manifest schema cut out of the CLI's bundle; when the anchor lines of those pieces are gone, they stop with exit 2 and name the missing anchor.
 Without network access both checks end with exit 2. With `--allow-offline` they fall back to the newest cached copies, or skip loudly when there are none.
+
+## Proof links
+
+A link to a transaction is a claim, so `check-links.mjs` judges it against what the repository itself holds. The destination must carry a whole 32-byte hash, and that hash must appear in a record of `docs/evidence/` or in a capture under the fixtures directory of a test suite, which here is `packages/nextjs/lib/hedera/__tests__/fixtures/`: a hash nothing recorded cannot be told from an invented one, and is refused. A fixture README is prose about the captures, not a capture, so a hash may not vouch for itself from there. When the link's own text shows the hash, whole or as `0xhead…tail`, the text and the destination have to agree.
+
+Nothing is fetched by default: the check runs offline, in `yarn check:docs` and in CI. `node tools/checks/check-links.mjs --resolve` reads every mirror-node link off the network instead and prints the `result` each transaction recorded, which is the pass to run before a docs freeze. A failure there is a transaction the mirror node does not know; a revert is not a failure, because half of these links prove one.
 
 ## Requirements
 
@@ -58,10 +67,11 @@ A doc that has to name something absent declares it in an HTML comment, one kind
 <!-- checks:allow
 symbols: useScaffoldContractRead
 paths: templates/blank-template
+links: 0x0000000000000000000000000000000000000000000000000000000000000000
 -->
 ```
 
-An entry that excuses nothing is itself a finding, so the block cannot go stale.
+An entry that excuses nothing is itself a finding, so the block cannot go stale. A `links:` entry is the whole hash of a transaction the repository never captured; it covers the mirror link and the Hashscan link of the same proof at once, and `--resolve` still reads it off the network.
 
 ## Limits
 
@@ -70,6 +80,8 @@ An entry that excuses nothing is itself a finding, so the block cannot go stale.
 - Environment reads are recognised as `process.env.NAME`, `process.env["NAME"]` and `process.env[CONSTANT]` where the constant is a string declared in the code. Destructured reads are not seen.
 - Whether a script needs an argument is not decidable from `package.json`; the check compares the outro with the way the docs show the same script.
 - The rewrite is replayed on the files as committed. A scaffold made in npm-mode has nothing left to convert, so the check proves something on the template and on scaffolds made with the default package manager.
+- Links are read one line at a time: a reference-style link, and a destination split over two lines, are not seen. An external target of no known kind is left alone, because nothing offline can judge it.
+- A test title passes when a committed file declares a test with exactly that title, anywhere in the suites: the check finds titles that do not exist, not titles that prove something else.
 
 ## Tests
 
