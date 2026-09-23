@@ -10,6 +10,7 @@ import {
 } from "./swapPresentation";
 import type { Hex, PublicClient } from "viem";
 import { SAUCERSWAP_UNAVAILABLE, headlineFor } from "~~/components/hedera/failureText";
+import { withRuleGasLimit } from "~~/components/hedera/gasLimit";
 import {
   type BuiltCall,
   type CostVerdict,
@@ -35,7 +36,6 @@ import {
   swapPath,
   testnet,
   tinybar,
-  withGasLimit,
 } from "~~/lib/hedera";
 
 // Everything between "get a quote" and "the wallet may open": the quote, the call this page would send, the checks
@@ -167,7 +167,7 @@ export async function buildSwapPlan(input: PlanInput): Promise<PlanResult> {
       ? buildTokenToHbarSwap({ ...request, amountIn, quotedAmountOut: tinybar(quotedAmountOut) })
       : buildHbarToTokenSwap({ ...request, amountIn: tinybar(amountIn), quotedAmountOut });
     amountOutMinimum = minimumOut(quotedAmountOut, slippageBps);
-    call = withGasLimit(built, { functions });
+    call = withRuleGasLimit(built, { functions });
   } catch (error: unknown) {
     return { ok: false, ...refusalOf(BUILD, error) };
   }

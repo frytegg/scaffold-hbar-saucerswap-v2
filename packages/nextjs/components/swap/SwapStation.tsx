@@ -23,6 +23,7 @@ import { useAccount, useConfig, usePublicClient, useSwitchChain } from "wagmi";
 import { writeContract } from "wagmi/actions";
 import { FailureNote } from "~~/components/hedera/atoms";
 import { SAUCERSWAP_UNAVAILABLE, headlineFor } from "~~/components/hedera/failureText";
+import { withRuleGasLimit } from "~~/components/hedera/gasLimit";
 import {
   type HederaFailure,
   buildApproveCall,
@@ -168,7 +169,9 @@ export const SwapStation = () => {
     setApproveOutcome(null);
     setFacadeCheck(null);
     try {
-      const call = buildApproveCall(TOKEN, plan.approveAmount);
+      // Every call this route sends asks the gas rules first, the approval included: a rule added for a facade or
+      // for the router must reach the wallet as a limit, not as a fee the wallet cannot compute.
+      const call = withRuleGasLimit(buildApproveCall(TOKEN, plan.approveAmount));
       const hash = await writeContract(config, { ...call, chainId: testnet.chainId });
       const result = await trackTransaction(mirror, hash, accountId);
       setApproveOutcome(result);
