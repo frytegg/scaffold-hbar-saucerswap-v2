@@ -21,7 +21,9 @@ const server = await createServer({
   appType: "custom",
   // No HTTP server, no file watcher and no hot-reload socket: this runs once and prints. Without `hmr: false` the
   // dev server still binds a WebSocket port, which a command that claims to touch no network has no business doing.
-  server: { middlewareMode: true, watch: null, hmr: false, ws: false },
+  // `host` is set for the same reason and not to listen anywhere: Vite resolves the default host "localhost" through
+  // dns.promises.lookup while it starts, and a literal address is the one branch of that code which asks no resolver.
+  server: { middlewareMode: true, watch: null, hmr: false, ws: false, host: "127.0.0.1" },
   resolve: { alias: [{ find: /^~~\//, replacement: root }] },
 });
 
