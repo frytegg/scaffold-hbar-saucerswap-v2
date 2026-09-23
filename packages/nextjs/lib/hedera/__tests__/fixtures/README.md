@@ -55,6 +55,12 @@ In `mirror/`, each file holds the HTTP status and the JSON body that https://tes
 | `mirror/nft-serial-358-held.json`                           | the same read for serial 358: a position of the same collection that a third party still holds                                                                                                                                               |
 | `mirror/nft-serial-not-found.json`                          | the same read for a serial the collection never had: 404                                                                                                                                                                                     |
 
+The one below was captured on 2026-09-23, for a transfer the research probes sent on 21 Sept 2026; nothing was signed to capture it. It keeps every field the mirror node answered but the two signature components, which the library never reads and which trip generic secret scanners.
+
+| file                                       | GET, and what it shows                                                                                                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mirror/result-sub-tinybar-remainder.json` | /api/v1/contracts/results/0x6fc04ceb…2fbfd: a plain HBAR transfer signed with 10,000,000,001 weibar. `SUCCESS`, `amount` 1: the network moved 1 tinybar and dropped the remainder without an error |
+
 ## JSON-RPC answers
 
 In `rpc/`, each file holds the method, the HTTP status and the body that https://testnet.hashio.io/api (relay/0.78.5) answered. The first twelve were captured on 22 Sept 2026 at 14:40 UTC by simulations from 0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01, which send nothing, and the thirteenth by a read at 16:49 UTC; they keep their params: `replay.ts` answers a test only when it sends that same request, and `readFixture` drops the recorded sender for the reads the library sends without one. The last five come from the logs of the research probes of 21 Sept 2026, which recorded the error object only: the jsonrpc and id fields around it were added, and any request with the same method gets their answer.
@@ -102,6 +108,13 @@ The nine below were captured on 2026-09-23 at 07:06 UTC, by reads through viem's
 | `rpc/call-lp-nft-approved.json`       | isApprovedForAll on the position NFT facade for the manager: what a burn needs and no simulator checks      |
 | `rpc/call-lp-nft-not-approved.json`   | the same read for 0.0.10542434, captured on 2026-09-23: a third party that holds positions and granted none |
 | `rpc/call-manager-allowance.json`     | the SAUCE allowance of 0.0.10645914 to the position manager, which is not the router's                      |
+
+The two below were captured on 2026-09-23 by `eth_getTransactionByHash`, a read, for two transactions signed earlier: they are how the relay reports a transaction value, which is weibar and stays the figure that was signed. They keep their params and every field of the answer but the signature components.
+
+| file                                                 | request, and what it shows                                                                                                                        |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `rpc/transaction-by-hash-consumer-swap.json`         | this template's own consumer swap of 22 Sept 2026: `value` 0xd529ae9e860000 = 6 x 10^16 weibar, for the 6,000,000 tinybar the mirror node records |
+| `rpc/transaction-by-hash-sub-tinybar-remainder.json` | the HBAR transfer of `mirror/result-sub-tinybar-remainder.json`: `value` 0x2540be401 = 10,000,000,001 weibar, although 1 tinybar moved            |
 
 ## Position figures, from the chain
 

@@ -1,0 +1,29 @@
+{
+  "request": {
+    "method": "eth_getTransactionByHash",
+    "params": ["0x6fc04ceb020322182b862d7b1d609796cc64552d6319319aa3eb84307602fbfd"]
+  },
+  "status": 200,
+  "body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "blockHash": "0x2241bf3a3848ad1b547c6879f8983371274a903f27cefe957723cf34a1159e25",
+      "blockNumber": "0x26e99f6",
+      "chainId": "0x128",
+      "from": "0x3b7a9a1b874dd0994cc4137047dacf2803bb6c01",
+      "gas": "0x592c",
+      "gasPrice": "0x0",
+      "hash": "0x6fc04ceb020322182b862d7b1d609796cc64552d6319319aa3eb84307602fbfd",
+      "input": "0x",
+      "nonce": "0xc",
+      "to": "0x0a6f9a4407c2e13f55df69a0281e0fa9c9b040de",
+      "transactionIndex": "0x0",
+      "type": "0x2",
+      "value": "0x2540be401",
+      "accessList": [],
+      "maxPriorityFeePerGas": "0x0",
+      "maxFeePerGas": "0x13e83277000"
+    }
+  }
+}

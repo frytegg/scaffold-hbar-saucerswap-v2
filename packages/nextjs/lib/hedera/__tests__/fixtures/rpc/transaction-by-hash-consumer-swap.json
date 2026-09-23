@@ -1,0 +1,29 @@
+{
+  "request": {
+    "method": "eth_getTransactionByHash",
+    "params": ["0xfe12a2e32ea5157de9465af9a82de112c4d4adc2c8a729a07e2958481a5f3e87"]
+  },
+  "status": 200,
+  "body": {
+    "jsonrpc": "2.0",
+    "id": 1,
+    "result": {
+      "blockHash": "0xce230b2fac8409493262d85f5fff4305e9196b58ea6829ed28e10a496283d958",
+      "blockNumber": "0x26f70ed",
+      "chainId": "0x128",
+      "from": "0x3b7a9a1b874dd0994cc4137047dacf2803bb6c01",
+      "gas": "0x39d8f",
+      "gasPrice": "0x0",
+      "hash": "0xfe12a2e32ea5157de9465af9a82de112c4d4adc2c8a729a07e2958481a5f3e87",
+      "input": "0xa03beaa700000000000000000000000000000000000000000000000000000000004c4b4000000000000000000000000000000000000000000000000000000000002311d9000000000000000000000000000000000000000000000000000000006ab304b9",
+      "nonce": "0x42",
+      "to": "0x7e1a4337bebb0cc8e231c6137da17f04c7cd3409",
+      "transactionIndex": "0x0",
+      "type": "0x2",
+      "value": "0xd529ae9e860000",
+      "accessList": [],
+      "maxPriorityFeePerGas": "0x0",
+      "maxFeePerGas": "0x13e83277000"
+    }
+  }
+}

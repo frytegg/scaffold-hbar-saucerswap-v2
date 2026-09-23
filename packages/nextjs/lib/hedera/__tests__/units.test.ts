@@ -14,7 +14,8 @@ import {
   toTinybar,
   toWeibar,
 } from "../units";
-import { mirrorBody } from "./replay";
+import { mirrorBody, replayClient, rpcFixture } from "./replay";
+import { type Hex, decodeAbiParameters, parseAbiParameters } from "viem";
 import { describe, expect, it } from "vitest";
 
 function unitErrorOf(run: () => unknown): { code: UnitErrorCode; message: string } {
@@ -92,6 +93,37 @@ describe("assertJsonRpcValue refuses what the relay or the network would not car
 
   it("refuses a negative value", () => {
     expect(unitErrorOf(() => assertJsonRpcValue(-10_000_000_000n)).code).toBe("negative-amount");
+  });
+});
+
+describe("the two units, on transactions Hedera testnet carried", () => {
+  const consumerSwap = mirrorBody("result-consumer-swap");
+  const truncated = mirrorBody("result-sub-tinybar-remainder");
+
+  it("the consumer's swap: the relay echoes the weibar signed, the mirror records the tinybar moved", async () => {
+    const client = replayClient([rpcFixture("transaction-by-hash-consumer-swap")]);
+    const signed = (await client.getTransaction({ hash: consumerSwap.hash as Hex })).value;
+    expect(signed).toBe(60_000_000_000_000_000n);
+    expect(toTinybar(signed)).toBe(BigInt(consumerSwap.amount as number));
+  });
+
+  it("msg.value reached the contract as those 6000000 tinybar: it gave back what they exceeded amountIn by", () => {
+    const parameters = `0x${(consumerSwap.function_parameters as string).slice(10)}` as Hex;
+    const [amountInTinybar] = decodeAbiParameters(parseAbiParameters("uint256, uint256, uint256"), parameters);
+    const returned = decodeAbiParameters(parseAbiParameters("uint256, uint256"), consumerSwap.call_result as Hex);
+    // refundedTinybar is address(this).balance - (balance at entry - msg.value), so it is msg.value - amountIn.
+    // Had msg.value been the weibar figure, that subtraction would have underflowed and the call would have reverted.
+    expect(returned[1]).toBe(BigInt(consumerSwap.amount as number) - amountInTinybar);
+    expect(returned[1]).toBe(1_000_000n);
+  });
+
+  it("a value that is not a whole tinybar succeeds and loses the remainder, so the guard refuses it first", async () => {
+    const client = replayClient([rpcFixture("transaction-by-hash-sub-tinybar-remainder")]);
+    const signed = (await client.getTransaction({ hash: truncated.hash as Hex })).value;
+    expect(signed).toBe(10_000_000_001n);
+    expect(truncated.result).toBe("SUCCESS");
+    expect(truncated.amount).toBe(1);
+    expect(unitErrorOf(() => assertJsonRpcValue(signed)).code).toBe("value-not-whole-tinybar");
   });
 });
 
