@@ -45,10 +45,7 @@ function orderedRatios(sqrtRatioAX96: bigint, sqrtRatioBX96: bigint): readonly [
   return sqrtRatioAX96 <= sqrtRatioBX96 ? [sqrtRatioAX96, sqrtRatioBX96] : [sqrtRatioBX96, sqrtRatioAX96];
 }
 
-/**
- * The token0 a liquidity of `liquidity` spans between two square-root prices. Both divisions round the same way,
- * which is what makes a deposit land on the pool's own figure rather than one unit under it.
- */
+/** The token0 a liquidity spans between two square-root prices. Both of its divisions round the same way. */
 export function amount0Delta(
   sqrtRatioAX96: bigint,
   sqrtRatioBX96: bigint,

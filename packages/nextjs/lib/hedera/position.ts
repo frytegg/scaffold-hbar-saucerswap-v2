@@ -8,13 +8,8 @@ import { type Tinybar, type Weibar, payable, tinybar } from "./units";
 import { type Hex, encodeFunctionData } from "viem";
 
 // The four calls that open, shrink, empty and close a SaucerSwap V2 position, each in the shape Hedera accepts
-// rather than the shape the Uniswap documentation gives. Every departure below was paid for on testnet:
-//  - `mint` travels inside `multicall[mint, refundETH]`, because the value has to cover the HBAR leg and the mint
-//    fee and `refundETH` sweeps the manager's whole balance back to the caller; leave it out and the margin stays
-//    for the next caller.
-//  - collecting is three calls, not one. Sending both tokens to the manager reverts (it is not associated with the
-//    output token), and sending both to the caller delivers WHBAR tokens rather than HBAR.
-//  - `burn` needs the position NFT approved to the manager first, and no simulator says so.
+// rather than the shape the Uniswap documentation gives. Every departure was paid for on testnet, and each one is
+// stated on the builder it belongs to; `docs/hedera-behaviour.md` links the transactions that established them.
 
 export type PositionBuildErrorCode =
   | "zero-minimum"
