@@ -45,7 +45,12 @@ describe("the transaction-value lint guard", () => {
 
   it("leaves a value that is an ordinary property of an object nothing sends", async () => {
     const messages = await guardMessagesAt(path.join(NEXTJS_ROOT, "hooks", "plantedValueViolations.ts"));
-    expect(messages.map(message => message.line)).not.toContain(lineOf('label: "slippage"'));
+    const reported = messages.map(message => message.line);
+    expect(reported).not.toContain(lineOf('label: "slippage"'));
+    // One transaction key is not a transaction: these three are a chart row, a form field and an API payload.
+    expect(reported).not.toContain(lineOf("export const chartRow"));
+    expect(reported).not.toContain(lineOf("export const formField"));
+    expect(reported).not.toContain(lineOf("export const apiPayload"));
   }, 60_000);
 
   it("does not apply inside lib/hedera, the one place that owns the conversion", async () => {

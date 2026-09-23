@@ -18,8 +18,12 @@ const TRANSACTION_CALL =
   "/^(writeContract|writeContractAsync|writeContractSync|simulateContract|useSimulateContract|sendTransaction|sendTransactionAsync|sendTransactionSync|estimateContractGas|estimateGas|useEstimateGas|deployContract|deployContractAsync|prepareTransactionRequest|usePrepareTransactionRequest|call|useCall)$/";
 // Batched calls (EIP-5792) carry one value per call, inside their `calls` array.
 const BATCH_CALL = "/^(sendCalls|sendCallsAsync|sendCallsSync|simulateCalls)$/";
-// The keys that make an object literal a transaction request even when the call is somewhere else.
-const REQUEST_KEYS = "/^(to|data|abi|functionName|bytecode)$/";
+// What makes an object literal a transaction request when the call is somewhere else: something the call is aimed
+// at, and a second field only a transaction carries. One key alone is not enough, because `to`, `data` and
+// `functionName` are ordinary property names - a chart row, a form field, a mail payload - and a scaffold that
+// fails the lint on those is worse than one that misses a request built from two keys.
+const TARGET_KEYS = "/^(to|address|abi|bytecode)$/";
+const TRANSACTION_KEYS = "/^(account|chain|chainId|data|functionName|args|gas|nonce|abi|bytecode)$/";
 const VALUE_PROPERTY = ":matches(Property[key.name='value'], Property[key.value='value'])";
 const VALUE_MESSAGE =
   "A Hedera transaction value is weibar (tinybar x 10^10): spread payable(amount) from lib/hedera instead of writing value.";
@@ -37,7 +41,7 @@ const valueSelectors = ["callee.name", "callee.property.name"].flatMap(callee =>
 // The same value written into a request object that is built first and passed by name afterwards, `as const` or
 // not. The two exclusions are the shapes the selectors above already report, so that nothing is reported twice.
 const requestObject =
-  `ObjectExpression:has(> Property[key.name=${REQUEST_KEYS}])` +
+  `ObjectExpression:has(> Property[key.name=${TARGET_KEYS}]):has(> Property[key.name=${TRANSACTION_KEYS}])` +
   `:not(CallExpression > ObjectExpression):not(Property[key.name='calls'] > ArrayExpression > ObjectExpression)`;
 const indirectValueSelectors = [`${requestObject} > ${VALUE_PROPERTY}`];
 

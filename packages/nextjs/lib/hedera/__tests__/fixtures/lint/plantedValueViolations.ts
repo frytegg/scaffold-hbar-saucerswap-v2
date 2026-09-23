@@ -64,3 +64,10 @@ export function anObjectThatIsNotACall(): { label: string; value: bigint } {
   // Not reported: no key of a transaction request, so `value` is an ordinary property name.
   return { label: "slippage", value: 50n };
 }
+
+// Not reported either, and each one is why the recogniser asks for two keys and not one: `data`, `to` and
+// `functionName` are among the commonest property names there are, and a scaffold a judge extends must not fail
+// its lint on a chart row, a form field or an API payload with a message about weibar.
+export const chartRow = { label: "fees", data: [1, 2], value: 3 };
+export const formField = { name: "recipient", to: "0.0.1", value: "0.1" };
+export const apiPayload = { functionName: "quote", value: "0.5" } as const;
