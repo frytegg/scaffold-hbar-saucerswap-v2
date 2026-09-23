@@ -17,14 +17,6 @@ yarn dev
 
 The app answers on `http://localhost:3000` with no env file, no key and no account. `/swap` and `/positions` load without asking the network for anything, and every read and write they make afterwards leaves from the app's own origin.
 
-The other form of the command needs the `--` separator, since without it the options go to the package manager instead of to the CLI:
-
-```bash
-npm "create" scaffold-hbar@latest my-app -- --template frytegg/scaffold-hbar-saucerswap-v2 -s hardhat
-```
-
-Keep the `--`. The shorter form, which is the one the bounty's brief prints, never gets `--template` as far as the CLI: majors 10 and 11 drop the flag (11 warns that it will stop working) and major 12 refuses it before the CLI starts, so no template is scaffolded. `tools/gate/literal-command-control.sh` runs that shorter form on all three majors and records how each one ends; `.github/workflows/gate-skeleton.yml` is where it runs.
-
 ## Verify it yourself
 
 Three commands, in this order. None of them needs a key, an account or an env file.
@@ -136,6 +128,14 @@ Nothing needs to be set: the app, the build and the tests run with no env file. 
 Node.js 20.18.3 or later; git with `user.name` and `user.email` set, since the CLI makes the first commit and stops before creating anything when git has no identity; and the default package manager on your `PATH`, which the CLI checks for before scaffolding. Foundry is not needed: every command here passes `-s hardhat`. No key, account or env file is needed to scaffold, lint, build, serve or test.
 
 Name the project in lowercase, as a single path segment. `--yes` accepts every default, the Hedera Skills install among them, which adds agent skills under `.agents/`, `.claude/`, `agent/` and `skills-lock.json`; the repository checks and the formatters leave those paths alone. To scaffold for the other package manager, end the command with `--package-manager "npm"`: the CLI then rewrites the new project's docs and scripts, commands included.
+
+The other form of the command needs the `--` separator before `--template`, since without it the options go to the package manager instead of to the CLI:
+
+```bash
+npm "create" scaffold-hbar@latest my-app -- --template frytegg/scaffold-hbar-saucerswap-v2 -s hardhat
+```
+
+`tools/gate/literal-command-control.sh` records how the same command ends without that separator on majors 10, 11 and 12 of npm; `.github/workflows/gate-skeleton.yml` is where it runs.
 
 On Git Bash: when a `package.json` in a parent folder pins another package manager, Corepack refuses to run the default one outside a project and the CLI reports it as not installed — prefix the scaffold command with `COREPACK_ENABLE_STRICT=0`. Git Bash also turns an argument that starts with `/` into a Windows path, so prefix a command that passes a route such as `/debug` to a script under `tools/` with `MSYS_NO_PATHCONV=1`.
 
