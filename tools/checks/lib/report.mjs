@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 /** @typedef {{ file: string, line?: number, message: string }} Finding */
 /** @typedef {"pass" | "fail" | "unverified" | "skipped"} Status */
 /** @typedef {{ status: Status, findings: Finding[], summary: string }} CheckResult */
-/** @typedef {{ repoRoot: string, allowOffline: boolean }} CheckContext */
+/** @typedef {{ repoRoot: string, allowOffline: boolean, resolve: boolean }} CheckContext */
 /** @typedef {{ name: string, run: (context: CheckContext) => CheckResult | Promise<CheckResult> }} Check */
 
 /** The check could not reach a verdict: something it depends on is missing, unreachable or truncated. */
@@ -46,18 +46,20 @@ export function skipped(reason) {
  */
 function parseArgs(argv) {
   /** @type {CheckContext} */
-  const context = { repoRoot: DEFAULT_REPO_ROOT, allowOffline: false };
+  const context = { repoRoot: DEFAULT_REPO_ROOT, allowOffline: false, resolve: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--allow-offline") {
       context.allowOffline = true;
+    } else if (arg === "--resolve") {
+      context.resolve = true;
     } else if (arg === "--repo") {
       const dir = argv[index + 1];
       if (dir === undefined || dir.startsWith("--")) throw new UsageError("--repo needs a directory");
       context.repoRoot = path.resolve(dir);
       index += 1;
     } else {
-      throw new UsageError(`unknown argument "${arg}". Usage: [--repo <dir>] [--allow-offline]`);
+      throw new UsageError(`unknown argument "${arg}". Usage: [--repo <dir>] [--allow-offline] [--resolve]`);
     }
   }
   return context;

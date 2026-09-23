@@ -108,7 +108,7 @@ async function checkFixtureRepo(build) {
     git(["add", "LICENCE"]);
     git(["commit", "--quiet", "-m", "chore: first"]);
     build(git, repo);
-    return await check.run({ repoRoot: repo, allowOffline: false });
+    return await check.run({ repoRoot: repo, allowOffline: false, resolve: false });
   } finally {
     rmSync(repo, { recursive: true, force: true });
   }
