@@ -1,0 +1,21 @@
+{
+  "status": 200,
+  "body": {
+    "nfts": [
+      {
+        "account_id": "0.0.10542434",
+        "created_timestamp": "1789408597.221962111",
+        "delegating_spender": null,
+        "deleted": false,
+        "metadata": "aHR0cHM6Ly9kZXYuc3N2Mi5pby8wMDAwMDAwMDAwMDE2NQ==",
+        "modified_timestamp": "1789408597.221962112",
+        "serial_number": 357,
+        "spender": null,
+        "token_id": "0.0.1310436"
+      }
+    ],
+    "links": {
+      "next": "/api/v1/accounts/0.0.10542434/nfts?token.id=0.0.1310436&limit=1&order=asc&serialnumber=gt:357"
+    }
+  }
+}

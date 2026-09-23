@@ -24,6 +24,8 @@ import {
 import { describe, expect, it } from "vitest";
 
 const MAIN: EvmAddress = "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01";
+/** A third party that holds positions of this collection and has approved the manager on none of them. */
+const HOLDER: EvmAddress = "0x0000000000000000000000000000000000a0dd62";
 const MINT_FEE = tinybar(64_079_561n);
 const HBAR_LEG = tinybar(100_000_000n);
 
@@ -114,9 +116,18 @@ describe("the approval a burn needs", () => {
     expect(verdict.message).toContain("HederaFail(292)");
   });
 
-  it("reads the answer from the NFT facade", async () => {
-    const client = replayClient([rpcFixture("call-lp-nft-approved")]);
-    expect(await checkPositionBurn(client, MAIN)).toMatchObject({ check: "nft-approval", status: "pass" });
+  it("reads the answer from the NFT facade, and reports whichever answer came back", async () => {
+    const granted = replayClient([rpcFixture("call-lp-nft-approved")]);
+    expect(await checkPositionBurn(granted, MAIN)).toMatchObject({ check: "nft-approval", status: "pass" });
+    // The other branch, against an account that holds positions and has approved nothing: a check that stopped
+    // reading the chain and answered pass would let the signed run send the HederaFail(292) this whole section is
+    // about, and nothing else in the cycle would go red.
+    const refused = replayClient([rpcFixture("call-lp-nft-not-approved")]);
+    expect(await checkPositionBurn(refused, HOLDER)).toMatchObject({
+      check: "nft-approval",
+      status: "fail",
+      action: "approve",
+    });
   });
 });
 

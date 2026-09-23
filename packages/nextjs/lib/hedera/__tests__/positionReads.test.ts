@@ -26,6 +26,8 @@ import { describe, expect, it } from "vitest";
 
 const MAIN: EvmAddress = "0x3b7A9A1B874Dd0994cc4137047daCF2803Bb6C01";
 const HOLDER: EntityId = "0.0.10542434";
+/** The same third-party holder by its long-zero address: it holds positions and has approved nothing. */
+const HOLDER_ADDRESS: EvmAddress = "0x0000000000000000000000000000000000a0dd62";
 const pool = positionFixture<PoolEventsFixture>("hbar-sauce-pool-events");
 const lifecycle = positionFixture<LifecycleFixture>("serial-360-lifecycle");
 
@@ -41,10 +43,10 @@ const reads = replayClient([
 ]);
 
 describe("the serials an account holds, which the token facade cannot enumerate", () => {
-  const mirror = (account: EntityId, fixture: string) =>
+  const mirror = (account: EntityId, fixture: string, limit = 100) =>
     createMirrorClient({
       transport: replayMirror({
-        [mirrorPaths.accountNfts(account, testnet.lpNft.id, 100)]: mirrorFixture(fixture),
+        [mirrorPaths.accountNfts(account, testnet.lpNft.id, limit)]: mirrorFixture(fixture),
       }),
     });
 
@@ -58,6 +60,12 @@ describe("the serials an account holds, which the token facade cannot enumerate"
       serials: [],
       hasMore: false,
     });
+  });
+
+  it("says when the page it read is not the whole list, so a holder is not shown part of it as all of it", async () => {
+    // The same two positions, asked for one at a time: the mirror node answers the first and a link to the rest.
+    const paged = mirror(HOLDER, "nfts-first-of-two-pages", 1);
+    expect(await readPositionSerials(paged, HOLDER, 1)).toEqual({ serials: [357n], hasMore: true });
   });
 
   it("asks the mirror node for the collection this template's positions belong to", async () => {
@@ -92,26 +100,30 @@ describe("one position, read through the position manager's ten fields", () => {
 });
 
 describe("the pool's live state and the fee a mint pays", () => {
-  it("reads the price, the tick and the spacing the fixture recorded", async () => {
+  it("reads the price, the tick and the spacing the fixture recorded, each in its own field", async () => {
     const state = await readPoolState(reads, testnet.hbarSaucePool);
-    expect(state.tickSpacing).toBe(pool.pool.tickSpacing);
-    expect(state.tick).toBe(-7643);
-    expect(state.sqrtPriceX96).toBeGreaterThan(0n);
-    expect(state.liquidity).toBeGreaterThan(0n);
+    expect(state).toEqual({
+      // slot0()'s first two fields and liquidity(), as the pool answered them on 23 Sept 2026. Naming all four
+      // keeps two uint fields of the same shape from being read into each other.
+      sqrtPriceX96: 54_067_332_674_614_406_773_309_430_295n,
+      tick: -7643,
+      tickSpacing: pool.pool.tickSpacing,
+      liquidity: 1_180_539_278_208n,
+    });
   });
 
   it("takes the fee from the factory and converts it through the exchange-rate contract", async () => {
-    const fee = await readMintFeeTinybar(reads);
+    // 500,000,000 tinycent at the rate 0x168 answered on 23 Sept 2026; the mint that carried it is the fixture's.
+    expect(await readMintFeeTinybar(reads)).toBe(64_079_561n);
     const mint = lifecycle.transactions.find(transaction => transaction.step === "mint");
     if (mint === undefined) throw new Error("the life-cycle fixture holds the mint");
-    // The value that mint carried was the HBAR leg plus this fee and its margin: the fee is under the whole value.
-    expect(fee).toBeGreaterThan(0n);
-    expect(fee).toBeLessThan(BigInt(mint.valueTinybar));
+    expect(BigInt(mint.valueTinybar)).toBeGreaterThan(64_079_561n);
   });
 
   it("reads the manager's own allowance and the NFT approval, neither of which a simulation checks", async () => {
-    expect(await readManagerAllowance(reads, testnet.sauce, MAIN)).toBeGreaterThanOrEqual(0n);
+    expect(await readManagerAllowance(reads, testnet.sauce, MAIN)).toBe(20_000_000n);
     expect(await readNftApproval(reads, MAIN)).toBe(true);
+    expect(await readNftApproval(replayClient([rpcFixture("call-lp-nft-not-approved")]), HOLDER_ADDRESS)).toBe(false);
   });
 });
 

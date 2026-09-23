@@ -2,7 +2,7 @@ import { htsTokenAbi } from "./abi";
 import { type EntityId, type HbarPoolEntry, type TokenEntry, testnet } from "./addresses";
 import { type EvmAddress, toEvmAddress } from "./evmAddress";
 import { type PositionAmounts, type PositionRange, amountsForLiquidity, rangeOfPosition } from "./liquidityMath";
-import type { MirrorClient } from "./mirror";
+import { MAX_MIRROR_PAGE, type MirrorClient } from "./mirror";
 import { exchangeRateAbi, lpNftAbi, positionManagerAbi, v2FactoryFeeAbi, v2PoolAbi } from "./positionAbi";
 import { extractRpcError } from "./rpcError";
 import { type Tinybar, tinybar } from "./units";
@@ -45,12 +45,17 @@ export type PositionStatus = {
   readonly closeReturns: PositionAmounts;
 };
 
-/** The serials of the position collection an account holds, oldest first. */
+/**
+ * The serials of the position collection an account holds, oldest first, and whether the mirror node has more of
+ * them than one page holds. `limit` is that page's size, at most `MAX_MIRROR_PAGE`: a caller that drops `hasMore`
+ * shows a holder part of their positions as if it were all of them.
+ */
 export async function readPositionSerials(
   mirror: MirrorClient,
   account: EntityId | EvmAddress,
+  limit: number = MAX_MIRROR_PAGE,
 ): Promise<{ serials: bigint[]; hasMore: boolean }> {
-  const page = await mirror.getAccountNfts(account, testnet.lpNft.id);
+  const page = await mirror.getAccountNfts(account, testnet.lpNft.id, limit);
   return { serials: page.nfts.map(nft => nft.serialNumber), hasMore: page.hasMore };
 }
 

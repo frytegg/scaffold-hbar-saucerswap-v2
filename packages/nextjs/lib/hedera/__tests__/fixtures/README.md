@@ -50,6 +50,7 @@ In `mirror/`, each file holds the HTTP status and the JSON body that https://tes
 | `mirror/transaction-position-burn.json`                     | /api/v1/transactions?timestamp=1790110358.293712734: its record                                                                                                                       |
 | `mirror/nfts-two-positions.json`                            | /api/v1/accounts/0.0.10542434/nfts?token.id=0.0.1310436, captured on 2026-09-23: the two positions a third party holds, which the token facade cannot enumerate                       |
 | `mirror/nfts-none.json`                                     | the same list for 0.0.10645914, whose own position was burnt: an empty list, not a 404                                                                                                |
+| `mirror/nfts-first-of-two-pages.json`                       | the same list with `limit=1`, captured on 2026-09-23: one serial and a `links.next`, which is what `hasMore` reads. No testnet account holds more than 100 of this collection today, so one page of two is the only paged answer it can give |
 
 ## JSON-RPC answers
 
@@ -96,6 +97,7 @@ The nine below were captured on 2026-09-23 at 07:06 UTC, by reads through viem's
 | `rpc/call-factory-mint-fee.json`      | mintFee() on the V2 factory, in tinycent. The position manager itself reverts on the same call              |
 | `rpc/call-tinycents-to-tinybars.json` | that fee through the exchange-rate system contract at 0x168: the rate the network charges at                |
 | `rpc/call-lp-nft-approved.json`       | isApprovedForAll on the position NFT facade for the manager: what a burn needs and no simulator checks      |
+| `rpc/call-lp-nft-not-approved.json`   | the same read for 0.0.10542434, captured on 2026-09-23: a third party that holds positions and granted none |
 | `rpc/call-manager-allowance.json`     | the SAUCE allowance of 0.0.10645914 to the position manager, which is not the router's                      |
 
 ## Position figures, from the chain
