@@ -12,6 +12,18 @@ import { isHostKit, listTrackedFiles, readText } from "./lib/repo.mjs";
 /** The document whose shape this check enforces. Absent from a scaffold that dropped it: then there is nothing to judge. */
 export const TRAP_DOC = "docs/hedera-behaviour.md";
 
+/**
+ * The page that answers the same behaviours for a caller outside this repository. Its table says it holds one row
+ * per section of `TRAP_DOC`, in the file's own order, and a reorder of either file is one commit away from making
+ * that false. Absent from a scaffold that dropped it, as `TRAP_DOC` can be.
+ */
+export const CALLER_DOC = "docs/use-the-checks-in-your-app.md";
+
+/** The header cell that names the column of behaviours, which is what ties that table to `TRAP_DOC`. */
+const BEHAVIOUR_COLUMN = "behaviour";
+
+const DELIMITER_CELL = /^:?-{3,}:?$/;
+
 /** The six parts of `DOCS-PLAN.md`, in the order a reader meets them. */
 export const PARTS = [
   "Symptom",
@@ -191,6 +203,70 @@ function inspectScreenshots(section, file) {
 }
 
 /**
+ * The rows of the table whose first column is the behaviours. Cells are read from the raw line: `prose` blanks
+ * inline code out, and a heading can carry some.
+ * @param {MarkdownDoc} doc
+ * @returns {{ line: number, behaviour: string }[]} empty when the doc holds no such table
+ */
+export function behaviourRows(doc) {
+  const outsideFences = new Set(doc.prose.map(({ line }) => line));
+  /** @type {{ line: number, behaviour: string }[]} */
+  const rows = [];
+  /** `header` before a table, `other` inside one this check does not read, then its delimiter row, then its rows. */
+  let state = "header";
+  doc.lines.forEach((content, index) => {
+    const line = index + 1;
+    const text = content.trim();
+    if (!outsideFences.has(line) || !text.startsWith("|")) {
+      state = "header";
+      return;
+    }
+    const cell = text.split("|")[1]?.trim() ?? "";
+    if (state === "header") state = cell.toLowerCase() === BEHAVIOUR_COLUMN ? "delimiter" : "other";
+    else if (state === "delimiter") state = DELIMITER_CELL.test(cell) ? "rows" : "other";
+    else if (state === "rows") rows.push({ line, behaviour: cell });
+  });
+  return rows;
+}
+
+/**
+ * @param {string} title a `##` heading of `TRAP_DOC`
+ * @param {string} cell the table cell that names it
+ * @returns {boolean} true when the cell is that heading, in lower case and cut short at the end as a link text is
+ */
+function names(title, cell) {
+  return cell !== "" && title.toLowerCase().startsWith(cell.toLowerCase());
+}
+
+/**
+ * @param {Section[]} sections of `TRAP_DOC`
+ * @param {{ line: number, behaviour: string }[]} rows of the caller page's table
+ * @param {string} file the caller page
+ * @returns {Finding[]} what holds that page's "one section per row and in this order" to the file it points at
+ */
+export function inspectCallerTable(sections, rows, file) {
+  /** @type {Finding[]} */
+  const findings = [];
+  if (rows.length !== sections.length) {
+    findings.push({
+      file,
+      line: rows[0]?.line,
+      message: `one row per section of ${TRAP_DOC}: ${sections.length} sections, ${rows.length} rows`,
+    });
+  }
+  rows.forEach((row, index) => {
+    const section = sections[index];
+    if (section === undefined || names(section.title, row.behaviour)) return;
+    findings.push({
+      file,
+      line: row.line,
+      message: `row ${index + 1} is "${row.behaviour}" and section ${index + 1} of ${TRAP_DOC} is "${section.title}"`,
+    });
+  });
+  return findings;
+}
+
+/**
  * @param {MarkdownDoc} doc
  * @param {(title: string) => boolean} isDeclared
  * @returns {Finding[]}
@@ -215,9 +291,17 @@ export const check = {
     const findings = findTrapFindings(doc, title => declaresTest(corpus, title));
     const sections = splitSections(doc);
     const screenshots = sections.reduce((total, section) => total + section.screenshots.length, 0);
+
+    const hasCaller = tracked.includes(CALLER_DOC);
+    const rows = hasCaller ? behaviourRows(parseMarkdown(CALLER_DOC, readText(repoRoot, CALLER_DOC))) : [];
+    if (hasCaller) findings.push(...inspectCallerTable(sections, rows, CALLER_DOC));
+
+    const against = hasCaller
+      ? `${suites.length} test files and ${rows.length} rows of ${CALLER_DOC}`
+      : `${suites.length} test files`;
     return resultFrom(
       findings,
-      `${sections.length} behaviours and ${screenshots} screenshots in ${TRAP_DOC}, against ${suites.length} test files`,
+      `${sections.length} behaviours and ${screenshots} screenshots in ${TRAP_DOC}, against ${against}`,
     );
   },
 };

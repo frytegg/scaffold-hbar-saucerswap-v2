@@ -1,12 +1,51 @@
 // @ts-check
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { declaresTest, findTrapFindings, PARTS, splitSections } from "../check-traps.mjs";
+import {
+  behaviourRows,
+  CALLER_DOC,
+  declaresTest,
+  findTrapFindings,
+  inspectCallerTable,
+  PARTS,
+  splitSections,
+} from "../check-traps.mjs";
 import { parseMarkdown } from "../lib/markdown.mjs";
 import { fixtureDoc, linesOf } from "./support.mjs";
 
 const DOC = "docs/hedera-behaviour.md";
 const DECLARED = ["a test that exists"];
+
+/** The second one is longer than the row that names it, as a heading shortened into a link text is. */
+const BEHAVIOURS = ["The first behaviour", "The second behaviour, and who it bites"];
+
+/**
+ * @param {string[]} rows first-column cells, as the caller page writes them
+ * @returns {import("../lib/markdown.mjs").MarkdownDoc}
+ */
+function callerTable(rows) {
+  const lines = ["| behaviour | the call |", "| --- | --- |", ...rows.map(row => `| ${row} | \`call()\` |`)];
+  return parseMarkdown(CALLER_DOC, lines.join("\n"));
+}
+
+/**
+ * @param {string[]} titles
+ * @returns {ReturnType<typeof splitSections>}
+ */
+function trapSections(titles) {
+  return splitSections(parseMarkdown(DOC, titles.map(title => `## ${title}\n`).join("\n")));
+}
+
+/**
+ * @param {string[]} rows
+ * @param {string[]} [titles]
+ * @returns {string[]}
+ */
+function tableFindings(rows, titles = BEHAVIOURS) {
+  return inspectCallerTable(trapSections(titles), behaviourRows(callerTable(rows)), CALLER_DOC).map(
+    finding => finding.message,
+  );
+}
 
 /** @param {import("../lib/markdown.mjs").MarkdownDoc} doc */
 function check(doc) {
@@ -77,6 +116,37 @@ test("an image with no caption under it is refused at the image", () => {
     image.map(finding => finding.message),
     ["images/x.png has no italic caption under it"],
   );
+});
+
+test("one row per behaviour, in the file's order, passes", () => {
+  assert.deepEqual(tableFindings(["the first behaviour", "the second behaviour"]), []);
+});
+
+test("two rows swapped are refused, which reordering either file would do", () => {
+  assert.deepEqual(tableFindings(["the second behaviour", "the first behaviour"]), [
+    `row 1 is "the second behaviour" and section 1 of ${DOC} is "The first behaviour"`,
+    `row 2 is "the first behaviour" and section 2 of ${DOC} is "The second behaviour, and who it bites"`,
+  ]);
+});
+
+test("a behaviour with no row of its own is refused", () => {
+  assert.deepEqual(tableFindings(["the first behaviour"]), [`one row per section of ${DOC}: 2 sections, 1 rows`]);
+});
+
+test("a row that is longer than the heading it names is refused, not shortened the other way", () => {
+  assert.deepEqual(tableFindings(["the first behaviour, and who it bites", "the second behaviour"]), [
+    `row 1 is "the first behaviour, and who it bites" and section 1 of ${DOC} is "The first behaviour"`,
+  ]);
+});
+
+test("a table whose first column is something else is not read as behaviours", () => {
+  const doc = parseMarkdown(CALLER_DOC, "| command | what it proves |\n| --- | --- |\n| replay | the failures |");
+  assert.deepEqual(behaviourRows(doc), []);
+});
+
+test("a table inside a fenced block is an example, not the page's own", () => {
+  const doc = parseMarkdown(CALLER_DOC, "```md\n| behaviour | the call |\n| --- | --- |\n| a row | x |\n```");
+  assert.deepEqual(behaviourRows(doc), []);
 });
 
 test("a part in a fenced block is a snippet, not a part of the behaviour", () => {

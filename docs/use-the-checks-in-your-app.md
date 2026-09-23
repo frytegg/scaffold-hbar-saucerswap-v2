@@ -56,4 +56,4 @@ export async function beforeSending(call: BuiltCall, owner: EvmAddress, amountIn
 
 After a send, `postMortem(mirror, result)` reads the transaction's DETAIL view and, when a `multicall` left `0x` behind, its `/actions`, and answers the same shape as `explainError`.
 
-The transactions each sentence comes from, what the mistake costs in HBAR and the test that pins the sentence are in [`hedera-behaviour.md`](hedera-behaviour.md), one section per row and in this order. `yarn replay` prints three of them with nothing else running: no key, no wallet, no account, no network.
+The transactions each sentence comes from, what the mistake costs in HBAR and the test that pins the sentence are in [`hedera-behaviour.md`](hedera-behaviour.md), one section per row and in this order, which `yarn check:docs` holds by reading the rows of the table above against that file's own headings. `yarn replay` prints three of them with nothing else running: no key, no wallet, no account, no network.
