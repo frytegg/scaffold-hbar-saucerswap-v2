@@ -19,7 +19,9 @@ const server = await createServer({
   root,
   logLevel: "error",
   appType: "custom",
-  server: { middlewareMode: true, watch: null },
+  // No HTTP server, no file watcher and no hot-reload socket: this runs once and prints. Without `hmr: false` the
+  // dev server still binds a WebSocket port, which a command that claims to touch no network has no business doing.
+  server: { middlewareMode: true, watch: null, hmr: false, ws: false },
   resolve: { alias: [{ find: /^~~\//, replacement: root }] },
 });
 
