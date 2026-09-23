@@ -93,6 +93,7 @@ describe("room for the position NFT", () => {
   it("passes an account with unlimited slots and warns about a limited one, which the mirror cannot count", () => {
     const base = { accountId: "0.0.10645914" as EntityId, evmAddress: MAIN, balance: tinybar(0n) };
     expect(lpNftSlotVerdict({ ...base, maxAutomaticTokenAssociations: -1 }, null).status).toBe("pass");
+    // No testnet account with a finite non-zero budget has been met, so the limited case is built by hand.
     expect(lpNftSlotVerdict({ ...base, maxAutomaticTokenAssociations: 5 }, null)).toMatchObject({
       status: "warn",
       action: "associate",

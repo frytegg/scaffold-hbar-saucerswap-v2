@@ -117,6 +117,7 @@ describe("recipient: exists, right address form, associated or able to be", () =
   });
 
   it("limited slots without a relation warn: the mirror does not say how many are free", () => {
+    // No testnet account with a finite non-zero budget has been met, so a captured one is edited into that shape.
     const limited = { ...account("account-zero-slots-unassociated"), maxAutomaticTokenAssociations: 5 };
     const verdict = recipientVerdict("0x82756b984e8c34c28c98a3eb6977df106e4b3aac", limited, null, testnet.sauce);
     expect(verdict).toMatchObject({ status: "warn", action: "associate", autoAssociates: true });
