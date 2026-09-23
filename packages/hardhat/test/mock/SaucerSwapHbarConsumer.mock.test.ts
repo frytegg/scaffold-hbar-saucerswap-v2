@@ -57,6 +57,31 @@ describe("SaucerSwapHbarConsumer against the mock token service and router", fun
         .withArgs(NO_RESPONSE_CODE);
     });
 
+    it("refuses to exist on 194, which a contract this transaction creates cannot honestly be answered", async function () {
+      const { hts } = await injectHederaMocks();
+      const [deployer] = await ethers.getSigners();
+      // The address the deployment below will have, associated before it exists. 194 means the relation was
+      // already there, and a constructor that accepted it would ship a contract nobody proved could be paid.
+      const nonce = await ethers.provider.getTransactionCount(deployer.address);
+      const future = ethers.getCreateAddress({ from: deployer.address, nonce: nonce + 1 });
+      await (await hts.mockCredit(SAUCE, future, 0n)).wait();
+
+      const factory = await ethers.getContractFactory("SaucerSwapHbarConsumer");
+      await expect(factory.deploy(ROUTER, WHBAR, SAUCE, POOL_FEE))
+        .to.be.revertedWithCustomError(factory, "AssociationFailed")
+        .withArgs(TOKEN_ALREADY_ASSOCIATED);
+    });
+
+    it("refuses an answer that is longer than a response code, instead of reading the first 32 bytes", async function () {
+      const { hts } = await injectHederaMocks();
+      await (await hts.mockAnswerLength(64n)).wait();
+
+      const factory = await ethers.getContractFactory("SaucerSwapHbarConsumer");
+      await expect(factory.deploy(ROUTER, WHBAR, SAUCE, POOL_FEE))
+        .to.be.revertedWithCustomError(factory, "AssociationFailed")
+        .withArgs(NO_RESPONSE_CODE);
+    });
+
     it("answers 194 on a second association: a successful call that changed nothing", async function () {
       await injectHederaMocks();
       const { consumer } = await deployConsumer();
@@ -152,6 +177,31 @@ describe("SaucerSwapHbarConsumer against the mock token service and router", fun
       await expect(consumer.withdrawToken(stranger.address, quoted(AMOUNT_IN)))
         .to.be.revertedWithCustomError(consumer, "TokenTransferFailed")
         .withArgs(stranger.address, quoted(AMOUNT_IN));
+    });
+
+    it("sends the HBAR the contract holds to where the owner asks", async function () {
+      await injectHederaMocks();
+      const { consumer } = await deployConsumer();
+      const [owner, other] = await ethers.getSigners();
+      const address = await consumer.getAddress();
+      // receive() is what the router's refund arrives through; a plain transfer reaches it the same way.
+      await (await owner.sendTransaction({ to: address, value: ONE_HBAR })).wait();
+      expect(await ethers.provider.getBalance(address)).to.equal(ONE_HBAR);
+
+      await expect(consumer.withdrawHbar(other.address, ONE_HBAR)).to.changeEtherBalance(other, ONE_HBAR);
+      expect(await ethers.provider.getBalance(address)).to.equal(0n);
+    });
+
+    it("reports a refused HBAR transfer instead of recording a withdrawal that did not happen", async function () {
+      await injectHederaMocks();
+      const { consumer } = await deployConsumer();
+      const [owner] = await ethers.getSigners();
+      await (await owner.sendTransaction({ to: await consumer.getAddress(), value: ONE_HBAR })).wait();
+
+      // The token facade at SAUCE takes no HBAR: it has no receive and no payable function, so the call fails.
+      await expect(consumer.withdrawHbar(SAUCE, ONE_HBAR))
+        .to.be.revertedWithCustomError(consumer, "HbarTransferFailed")
+        .withArgs(SAUCE, ONE_HBAR);
     });
 
     it("lets nobody but the deployer take the HBAR the contract holds", async function () {

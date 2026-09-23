@@ -18,6 +18,9 @@ interface IMockHederaTokenService {
 
     /// @notice Test helper with no counterpart on Hedera: associates `account` with `token` and credits it.
     function mockCredit(address token, address account, uint256 amount) external;
+
+    /// @notice Test helper with no counterpart on Hedera: makes associateToken answer `length` bytes, not a code.
+    function mockAnswerLength(uint256 length) external;
 }
 
 /// @title MockHederaTokenService
@@ -39,10 +42,19 @@ contract MockHederaTokenService {
 
     mapping(address token => mapping(address account => bool)) private associated;
     mapping(address token => mapping(address account => uint256)) private balances;
+    /// @dev 0 answers a response code, as the real service does. Anything else answers that many bytes instead.
+    uint256 private answerLength;
 
     /// @dev The real service needs the account's own signature; a contract gives it by passing its own address.
     function associateToken(address account, address token) external returns (int64 responseCode) {
         require(msg.sender == account, "MockHederaTokenService: only self-association is modelled");
+        if (answerLength != 0) {
+            uint256 length = answerLength;
+            // Not a response code: a caller that reads 32 bytes out of it reads something the ledger never said.
+            assembly {
+                return(0x00, length)
+            }
+        }
         if (associated[token][account]) return TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT;
         associated[token][account] = true;
         return SUCCESS;
@@ -76,5 +88,9 @@ contract MockHederaTokenService {
     function mockCredit(address token, address account, uint256 amount) external {
         associated[token][account] = true;
         balances[token][account] += amount;
+    }
+
+    function mockAnswerLength(uint256 length) external {
+        answerLength = length;
     }
 }
