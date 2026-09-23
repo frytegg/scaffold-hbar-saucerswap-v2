@@ -75,6 +75,10 @@ Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.m
 
 ## What you get
 
+![The swap route with no wallet connected: a card headed "The same checks, with no wallet", a "Run the pre-flight" button, and below it a blocked verdict reading "The router may spend your token", the sentence that the router has no allowance and that the network would reject the swap and still charge the gas, and the line "What to do: Approve 1 SAUCE for the router"](docs/images/swap-preflight-refusal.png)
+
+*The refusal this template exists for, on `/swap` with no wallet, no key and no account. The verdict is `allowanceVerdict` in `packages/nextjs/lib/hedera/preflight.ts`, reached through `packages/nextjs/components/swap/SampleRunCard.tsx`; the reason and the action are what the connected panel shows for your own address. Taken on 23 September 2026 by `yarn shots`, which serves this repository's own production build on port 3210 and drives Chromium through the page, so the verdict in the picture is what Hedera testnet answered that day and not a drawing of one. That command re-takes it, and fails instead of writing the file when the panel stops saying what this caption says it says: `tools/route-probe/src/shots.mjs` holds both.*
+
 | Piece | What it does |
 | --- | --- |
 | `/swap` | a SaucerSwap V2 swap both ways: the account read from the mirror node, a quote on user action, one line per check the network would otherwise answer only after taking the gas, a cost preview, the send, and the outcome read back from the mirror node's DETAIL view. With no wallet connected it offers the same quote and the same checks against a fixed testnet account instead, so the refusals can be read without installing anything |
@@ -118,7 +122,7 @@ Nothing in the browser talks to a third party. Those route handlers, and the acc
 | `docs/evidence/` | one JSON record per signed scenario, re-read by `yarn evidence:check` |
 | `docs/hedera-behaviour.md` | the eight sections above, in full |
 | `tools/checks/` | the repository checks behind `yarn check:docs` |
-| `tools/gate/` and `tools/route-probe/` | the scaffold gate, and the browser probe as a standalone package so that no install of the app downloads a browser |
+| `tools/gate/` and `tools/route-probe/` | the scaffold gate, and the browser probe as a standalone package so that no install of the app downloads a browser; `yarn shots` is the same package taking the picture above |
 
 ## Environment variables
 
