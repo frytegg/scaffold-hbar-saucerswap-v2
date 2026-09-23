@@ -211,7 +211,7 @@ The collect is the whole payout in one transaction and one signature, and its fe
 
 **Symptom** — closing a position ends with `burn`, and an empty position burns cleanly. Asked to price it, `eth_call` returns without an error and `eth_estimateGas` answers a number, so a wallet shows a fee and sends. The transaction reverts with `HederaFail(292)`, and the gas is charged. Nothing in the simulation, the wallet or the position's own state says what was missing.
 
-**Real cause** — the manager burns a position by moving its NFT back to itself, and an HTS NFT moves only with the owner's approval, which the token service holds below the EVM. `setApprovalForAll` is sent to the NFT's own facade, not to the manager, and the manager reads it with `isApprovedForAll`. Like the allowance of the first section, that check runs at consensus and not during a simulation, so the only way to know before signing is to read the approval.
+**Real cause** — the manager burns a position by moving its NFT back to itself, and an HTS NFT moves only with the owner's approval, which the token service holds below the EVM. `setApprovalForAll` is sent to the NFT's own facade, not to the manager, and the manager reads it with `isApprovedForAll`. Like the allowance of the section on the simulators, that check runs at consensus and not during a simulation, so the only way to know before signing is to read the approval.
 
 **Proof** — three transactions of account 0.0.10645914 on 21 September 2026, for position serial 359, held in `packages/nextjs/lib/hedera/__tests__/fixtures/position/burn-approval.json`:
 
