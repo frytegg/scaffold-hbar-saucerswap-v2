@@ -179,6 +179,92 @@ test("a doc that names an older record of a scenario is refused, inside or outsi
   );
 });
 
+// One life cycle of a position, trimmed to the fields the block renders: the fresh-account cycle of 23 Sept 2026.
+const CYCLE = "docs/evidence/2026-09-23-position-cycle-362.json";
+
+/** @returns {import("../check-evidence.mjs").EvidenceRecord} */
+function cycle() {
+  /**
+   * @param {import("../check-evidence.mjs").EvidenceTransaction["role"]} role
+   * @param {number} gasUsed
+   * @param {string} feeTinybar
+   * @param {string} previewFeeTinybar
+   */
+  const sent = (role, gasUsed, feeTinybar, previewFeeTinybar) => ({
+    role,
+    result: "SUCCESS",
+    gasUsed,
+    feeTinybar,
+    previewFeeTinybar,
+    senderNetTinybar: `-${feeTinybar}`,
+  });
+  return {
+    recordedAt: "2026-09-23T08:37:29.229Z",
+    software: { viem: "2.39.0", relay: "relay/0.78.5" },
+    position: {
+      tokenId: "362",
+      depositedHbar: "11000000",
+      hbarReceivedTinybar: "10999999",
+      mintFeeTinybar: "64079561",
+    },
+    transactions: [
+      sent("approve", 726_816, "79222944", "89212980"),
+      sent("mint", 761_531, "83006879", "114000000"),
+      sent("decrease", 170_067, "18537303", "23265234"),
+      sent("collect", 888_485, "96844865", "107571312"),
+      sent("nft-approve", 726_792, "79220328", "89210244"),
+      sent("burn", 77_921, "8493389", "9713598"),
+    ],
+  };
+}
+
+const CYCLE_BLOCK = [
+  "<!-- checks:evidence -->",
+  "What a whole life cycle of a liquidity position cost, measured on 23 Sept 2026 through relay/0.78.5 with viem " +
+    `2.39.0 (\`${CYCLE}\`):`,
+  "",
+  "| transaction | network fee | cost preview shown before signing | gas used |",
+  "| --- | --- | --- | --- |",
+  "| approve the position manager for the token the position deposits | 0.79222944 HBAR | up to 0.8921298 HBAR | 726,816 |",
+  "| mint position 362 | 0.83006879 HBAR | up to 1.14 HBAR | 761,531 |",
+  "| take position 362's liquidity out | 0.18537303 HBAR | up to 0.23265234 HBAR | 170,067 |",
+  "| collect position 362 as native HBAR | 0.96844865 HBAR | up to 1.07571312 HBAR | 888,485 |",
+  "| approve the position NFT, without which the burn reverts | 0.79220328 HBAR | up to 0.89210244 HBAR | 726,792 |",
+  "| burn position 362 | 0.08493389 HBAR | up to 0.09713598 HBAR | 77,921 |",
+  "",
+  "Position 362 deposited 0.11 HBAR, was paid 0.10999999 HBAR back natively, and cost 0.64079561 HBAR of mint fee " +
+    "and 3.65325708 HBAR of network fees.",
+  "<!-- /checks:evidence -->",
+];
+
+test("a position record renders as a life cycle, one row per call, and its figures are checked like a swap's", () => {
+  const tracked = [...TRACKED, CYCLE];
+  const byFile = { ...records(), [CYCLE]: cycle() };
+  assert.deepEqual(inspect(CYCLE_BLOCK, byFile, tracked), []);
+
+  const edited = CYCLE_BLOCK.map(line => line.replace("| 0.96844865 HBAR |", "| 1.96844865 HBAR |"));
+  const findings = inspect(edited, byFile, tracked);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /the files give: \| collect position 362 as native HBAR \| 0\.96844865 HBAR \|/);
+});
+
+test("a block that mixes a life cycle with a swap is refused, because the two are measured differently", () => {
+  const { lines, problems } = renderEvidenceBlock([
+    { file: CYCLE, record: cycle() },
+    { file: HBAR_TO_SAUCE, record: records()[HBAR_TO_SAUCE] },
+  ]);
+  assert.deepEqual(lines, []);
+  assert.equal(problems.length, 1);
+  assert.match(problems[0], /mixes 1 position records with 1 swap records/);
+});
+
+test("a life cycle with a role no cycle sends is reported rather than rendered as a blank row", () => {
+  const record = cycle();
+  record.transactions[0].role = "swap";
+  const { problems } = renderEvidenceBlock([{ file: CYCLE, record }]);
+  assert.deepEqual(problems, [`${CYCLE} holds a transaction with the role swap, which no life cycle sends`]);
+});
+
 test("a line added inside the block, a block without files, an untracked file and an open block are refused", () => {
   assert.match(inspect([...BLOCK.slice(0, -1), "Extra.", BLOCK.at(-1) ?? ""])[0].message, /move it out of the block/);
   assert.match(inspect(["<!-- checks:evidence -->", "No file.", "<!-- /checks:evidence -->"])[0].message, /names no/);

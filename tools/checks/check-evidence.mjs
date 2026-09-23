@@ -5,8 +5,9 @@ import { listDocs, listTrackedFiles, readJson, readText } from "./lib/repo.mjs";
 
 /**
  * @typedef {object} EvidenceTransaction
- * @property {"approve" | "swap" | "deploy"} role
+ * @property {"approve" | "swap" | "deploy" | "nft-approve" | "mint" | "decrease" | "collect" | "burn"} role
  * @property {string} result
+ * @property {number} [gasUsed]
  * @property {string} feeTinybar
  * @property {string} previewFeeTinybar
  * @property {string} senderNetTinybar
@@ -15,7 +16,8 @@ import { listDocs, listTrackedFiles, readJson, readText } from "./lib/repo.mjs";
  * @typedef {object} EvidenceRecord the fields of a docs/evidence/ record that the docs quote
  * @property {string} recordedAt
  * @property {{ viem: string, relay: string }} software
- * @property {{ direction: "hbar-to-token" | "token-to-hbar", amountIn: string, amountOut: string, tokenOut: string, summary: string, via?: { contract: string } }} swap
+ * @property {{ direction: "hbar-to-token" | "token-to-hbar", amountIn: string, amountOut: string, tokenOut: string, summary: string, via?: { contract: string } }} [swap]
+ * @property {{ tokenId: string, depositedHbar: string, hbarReceivedTinybar: string, mintFeeTinybar: string }} [position] a life cycle instead of a swap
  * @property {EvidenceTransaction[]} transactions
  */
 
@@ -55,19 +57,104 @@ function dayOf(isoTimestamp) {
 }
 
 /**
+ * The first line of any block: when the runs happened, what signed them, and which files the rest comes from.
+ * @param {string} what
+ * @param {{ file: string, record: EvidenceRecord }[]} evidence
+ * @returns {string}
+ */
+function measuredOn(what, evidence) {
+  const records = evidence.map(({ record }) => record);
+  const distinct = (/** @type {string[]} */ values) => [...new Set(values)];
+  return (
+    `${what}, measured on ${joined(distinct(records.map(record => dayOf(record.recordedAt))))} through ` +
+    `${joined(distinct(records.map(record => record.software.relay)))} with viem ` +
+    `${joined(distinct(records.map(record => record.software.viem)))} ` +
+    `(${joined(evidence.map(({ file }) => `\`${file}\``))}):`
+  );
+}
+
+/** What each call of a life cycle is called in the block, given the serial the record is about. */
+const POSITION_ROWS = {
+  approve: () => "approve the position manager for the token the position deposits",
+  "nft-approve": () => "approve the position NFT, without which the burn reverts",
+  mint: (/** @type {string} */ tokenId) => `mint position ${tokenId}`,
+  decrease: (/** @type {string} */ tokenId) => `take position ${tokenId}'s liquidity out`,
+  collect: (/** @type {string} */ tokenId) => `collect position ${tokenId} as native HBAR`,
+  burn: (/** @type {string} */ tokenId) => `burn position ${tokenId}`,
+};
+
+/**
+ * The block of a doc that quotes a set of position records: every transaction of every life cycle, what each one
+ * was charged against what the caller was shown before signing, and what the position itself put in and took out.
+ * @param {{ file: string, record: EvidenceRecord }[]} evidence in the order the block names the files
+ * @returns {{ lines: string[], problems: string[] }}
+ */
+function renderPositionBlock(evidence) {
+  const lines = [
+    measuredOn("What a whole life cycle of a liquidity position cost", evidence),
+    "",
+    "| transaction | network fee | cost preview shown before signing | gas used |",
+    "| --- | --- | --- | --- |",
+  ];
+  const problems = [];
+  const closing = [];
+  let fees = 0n;
+  for (const { file, record } of evidence) {
+    const position = record.position;
+    if (position === undefined) continue;
+    let cycleFees = 0n;
+    for (const transaction of record.transactions) {
+      const row = POSITION_ROWS[/** @type {keyof typeof POSITION_ROWS} */ (transaction.role)];
+      if (row === undefined) {
+        problems.push(`${file} holds a transaction with the role ${transaction.role}, which no life cycle sends`);
+        continue;
+      }
+      const fee = BigInt(transaction.feeTinybar);
+      lines.push(
+        `| ${row(position.tokenId)} | ${formatHbar(fee)} HBAR | ` +
+          `up to ${formatHbar(BigInt(transaction.previewFeeTinybar))} HBAR | ` +
+          `${(transaction.gasUsed ?? 0).toLocaleString("en-US")} |`,
+      );
+      cycleFees += fee;
+    }
+    fees += cycleFees;
+    closing.push(
+      `Position ${position.tokenId} deposited ${formatHbar(BigInt(position.depositedHbar))} HBAR, was paid ` +
+        `${formatHbar(BigInt(position.hbarReceivedTinybar))} HBAR back natively, and cost ` +
+        `${formatHbar(BigInt(position.mintFeeTinybar))} HBAR of mint fee and ${formatHbar(cycleFees)} HBAR of ` +
+        "network fees.",
+    );
+  }
+  lines.push("", ...closing);
+  // One cycle's total is the sentence above it; several are worth adding up.
+  if (closing.length > 1) {
+    lines.push("", `${formatHbar(fees)} HBAR of network fees over ${closing.length} life cycles.`);
+  }
+  return { lines, problems };
+}
+
+/**
  * The block of a doc that quotes a set of evidence files: what one run cost and what it moved, every figure read
- * from the files. The approval approves exactly the swap's input, as the evidence run does.
+ * from the files. The approval approves exactly the swap's input, as the evidence run does. A set of position
+ * records is rendered as life cycles instead; the two shapes are never mixed in one block.
  * @param {{ file: string, record: EvidenceRecord }[]} evidence in the order the block names the files
  * @returns {{ lines: string[], problems: string[] }} the block's expected lines, and what the files do not support
  */
 export function renderEvidenceBlock(evidence) {
+  const positions = evidence.filter(({ record }) => record.position !== undefined);
+  if (positions.length === evidence.length) return renderPositionBlock(evidence);
+  if (positions.length > 0) {
+    return {
+      lines: [],
+      problems: [
+        `this block mixes ${positions.length} position records with ${evidence.length - positions.length} swap ` +
+          "records: the two are measured differently, so each shape gets its own block",
+      ],
+    };
+  }
   const records = evidence.map(({ record }) => record);
-  const distinct = (/** @type {string[]} */ values) => [...new Set(values)];
   const lines = [
-    `What one run cost, measured on ${joined(distinct(records.map(record => dayOf(record.recordedAt))))} through ` +
-      `${joined(distinct(records.map(record => record.software.relay)))} with viem ` +
-      `${joined(distinct(records.map(record => record.software.viem)))} ` +
-      `(${joined(evidence.map(({ file }) => `\`${file}\``))}):`,
+    measuredOn("What one run cost", evidence),
     "",
     "| transaction | network fee | cost preview shown before signing | outcome |",
     "| --- | --- | --- | --- |",
@@ -77,13 +164,15 @@ export function renderEvidenceBlock(evidence) {
   let hbarIn = 0n;
   let hbarOut = 0n;
   for (const record of records) {
-    const [input, output] = record.swap.summary.split(" -> ");
-    const outcome = record.swap.direction === "token-to-hbar" ? `${output}, native` : output;
-    const outSymbol = record.swap.tokenOut.split(" ")[0];
+    const swap = record.swap;
+    if (swap === undefined) continue;
+    const [input, output] = swap.summary.split(" -> ");
+    const outcome = swap.direction === "token-to-hbar" ? `${output}, native` : output;
+    const outSymbol = swap.tokenOut.split(" ")[0];
     for (const transaction of record.transactions) {
       // A deployment is sent with a fixed gas limit and shows no estimate, so its preview is that limit at the gas
       // price of the day. The doc that quotes the block says so; the figure still comes from the record.
-      const deployed = record.swap.via?.contract ?? "the contract";
+      const deployed = swap.via?.contract ?? "the contract";
       const what =
         transaction.role === "approve"
           ? `approve ${input} for the router`
@@ -103,8 +192,8 @@ export function renderEvidenceBlock(evidence) {
       fees += BigInt(transaction.feeTinybar);
       net += BigInt(transaction.senderNetTinybar);
     }
-    if (record.swap.direction === "hbar-to-token") hbarIn += BigInt(record.swap.amountIn);
-    else hbarOut += BigInt(record.swap.amountOut);
+    if (swap.direction === "hbar-to-token") hbarIn += BigInt(swap.amountIn);
+    else hbarOut += BigInt(swap.amountOut);
   }
 
   const problems = [];

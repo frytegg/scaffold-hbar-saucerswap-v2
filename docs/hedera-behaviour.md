@@ -104,7 +104,7 @@ export function readyToSend(call: BuiltCall): BuiltCall & { gas?: bigint } {
 | --- | --- | --- | --- |
 | serial 359, 21 September 2026 | a research script, from `0.0.10645914` | [0x1012a831…cf80](https://hashscan.io/testnet/tx/0x1012a8314b1bc7b6c980cf548296fa69fbdba7d5b83bac01fccc06fd0843cf80) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x1012a8314b1bc7b6c980cf548296fa69fbdba7d5b83bac01fccc06fd0843cf80)) | `SUCCESS`, 888,485 gas, **67,396,079 tinybar of native HBAR** and the SAUCE, no WHBAR left anywhere |
 | serial 360, 22 September 2026 | a browser wallet, from the same account | [0xa93804fc…61d4](https://hashscan.io/testnet/tx/0xa93804fc6f1e4616fee889861d074499f4581893e51c20fb0fd0189ca5e761d4) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xa93804fc6f1e4616fee889861d074499f4581893e51c20fb0fd0189ca5e761d4)) | `SUCCESS`, 888,485 gas, **25,412,098 tinybar of native HBAR** and the SAUCE |
-| serial 361, 23 September 2026 | `yarn evidence:position`, from the same account | [0xaa50b98a…0cf8](https://hashscan.io/testnet/tx/0xaa50b98ad3f2fced5548b30142a6314d93fd141517018185158bd6bda77b0cf8) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xaa50b98ad3f2fced5548b30142a6314d93fd141517018185158bd6bda77b0cf8)) | `SUCCESS`, 888,485 gas, **10,999,999 tinybar of native HBAR** and 8.586388 SAUCE |
+| serial 361, 23 September 2026 | `yarn evidence:position`, from the same account | [0xaa50b98a…0cf8](https://hashscan.io/testnet/tx/0xaa50b98ad3f2fced5548b30142a6314d93fd141517018185158bd6bda77b0cf8) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xaa50b98ad3f2fced5548b30142a6314d93fd141517018185158bd6bda77b0cf8)) | `SUCCESS`, 888,485 gas, the payout **arrived as native HBAR** with the SAUCE beside it; the amounts are in the record, and in the table further down |
 | serial 362, 23 September 2026 | the same command, from `0.0.10678882`, created that morning | [0x0ba087aa…3ace](https://hashscan.io/testnet/tx/0x0ba087aa523ba0470d5aa0c96c337ee919099967ebbfd726a436f9427f4b3ace) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x0ba087aa523ba0470d5aa0c96c337ee919099967ebbfd726a436f9427f4b3ace)) | `SUCCESS`, 888,485 gas, the same payout to a sender that had never held a position |
 | serial 363, 23 September 2026 | the same command, from `0.0.10645914` again | [0xb2e0199c…53f7](https://hashscan.io/testnet/tx/0xb2e0199c489f63305e6477b81dad5cc6388cd7127b211e5b90195239051f53f7) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xb2e0199c489f63305e6477b81dad5cc6388cd7127b211e5b90195239051f53f7)) | `SUCCESS`, 888,485 gas, the same payout again |
 
@@ -112,7 +112,29 @@ The mirror node reports a sender in the long-zero form of its account id, not as
 
 The last three are `docs/evidence/2026-09-23-position-cycle-361.json`, `docs/evidence/2026-09-23-position-cycle-362.json` and `docs/evidence/2026-09-23-position-cycle-363.json`, and `yarn evidence:check` re-reads each one. The two patterns that do not work were established at simulation level only, on 21 September 2026: nobody sent either of them, and this document claims no more than that.
 
-**What it costs** — the split collect was charged **0.96844865 HBAR** on every one of the three cycles of 23 September, as it was on 22 September: 888,485 gas each time, whatever the amounts. It is the whole payout in one transaction and one signature, and the fee is more than eight times what the HBAR side of those positions was worth — a range this small is for proving the path, not for earning on it. The documented pattern leaves the user with a wrapped token, so the HBAR only arrives after a second transaction that this project has not measured. The Uniswap pattern costs whatever the reverted transaction's gas comes to and delivers nothing.
+**What it costs** — the split collect is 888,485 gas whatever the amounts, on 22 September as on 23. Two of the cycles of 23 September are below, the third in the section after this one; each figure comes from the record named beside it, which `yarn evidence:check` re-reads from the mirror node.
+
+<!-- checks:evidence -->
+What a whole life cycle of a liquidity position cost, measured on 23 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-23-position-cycle-361.json` and `docs/evidence/2026-09-23-position-cycle-363.json`):
+
+| transaction | network fee | cost preview shown before signing | gas used |
+| --- | --- | --- | --- |
+| mint position 361 | 0.83006879 HBAR | up to 1.14 HBAR | 761,531 |
+| take position 361's liquidity out | 0.18537303 HBAR | up to 0.23265234 HBAR | 170,067 |
+| collect position 361 as native HBAR | 0.96844865 HBAR | up to 1.07571312 HBAR | 888,485 |
+| burn position 361 | 0.08493389 HBAR | up to 0.09713598 HBAR | 77,921 |
+| mint position 363 | 0.83006879 HBAR | up to 1.14 HBAR | 761,531 |
+| take position 363's liquidity out | 0.18537303 HBAR | up to 0.22005306 HBAR | 170,067 |
+| collect position 363 as native HBAR | 0.96844865 HBAR | up to 1.07571312 HBAR | 888,485 |
+| burn position 363 | 0.08493389 HBAR | up to 0.09713598 HBAR | 77,921 |
+
+Position 361 deposited 0.11 HBAR, was paid 0.10999999 HBAR back natively, and cost 0.64079561 HBAR of mint fee and 2.06882436 HBAR of network fees.
+Position 363 deposited 0.11 HBAR, was paid 0.10999999 HBAR back natively, and cost 0.64079561 HBAR of mint fee and 2.06882436 HBAR of network fees.
+
+4.13764872 HBAR of network fees over 2 life cycles.
+<!-- /checks:evidence -->
+
+The collect is the whole payout in one transaction and one signature, and its fee is more than eight times what the HBAR side of those positions was worth — a range this small is for proving the path, not for earning on it. The documented pattern leaves the user with a wrapped token, so the HBAR only arrives after a second transaction that this project has not measured. The Uniswap pattern costs whatever the reverted transaction's gas comes to and delivers nothing.
 
 **How the template protects** — `buildSplitCollect` in `packages/nextjs/lib/hedera/position.ts` builds the three calls in that order and takes the recipient as its only address, so the other two patterns cannot be written by mistake. It also takes the floor the unwrap is given and refuses to build a collect whose floor is zero, the way the mint refuses minimums of zero, unless the caller says `acceptAnyAmount` out loud; `collectFloor` in `packages/nextjs/lib/hedera/__live__/positionRun.ts` is where the signed run sources it — what the manager owes the position, the same tolerance under it as the mint's minimums. `explainError` in `packages/nextjs/lib/hedera/failure.ts` names the 184 when one of the other two patterns is tried anyway, reading it out of the mirror node's `/actions` when the `multicall` erased it. Afterwards the claim is checked rather than assumed: `hbarPaidByCollect` in the same run module adds the sender's own line in the transaction record to the fee it paid and refuses the run unless that is at least what the manager owed the position, so a collect that handed over WHBAR tokens could not be recorded as one that paid HBAR, while anything above it is reported as what the sweep found rather than treated as an error. `checkPositionEvidence` in `packages/nextjs/lib/hedera/evidence.ts` makes the same comparison again, from the mirror node, for anyone reading the record without a key.
 
@@ -139,7 +161,24 @@ The other half of the proof is that the template does not repeat the mistake. On
 | `setApprovalForAll(manager, true)`, sent because the pre-flight refused the burn | [0xce4bcda1…835f](https://hashscan.io/testnet/tx/0xce4bcda188932836de5875e99e305e383302b32b6ab2f40dc3cb04b3adb8835f) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0xce4bcda188932836de5875e99e305e383302b32b6ab2f40dc3cb04b3adb8835f)) | `SUCCESS`, 726,792 gas |
 | the burn of serial 362 | [0x711da2ec…8d7f](https://hashscan.io/testnet/tx/0x711da2eca3bf569b71a198993b9ae898bba1cc16a0128ff288ec2aa1bdcc8d7f) ([mirror](https://testnet.mirrornode.hedera.com/api/v1/contracts/results/0x711da2eca3bf569b71a198993b9ae898bba1cc16a0128ff288ec2aa1bdcc8d7f)) | `SUCCESS`, 77,921 gas, and the serial is gone from the account |
 
-**What it costs** — the refused burn burnt **0.07282181 HBAR** and changed nothing. The approval that makes the burn possible cost **0.79220328 HBAR** on both days, once per account rather than once per position: the two cycles of 23 September sent from an account that already had it burnt their positions for **0.08493389 HBAR** and nothing else. Reading `isApprovedForAll` before signing costs nothing, which is the whole of the difference.
+**What it costs** — the refused burn of 21 September burnt **0.07282181 HBAR** and changed nothing; that transaction is the first of the first table above, and its fee is its 66,809 gas at 109 tinybar per gas. The approval that makes a burn possible is paid once per account, not once per position, so the fresh account of 23 September paid for it and the two cycles from the account that already had it did not — the whole cycle it belongs to, from the same command:
+
+<!-- checks:evidence -->
+What a whole life cycle of a liquidity position cost, measured on 23 Sept 2026 through relay/0.78.5 with viem 2.39.0 (`docs/evidence/2026-09-23-position-cycle-362.json`):
+
+| transaction | network fee | cost preview shown before signing | gas used |
+| --- | --- | --- | --- |
+| approve the position manager for the token the position deposits | 0.79222944 HBAR | up to 0.8921298 HBAR | 726,816 |
+| mint position 362 | 0.83006879 HBAR | up to 1.14 HBAR | 761,531 |
+| take position 362's liquidity out | 0.18537303 HBAR | up to 0.23265234 HBAR | 170,067 |
+| collect position 362 as native HBAR | 0.96844865 HBAR | up to 1.07571312 HBAR | 888,485 |
+| approve the position NFT, without which the burn reverts | 0.79220328 HBAR | up to 0.89210244 HBAR | 726,792 |
+| burn position 362 | 0.08493389 HBAR | up to 0.09713598 HBAR | 77,921 |
+
+Position 362 deposited 0.11 HBAR, was paid 0.10999999 HBAR back natively, and cost 0.64079561 HBAR of mint fee and 3.65325708 HBAR of network fees.
+<!-- /checks:evidence -->
+
+Reading `isApprovedForAll` before signing costs nothing, which is the whole of the difference between that cycle and a burn that reverts.
 
 **How the template protects** — `buildBurn` in `packages/nextjs/lib/hedera/position.ts` takes what `isApprovedForAll` answered and refuses to build the call when it is false, naming the approval to send and why no simulator catches it; `readNftApproval` in `packages/nextjs/lib/hedera/positionReads.ts` is the read and `nftApprovalVerdict` in `packages/nextjs/lib/hedera/positionPreflight.ts` the verdict a panel shows, with the action `approve`, while `buildNftApproval` builds the remedy. `packages/nextjs/lib/hedera/__live__/positions.signed.ts` is that sequence run end to end: it asks `checkPositionBurn` first, sends the approval when the answer is `fail`, asks again, and `assertPreflightPasses` stops the run rather than send a burn the network would refuse.
 
