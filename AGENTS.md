@@ -48,7 +48,8 @@ Run these before you stop, and fix what fails:
 3. Changed anything under `packages/nextjs`: `yarn test:unit`, `yarn build`, then `yarn probe:routes`.
 4. Changed anything under `packages/hardhat`: `yarn test:mock`, then `yarn test`. The second fails when hashio, the public relay the fork reads, is down; run it again before you debug.
 5. Changed `template.json`, a `package.json`, the lockfile or a workflow: `yarn gate:local`. It scaffolds the committed HEAD, so commit first.
-6. `git status` lists only the files you meant to change, and no command above modified a tracked file.
+6. Changed a rule in `tools/checks`: run that check in a scaffold too, not only here. A scaffold is a different tree — the CLI drops `postinstall`, `precommit` and `lint-staged`, and `template.json` is gone — so a rule that passes in this repository can fail there, and the gate's legs for the other package manager are where you find out. `yarn gate:local`, or the cheap simulation: remove those three scripts, move `template.json` aside, run the check, put both back.
+7. `git status` lists only the files you meant to change, and no command above modified a tracked file.
 
 ## Critical invariants
 
