@@ -1,7 +1,12 @@
 // @ts-check
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { inspectDocCommands, inspectManifest, inspectUndocumented } from "../check-scripts.mjs";
+import {
+  consumeEntriesForAbsentScripts,
+  inspectDocCommands,
+  inspectManifest,
+  inspectUndocumented,
+} from "../check-scripts.mjs";
 import { createAllowlist, parseMarkdown } from "../lib/markdown.mjs";
 import { fixtureDoc, linesOf } from "./support.mjs";
 
@@ -104,6 +109,24 @@ test("an exception is declared in a doc, and reported when it stops excusing any
   assert.deepEqual(
     allowlist.staleEntries().map(finding => finding.message),
     ['allowlist entry "scripts: gone" excuses nothing in this file: remove it'],
+  );
+});
+
+test("in a scaffold, an entry for a script the CLI dropped is not stale; here it still is", () => {
+  const block = "<!-- checks:allow\nscripts: postinstall precommit\n-->";
+  // What a scaffold looks like: the lifecycle scripts this repository declares are not in its manifest at all.
+  const scaffold = createAllowlist(parseMarkdown("AGENTS.md", block), "scripts");
+  consumeEntriesForAbsentScripts({ allowlists: [scaffold], rootScripts: new Set(["dev", "lint:strict"]) });
+  assert.deepEqual(scaffold.staleEntries(), []);
+
+  // And the strict reading this repository keeps: the scripts are here, nothing needed the entries, so they rot.
+  const here = createAllowlist(parseMarkdown("AGENTS.md", block), "scripts");
+  assert.deepEqual(
+    here.staleEntries().map(finding => finding.message),
+    [
+      'allowlist entry "scripts: postinstall" excuses nothing in this file: remove it',
+      'allowlist entry "scripts: precommit" excuses nothing in this file: remove it',
+    ],
   );
 });
 

@@ -95,6 +95,10 @@ export function createAllowlist(doc, kind) {
       used.add(token);
       return true;
     },
+    /** @returns {string[]} every token the block declares, whether or not anything has needed it */
+    declared() {
+      return [...declared];
+    },
     /** @returns {import("./report.mjs").Finding[]} */
     staleEntries() {
       return [...declared]

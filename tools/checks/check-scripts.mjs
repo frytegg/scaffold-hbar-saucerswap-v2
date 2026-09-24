@@ -136,6 +136,24 @@ export function inspectUndocumented({ rootScripts, named, permits }) {
 }
 
 /**
+ * A scaffold holds fewer root scripts than the repository it came from: the CLI drops the lifecycle ones a scaffolded
+ * project has no use for — `postinstall`, `precommit`, `lint-staged`, which exist here for husky. An allowlist entry
+ * for one of those excuses nothing there, and reporting it would ask a reader to delete a line that is right in the
+ * tree it was written in. So in a scaffold an entry whose script this tree does not have is consumed instead. Where
+ * `template.json` is present — this repository — the strict reading stands, and an entry nothing needs is a finding.
+ * @param {object} input
+ * @param {{ permits: (token: string) => boolean; declared: () => string[] }[]} input.allowlists
+ * @param {Set<string>} input.rootScripts
+ */
+export function consumeEntriesForAbsentScripts({ allowlists, rootScripts }) {
+  for (const allowlist of allowlists) {
+    for (const script of allowlist.declared()) {
+      if (!rootScripts.has(script)) allowlist.permits(script);
+    }
+  }
+}
+
+/**
  * @param {any} manifest parsed `template.json`
  * @returns {string[]} the script each `{run:…}` placeholder of it runs
  */
@@ -172,6 +190,7 @@ export const check = {
     /** @param {string} script */
     const permits = script => allowlists.some(allowlist => allowlist.permits(script));
     findings.push(...inspectUndocumented({ rootScripts, named, permits }));
+    if (!hasManifest) consumeEntriesForAbsentScripts({ allowlists, rootScripts });
     findings.push(...allowlists.flatMap(allowlist => allowlist.staleEntries()));
     const scope = hasManifest
       ? `${docs.length} docs and ${MANIFEST}`
