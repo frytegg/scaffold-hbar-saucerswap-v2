@@ -8,6 +8,13 @@ To call them from a project of your own, copy the modules at the top of `package
 
 Nothing else has to come with them. Each of those modules imports from that same directory and from `viem`, and from nothing else: no Next.js, no React, no wagmi, and no page, hook or component of this template. `packages/nextjs/lib/hedera/__tests__/libraryDependencies.test.ts` reads them and fails on any import that is neither, so that sentence is checked rather than remembered. What they need while they run is the two public endpoints the example names, and no key.
 
+That copy was made on 24 September 2026, into a project holding nothing but `viem` and TypeScript: the modules
+compiled under `strict`, and a `checkRecipient` in that project answered from the mirror node. Two things it needed,
+neither of them this template's: `skipLibCheck`, or the DOM library, in its `tsconfig.json`, because viem's own
+dependency declares browser types; and a bundler or CommonJS output, because these modules import each other without
+file extensions, which Node refuses when it reads them as ES modules. A Scaffold-HBAR or Next.js project gives both
+already.
+
 ```ts
 import { createPublicClient, http } from "viem";
 import {
