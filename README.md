@@ -79,7 +79,7 @@ Each record also carries the versions it ran on, what every pre-flight check ans
 
 ## Nine things the network does that your tools report wrongly, or not at all
 
-Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.md), with the transactions that prove it, what the mistake costs in HBAR, the code that refuses it and the test that keeps that code honest.
+Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.md), with the transactions that prove it, what the mistake costs in HBAR, the code that refuses it and the test that keeps that code honest. If you arrived here holding an error string rather than a question, [`docs/troubleshooting.md`](docs/troubleshooting.md) is keyed by the string itself — including the three custom errors that have no name attached to them anywhere: `0xffb9e6ed`, `0xace7dae0` and `0xa9688682`.
 
 **[The simulators approve a swap the network refuses](docs/hedera-behaviour.md#the-simulators-approve-a-swap-the-network-refuses).** An HTS allowance is held below the EVM, so `eth_call`, `eth_estimateGas` and the mirror node's simulator all accept a token-input swap the network then rejects with `SPENDER_DOES_NOT_HAVE_ALLOWANCE`. You get one keyless read before the send, `allowanceVerdict`, that refuses it and names the amount to approve — and a live check that fails the day the simulators stop being wrong.
 
@@ -147,6 +147,7 @@ Nothing in the browser talks to a third party. Those route handlers, and the acc
 | `packages/hardhat/contracts/` | the consumer, its own minimal interfaces, the mocks the offline tier injects, and the inherited samples |
 | `docs/evidence/` | one JSON record per signed scenario, re-read by `yarn evidence:check` |
 | `docs/hedera-behaviour.md` | the nine sections above, in full |
+| `docs/troubleshooting.md` | the same failures keyed by the exact string a tool printed, each one captured in a file the entry names |
 | `tools/checks/` | the repository checks behind `yarn check:docs` |
 | `tools/gate/` and `tools/route-probe/` | the scaffold gate, and the browser probe as a standalone package so that no install of the app downloads a browser; `yarn shots` is the same package taking the picture above |
 
