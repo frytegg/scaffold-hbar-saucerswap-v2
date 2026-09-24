@@ -160,7 +160,8 @@ UI components come from `@scaffold-hbar-ui/components`: `Address`, `Balance`, `H
 Always:
 - run the steps of "Verify your change" before you stop;
 - document a flag-free alias script, never a command with a flag;
-- keep keys out of files: the deployer key lives encrypted in `packages/hardhat/.env`, or in the shell for one command.
+- keep keys out of files: the deployer key lives encrypted in `packages/hardhat/.env`, or in the shell for one command;
+- leave the inherited samples where they are, and do not deploy them. They are kept because a template is a starting point and they are the stock Hedera examples, with their own deploy scripts and fork tests; they are not deployed because `deployedContracts.ts` is what `/debug` reads, and one entry for chain 296 means that page shows what this project wrote, deployed and verified, and nothing a reader would take for ours.
 
 Ask first:
 - adding or upgrading a dependency: it changes the lockfile, and an install under `CI=true` fails when the committed lockfile would have to change. The Vite that Vitest runs on is held at 6.4.3 by a resolution recorded in the lockfile only, not in a `package.json`: a lockfile generated again resolves Vite 7, which declares Node.js 20.19 or later, above this project's floor. An npm-mode install never reads that lockfile; it gets one Vite 6 because the direct `vite` devDependency of `packages/nextjs` also satisfies Vitest's range;
