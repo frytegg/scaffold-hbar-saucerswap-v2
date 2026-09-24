@@ -474,3 +474,22 @@ function renderRefusalBody(refusal: PreflightRefusal): string[] {
 export function renderPreflight(outcome: PreflightOutcome): string {
   return (outcome.ok ? renderReportBody(outcome.report) : renderRefusalBody(outcome.refusal)).join("\n");
 }
+
+/**
+ * What to say about an account passed after the command name, where this command never looks for one: empty when
+ * nothing was passed. The question is the only way in, because an argument does not survive the script name under
+ * every package manager — but one that does arrive here is named rather than dropped without a word, which is the
+ * mistake this whole template is about.
+ */
+export function renderIgnoredArguments(commandLine: readonly string[]): string {
+  const given = commandLine.map(argument => argument.trim()).filter(argument => argument !== "");
+  if (given.length === 0) return "";
+  return [
+    "",
+    ...paragraph(
+      `${given.join(" ")} ${given.length === 1 ? "was" : "were"} passed after the command name, and this command ` +
+        "reads no arguments: it asks for the account on standard input, because an argument does not survive the " +
+        "script name under every package manager. Type it at the question below, or pipe it in.",
+    ),
+  ].join("\n");
+}

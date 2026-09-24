@@ -41,13 +41,19 @@ async function askForAccount() {
   }
 }
 
-const typed = await askForAccount();
-process.stdout.write("\n");
-
 const { report, exitCode } = await withTsLoader(async load => {
-  const { exitCodeOf, renderPreflight, runPreflight } = await load(REPORT);
+  const { exitCodeOf, renderIgnoredArguments, renderPreflight, runPreflight } = await load(REPORT);
   const { mirrorBaseUrl, testnetClient, testnetMirror } = await load(CLIENTS);
   const { jsonRpcUrl } = await load(UPSTREAMS);
+
+  // An account after the command name arrives here under one package manager and not the other, and is read under
+  // neither: say so before asking, rather than answering a question nobody asked.
+  const ignored = renderIgnoredArguments(process.argv.slice(2));
+  if (ignored !== "") process.stdout.write(`${ignored}\n\n`);
+
+  const typed = await askForAccount();
+  process.stdout.write("\n");
+
   const outcome = await runPreflight({
     mirror: testnetMirror,
     client: testnetClient,

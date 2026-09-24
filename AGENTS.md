@@ -37,7 +37,7 @@ yarn hardhat:deploy:testnet     # deploy to Hedera testnet; asks for the key's p
 
 A script that needs a flag gets a flag-free alias, as `lint:strict` and `hardhat:deploy:testnet` do: in a project scaffolded for npm, the CLI turns each documented command into `npm run <script>`, and a flag that follows it goes to npm, not to the script.
 
-`yarn preflight` takes the account on standard input for the same reason, an argument after the script name being dropped there too, and its exit code is part of what it answers: 0 a verdict was printed, 1 what was typed is neither an EVM address nor a Hedera account id, 2 the mirror node or the relay did not answer, 3 anything else. The codes are `PREFLIGHT_EXIT_CODES` in `packages/nextjs/lib/hedera/__live__/preflightReport.ts`, and every one of them has a test in `packages/nextjs/lib/hedera/__tests__/preflightReport.test.ts`. It reads two third-party endpoints, so it belongs beside `check:live` and never inside `check:all`.
+`yarn preflight` takes the account on standard input for the same reason, an argument after the script name being dropped there too; an argument that does reach it is named and explained by `renderIgnoredArguments` rather than ignored in silence. Its exit code is part of what it answers: 0 a verdict was printed, 1 what was typed is neither an EVM address nor a Hedera account id, 2 the mirror node or the relay did not answer, 3 anything else. The codes are `PREFLIGHT_EXIT_CODES` in `packages/nextjs/lib/hedera/__live__/preflightReport.ts`, and every one of them has a test in `packages/nextjs/lib/hedera/__tests__/preflightReport.test.ts`. It reads two third-party endpoints, so it belongs beside `check:live` and never inside `check:all`.
 
 ## Verify your change
 

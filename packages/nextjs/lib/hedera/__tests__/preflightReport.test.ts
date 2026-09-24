@@ -6,6 +6,7 @@ import {
   type SectionId,
   exitCodeOf,
   readAccountRef,
+  renderIgnoredArguments,
   renderPreflight,
   runPreflight,
 } from "../__live__/preflightReport";
@@ -392,6 +393,29 @@ describe("the call no simulator prices", () => {
   it("carries the sentence that explains the wallet's own larger figure", async () => {
     const report = reported(await answer(HOLDER_ADDRESS, HOLDER));
     expect(verdict(report, "gas-rule", "and the wallet").says).toContain("it prices the gas limit");
+  });
+});
+
+describe("an account passed after the command name", () => {
+  it("is named and explained, rather than dropped without a word", () => {
+    const said = flat(renderIgnoredArguments(["0.0.10884150"]));
+    expect(said).toContain("0.0.10884150 was passed after the command name");
+    expect(said).toContain("reads no arguments");
+    expect(said).toContain("asks for the account on standard input");
+  });
+
+  it("says it of several, in the plural, and of none at all says nothing", () => {
+    expect(flat(renderIgnoredArguments(["0.0.1", "0x00"]))).toContain("0.0.1 0x00 were passed");
+    expect(renderIgnoredArguments([])).toBe("");
+    expect(renderIgnoredArguments(["  ", ""])).toBe("");
+  });
+
+  it("wraps to the width of the report, so it reads as part of it", () => {
+    const lines = renderIgnoredArguments(["0.0.10884150"])
+      .split("\n")
+      .filter(line => line !== "");
+    expect(lines.length).toBeGreaterThan(1);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(96);
   });
 });
 
