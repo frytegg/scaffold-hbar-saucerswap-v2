@@ -1,6 +1,6 @@
 # Swap and manage liquidity on SaucerSwap V2, from a Hedera dApp
 
-On Hedera a swap can pass `eth_call`, `eth_estimateGas` and the mirror node's own simulator and still be rejected by the network, which keeps the gas. The wallet has nothing to warn about, because every simulator it can ask said yes: it showed a fee, a Confirm button and nothing else. One such swap on 22 September 2026 burnt 0.13498778 HBAR, delivered nothing, and left a MetaMask history that says "Interaction failed" and nothing more.
+On Hedera a swap can pass `eth_call`, `eth_estimateGas` and the mirror node's own simulator and still be rejected by the network, which keeps the gas. The wallet has nothing to warn about, because every simulator it can ask said yes: it showed a fee, a Confirm button and nothing else. One such swap on 22 September 2026 burnt [0.13498778 HBAR](https://hashscan.io/testnet/tx/0xdf368443228e69c4ed1a2a7192d0978b15a51f219981cdd2d5f63250d1582352), delivered nothing, and left a MetaMask history that says "Interaction failed" and nothing more.
 
 This is a Scaffold-HBAR template — Next.js, wagmi and Hardhat — whose swap path knows what the simulators do not. It refuses, before the wallet opens, what the network would refuse after taking the gas; it decodes the failures that happen anyway into one sentence and one action; it carries gas limits for the calls no simulator will price; and it puts a testnet transaction you can open behind every figure it quotes. On that path you swap HBAR for an HTS token and back on SaucerSwap V2 — from the Swap page, from a script, and from your own Solidity contract — and open, read and close a V2 liquidity position from a script, with the Positions page reading it back.
 
@@ -98,6 +98,24 @@ Each has its own section in [`docs/hedera-behaviour.md`](docs/hedera-behaviour.m
 **[An account can have two addresses, and only one of them can receive a token](docs/hedera-behaviour.md#an-account-can-have-two-addresses-and-only-one-of-them-can-receive-a-token).** An account born from an ECDSA key answers to the long-zero form of its id and to an `evm_address` of its own; pay a token to the first and the token service refuses it with `INVALID_ALIAS_KEY`, the same custom error as the association failure above with 282 inside it instead of 184, so the two look alike and want opposite things. You get that comparison inside `recipientVerdict`, before it looks at associations at all, and one transaction of ours that proves the difference: the same account, the same pool, the same direction, one address form apart.
 
 **[A failed HTS operation can be a successful transaction](docs/hedera-behaviour.md#a-failed-hts-operation-can-be-a-successful-transaction).** The token service answers a response code rather than reverting, so a refused association is a `SUCCESS` with a green tick and a full fee. You get `facadeResultVerdict` and `explainResponseCode` in TypeScript, and a Solidity consumer whose constructor accepts code 22 and nothing else, so a contract that cannot hold its own output token never gets an address.
+
+## Take either one away
+
+**Without Hedera there is no subject.** Every one of the nine behaviours above is a property of this network:
+the token service answering a response code where the EVM would revert, an allowance held below the EVM where
+no simulator can see it, two units for one currency across the JSON-RPC boundary, an account with two address
+forms of which only one can receive a token, a call the relay will not price. None of them exists on a chain
+where the EVM is the whole ledger. Move this template to one and the library has nothing left to check.
+
+**Without SaucerSwap there is no template.** The quote, the swap both ways, the position life cycle and the
+Solidity consumer are calls into its router, its quoter and its position manager. Remove it and what remains
+is a Scaffold-HBAR starter with an empty `lib/`: the pages have nothing to call, the evidence records have
+nothing to record, and seven of the nine behaviours were found by calling its contracts and reading what came
+back.
+
+That is the test this template was built to pass, and it is the reason the integration is not an SDK imported
+once to tick a box: **the failures documented here are the failures of using that protocol on this network,
+and neither half of the sentence is removable.**
 
 ## What you get
 
