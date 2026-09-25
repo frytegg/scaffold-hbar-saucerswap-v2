@@ -27,7 +27,7 @@ With no wallet connected, `/swap` offers one button that runs the quote and the 
 
 ## Verify it yourself
 
-Three ways in. The first two are short and ask for no key, no wallet and no account of yours: one replays the failures themselves from the answers captured when they happened and touches no network at all, the other puts the same checks on an account you name. The third re-runs every proof this repository makes, against the tests, against the tree and against the public mirror node. Start with the first — it is the argument of this template in one screen.
+Four ways in. The first three are short and ask for no key, no wallet and no account of yours: one replays the failures themselves from the answers captured when they happened and touches no network at all, one falsifies those captured answers to show the sentences are computed rather than written, and the third puts the same checks on an account you name. The third re-runs every proof this repository makes, against the tests, against the tree and against the public mirror node. Start with the first — it is the argument of this template in one screen.
 
 ### The first one: three failures, replayed offline
 
@@ -39,7 +39,28 @@ It replays three of the failures below from the answers captured when they happe
 
 Every sentence it shows in quotes is produced by the library while the command runs, from the captured answer printed above it, so what you read is what the app would have shown, and the command fails instead of printing when a captured answer stops producing the refusal it is shown for. The answers themselves are the committed files of `packages/nextjs/lib/hedera/__tests__/fixtures/`, and nothing leaves the process: `packages/nextjs/lib/hedera/__tests__/replayCaptured.test.ts` asserts that against a global `fetch` that throws.
 
-### The second one: the same checks, on an account you name
+### The second one: break the evidence, and watch the sentences follow
+
+```bash
+yarn tamper
+```
+
+The command above prints sentences and claims the library computed every one of them from the captured answer
+beside it. A reader cannot check that by reading, because a hardcoded sentence and a computed one look the same
+on a screen. So this command breaks the data on purpose.
+
+It takes three captured answers, alters one field in each and runs the same library function over both versions:
+the response code inside a successful transaction goes from 194 to 22, the code hidden in a reverted swap's
+`/actions` goes from 292 to 184, and the status that makes a call un-priceable stops saying `INVALID_NFT_ID`.
+Each time, it prints what the library said before and what it says now. The verdict flips from fail to pass, the
+action changes from `approve` to `associate`, and the advice to supply a gas limit disappears with the reason
+for it.
+
+Every alteration is made to a copy held in memory. The files are read twice and their digests compared, so the
+report can say that nothing on disk moved. The command exits 1 if any sentence survives its own evidence being
+falsified, because a sentence that does not follow its data was written by hand.
+
+### The third one: the same checks, on an account you name
 
 ```bash
 yarn preflight
@@ -51,7 +72,7 @@ It asks on standard input rather than taking the account after the command, beca
 
 It reads two third-party endpoints, which is why it is not part of `yarn check:all`, and it says which of two different things happened rather than guessing between them. It exits 0 when it printed a verdict, 1 when what you typed is neither an address nor an account id, 2 when the mirror node or the relay did not answer, and 3 for anything else. An endpoint that is down is reported as an endpoint that is down, never as an answer about the account.
 
-### The whole thing, in three commands
+### The whole thing, in three more commands
 
 | command | what it proves |
 | --- | --- |

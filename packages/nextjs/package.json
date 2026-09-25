@@ -18,6 +18,7 @@
     "replay": "node lib/hedera/__live__/replay.mjs",
     "serve": "next start",
     "start": "next dev",
+    "tamper": "node lib/hedera/__live__/tamper.mjs",
     "test": "vitest run"
   },
   "dependencies": {

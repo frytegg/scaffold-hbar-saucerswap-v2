@@ -9,6 +9,7 @@ Stack: Node.js 20.18.3 or later, TypeScript in strict mode, Next.js 15 (app dire
 
 ```bash
 yarn replay                     # print three captured Hedera failures and what the library says about each; no network
+yarn tamper                     # alter three captured answers and show the library's sentences follow; exits 1 if one does not. No network
 yarn preflight                  # ask for an account and print what the pre-flight checks say about it; third parties, network needed
 yarn dev                        # development server, http://localhost:3000
 yarn build                      # production build of packages/nextjs
