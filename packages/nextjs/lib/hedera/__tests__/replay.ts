@@ -43,8 +43,14 @@ export type WalletFeeDisplay = {
   }[];
 };
 
-/** An error a browser wallet handed back to the page, as the session report copied it. */
-export type WalletErrorRecord = { readonly error: { readonly message: string } };
+/**
+ * An error a browser wallet handed back to the page, as the session report copied it. The MetaMask record of
+ * 22 September carries only the sentence the wallet wrapped its refusal in; the HashPack record of 30 September
+ * also carries the EIP-1193 code and the detail line, because that wallet answered with both.
+ */
+export type WalletErrorRecord = {
+  readonly error: { readonly message: string; readonly code?: number; readonly details?: string };
+};
 
 export function walletFeeDisplay(): WalletFeeDisplay {
   return JSON.parse(readFileSync(fixtureUrl("wallet/metamask-fee-display"), "utf8")) as WalletFeeDisplay;

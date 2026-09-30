@@ -386,8 +386,40 @@ describe("explainError on the library's own refusals and on transport failures",
     [{ code: -32002, message: "The JSON-RPC upstream did not answer." }, "unavailable", "retry"],
     [{ code: 4001, message: "User rejected the request." }, "rejected-by-user", "none"],
     [{ code: -32601, message: "Method eth_fillTransaction not found" }, "rpc-refusal", "none"],
+    [{ code: 4200, message: "Unsupported method: wallet_sendTransaction" }, "wallet-unsupported", "none"],
+    [{ code: 4100, message: "The requested account has not been authorized." }, "wallet-unsupported", "none"],
+    [{ code: 4901, message: "The Provider is not connected to the requested chain." }, "wallet-unsupported", "none"],
   ])("%j", (error, kind, action) => {
     expect(explainError(error)).toMatchObject({ kind, action });
+  });
+
+  // A wallet that cannot send is not a relay that refused. Saying the second when the first happened sends a
+  // reader to the wrong place, which is the defect this library exists to remove; it was found on 30 September
+  // 2026 when HashPack answered 4200 and this function blamed the relay.
+  it("blames the wallet, not the relay, for an EIP-1193 provider code", () => {
+    const captured = walletErrorRecord("hashpack-send-unsupported");
+    const failure = explainError({ code: 4200, message: captured.error.details });
+
+    expect(failure.kind).toBe("wallet-unsupported");
+    expect(failure.via).toBe("EIP-1193 4200");
+    expect(failure.message).toContain("The wallet does not support");
+    expect(failure.message).toContain("The relay never saw the request");
+    expect(failure.message).not.toContain("The JSON-RPC relay refused");
+  });
+
+  it("warns that the network may have executed the call the wallet says it could not send", () => {
+    const failure = explainError({ code: 4200, message: "Unsupported method: wallet_sendTransaction" });
+
+    // The session that produced this error had one such send executed and charged while the page was told the
+    // method was unsupported, so the sentence has to send the reader to the mirror node before they retry.
+    expect(failure.message).toContain("may still have executed");
+    expect(failure.message).toContain("mirror node");
+  });
+
+  it("still calls a relay refusal a relay refusal", () => {
+    const failure = explainError({ code: -32602, message: "Invalid parameter" });
+    expect(failure.kind).toBe("rpc-refusal");
+    expect(failure.message).toContain("The JSON-RPC relay refused");
   });
 
   it.each([undefined, null, "boom", new TypeError("x is not a function")])("never throws on %j", input => {

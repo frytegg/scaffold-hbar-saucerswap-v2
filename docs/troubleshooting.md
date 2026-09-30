@@ -137,6 +137,21 @@ went through.
 **Captured in** `packages/nextjs/lib/hedera/__tests__/fixtures/wallet/metamask-send-refused-no-gas-limit.json`, and
 the screen itself is `docs/images/wallet-fee-unavailable-mint.png`.
 
+## `Unsupported method: wallet_sendTransaction`
+
+**What it means.** The wallet said this, not the relay. EIP-1193 numbers provider errors in the 4000s, and this
+one is 4200: the wallet does not serve the method the library used to send. viem asks `eth_sendTransaction`
+first and falls back to `wallet_sendTransaction` only when the first is refused as unknown, so seeing the
+fallback named means both were refused.
+
+**What to do.** Read the account on the mirror node before you send again. The wallet may have executed the
+transaction regardless. Measured on 30 September 2026 with HashPack over the generic WalletConnect connector: of
+two sends, one was refused in the library and executed on the network all the same, charging 187,203 gas, while
+the page was told the method was unsupported. `explainError` answers `wallet-unsupported` here, names the wallet
+and says plainly that the relay never saw the request.
+
+**Captured in** `packages/nextjs/lib/hedera/__tests__/fixtures/wallet/hashpack-send-unsupported.json`.
+
 ## `execution reverted: Too little received`
 
 **What it means.** The pool would return less than the minimum you set. This one is honest: it is the slippage guard

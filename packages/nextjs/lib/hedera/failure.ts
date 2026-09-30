@@ -36,6 +36,8 @@ export type FailureKind =
   | "empty-revert"
   | "unknown-revert"
   | "rpc-refusal"
+  /** The wallet itself refused, with an EIP-1193 provider code. The relay never saw the request. */
+  | "wallet-unsupported"
   | "rate-limited"
   | "unavailable"
   | "rejected-by-user"
@@ -333,6 +335,24 @@ export function explainError(error: unknown, context?: FailureContext): HederaFa
       `relay -32004: ${relayMessage}`,
     );
   }
+  // EIP-1193 numbers provider errors in the 4000s, and a provider is the wallet. Calling one of these a relay
+  // refusal names the wrong culprit, which is the mistake this whole library exists to stop. Measured on
+  // 30 September 2026: HashPack over WalletConnect answers 4200 to `eth_sendTransaction`, viem retries with
+  // `wallet_sendTransaction` and is refused again, and the network had already executed the call.
+  if (rpc.code !== null && rpc.code >= 4000 && rpc.code <= 4999) {
+    return failureOf(
+      "wallet-unsupported",
+      rpc.code,
+      rpc.code === 4200
+        ? `The wallet does not support the method this send needs: ${relayMessage}. The relay never saw the ` +
+            `request. The wallet may still have executed the transaction: read the account on the mirror node ` +
+            `before sending it again.`
+        : `The wallet refused the request: ${relayMessage}. The relay never saw it.`,
+      "none",
+      `EIP-1193 ${rpc.code}`,
+    );
+  }
+
   if (rpc.code !== null) {
     return failureOf(
       "rpc-refusal",

@@ -1,0 +1,16 @@
+{
+  "recordedIn": "the builder's HashPack session of 2026-09-30, from a throwaway page that sent the same calls this template's pages send",
+  "wallet": "HashPack on Hedera testnet (chain 296), paired through the generic WalletConnect connector that RainbowKit and wagmi provide",
+  "account": "0.0.10792666 / 0x4515688169760ce47418a26508E5021463BF9123",
+  "call": "multicall[exactInput, unwrapWHBAR] on the SaucerSwap router 0.0.1414040, a swap of 1 SAUCE for HBAR",
+  "display": "HashPack showed a Send Transaction sheet with the contract, an Amount of 0.0 HBAR and the call data, and no network fee line at all. After Approve it showed a dialog reading only \"Error!\".",
+  "note": "Two attempts were made in that session. This one never reached the network. The other, a swap of 0.1 HBAR for SAUCE, produced the same error in the page while the network executed and charged it (0xf5b971603b8fcbc0c249c57be02aad89442dd395fb17b94b66a3f3f766af20d3, SUCCESS, 187203 gas of a 201668 limit). viem asks eth_sendTransaction first and falls back to wallet_sendTransaction only when the first is refused as an unknown method, so both were refused here.",
+  "library": "wagmi 2.19.5, viem 2.39.0",
+  "error": {
+    "name": "UnsupportedProviderMethodError",
+    "code": 4200,
+    "message": "The Provider does not support the requested method.",
+    "details": "Unsupported method: wallet_sendTransaction",
+    "wrappedBy": ["TransactionExecutionError", "ContractFunctionExecutionError"]
+  }
+}
