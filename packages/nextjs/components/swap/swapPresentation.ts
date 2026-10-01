@@ -1,6 +1,7 @@
 import type { Hex } from "viem";
 import { actionLabelFor } from "~~/components/hedera/failureText";
 import {
+  type EvmAddress,
   type FailureAction,
   type HederaFailure,
   type PreflightVerdict,
@@ -156,6 +157,17 @@ export function sendIsBlocked({
   sendBusy: boolean;
 }): boolean {
   return blocks(checks) || freshness.stale || sendBusy;
+}
+
+/**
+ * Whether a plan may still be sent by the account currently connected. A wallet can switch account under the
+ * page without reloading it, and a plan built for the previous account names it as the recipient and carries
+ * checks read for it, so sending that plan from a new account pays the old one against an allowance the new one
+ * never granted. The page also drops the plan on a switch; this is the answer that does not depend on an effect
+ * having run.
+ */
+export function planBelongsTo(plan: { readonly account: EvmAddress }, account: EvmAddress | null): boolean {
+  return account !== null && plan.account === account;
 }
 
 /**

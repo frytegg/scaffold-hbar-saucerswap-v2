@@ -9,11 +9,13 @@ import {
   facadeReturnVerdict,
   parseAmountInput,
   parseSlippagePercent,
+  planBelongsTo,
   quoteFreshness,
   sendIsBlocked,
   unitsOf,
 } from "../swapPresentation";
 import { describe, expect, it } from "vitest";
+import { toEvmAddress } from "~~/lib/hedera";
 import { allowanceVerdict, formatTokenAmount, testnet } from "~~/lib/hedera";
 
 const SAUCE = testnet.sauce;
@@ -150,5 +152,26 @@ describe("the route's own vocabulary", () => {
     expect(directionLabel("hbar-to-token", SAUCE)).toBe("HBAR to SAUCE");
     expect(directionLabel("token-to-hbar", SAUCE)).toBe("SAUCE to HBAR");
     expect(unitsOf("token-to-hbar", SAUCE).output).toBe(HBAR_UNIT);
+  });
+});
+
+// A wallet can switch account under the page without reloading it. A plan built for the previous account names
+// it as the recipient and carries checks read for it, so sending it from a new account pays the old one against
+// an allowance the new one never granted. Found by a hardening pass on 30 September 2026 (H-107), where six
+// independent lenses reported it separately.
+describe("a plan is only sendable by the account it was quoted for", () => {
+  const A = toEvmAddress("0x4515688169760ce47418a26508e5021463bf9123");
+  const B = toEvmAddress("0x3b7a9a1b874dd0994cc4137047dacf2803bb6c01");
+
+  it("lets the account it was quoted for send it", () => {
+    expect(planBelongsTo({ account: A }, A)).toBe(true);
+  });
+
+  it("refuses a plan quoted for another account", () => {
+    expect(planBelongsTo({ account: A }, B)).toBe(false);
+  });
+
+  it("refuses when no account is connected", () => {
+    expect(planBelongsTo({ account: A }, null)).toBe(false);
   });
 });

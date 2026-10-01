@@ -69,6 +69,12 @@ export function createPlanReads(client: PublicClient, mirror: MirrorClient): Pla
 }
 
 export type SwapPlan = {
+  /**
+   * The account the plan was quoted for. Its recipient is this account and every check in it was read for this
+   * account, so a plan is only sendable by it: a wallet that switches account under the page leaves a plan that
+   * would send from the new account to the old one, cleared by the old one's allowance.
+   */
+  readonly account: EvmAddress;
   readonly direction: SwapDirection;
   readonly amountIn: bigint;
   readonly quotedAmountOut: bigint;
@@ -211,6 +217,7 @@ export async function buildSwapPlan(input: PlanInput): Promise<PlanResult> {
   return {
     ok: true,
     plan: {
+      account,
       direction,
       amountIn,
       quotedAmountOut,

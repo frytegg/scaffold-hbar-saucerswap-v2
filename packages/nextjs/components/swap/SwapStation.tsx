@@ -14,6 +14,7 @@ import {
   checkOf,
   checkOfRefusal,
   facadeReturnVerdict,
+  planBelongsTo,
   quoteFreshness,
   sendIsBlocked,
   unitsOf,
@@ -133,6 +134,18 @@ export const SwapStation = () => {
     return () => clearInterval(tick);
   }, [plan]);
 
+  // A plan belongs to the account it was quoted for: its recipient is that account, and every check in it was
+  // read for that account. A wallet can switch account or chain under the page without reloading it, and the
+  // plan would survive the switch, so Send would sign from the new account a swap addressed to the old one and
+  // cleared by the old one's allowance. Dropping it is the only safe answer: the reader quotes again.
+  useEffect(() => {
+    setPlan(null);
+    setPlanRefusal(null);
+    setFacadeCheck(null);
+    setOutcome(null);
+    setSendFailure(null);
+  }, [account, chainId]);
+
   const runQuote = useCallback(async (): Promise<void> => {
     if (planReads === null || account === null) return;
     setQuoting(true);
@@ -195,6 +208,9 @@ export const SwapStation = () => {
     // The button is disabled on the same answer. Asking it again here is what keeps a blocked check or a quote
     // nobody has looked at since from reaching a wallet through any other path into this handler.
     if (plan === null || freshness === null || sendIsBlocked({ checks, freshness, sendBusy: sending })) return;
+    // Belt and braces for the wallet switching account under the page: the effect above drops the plan, and this
+    // refuses to send one that is not this account's even if it somehow survived.
+    if (!planBelongsTo(plan, account)) return;
     setSending(true);
     setSendFailure(null);
     setOutcome(null);
@@ -202,12 +218,16 @@ export const SwapStation = () => {
       const hash = await writeContract(config, { ...plan.call, chainId: testnet.chainId });
       setOutcome(await trackTransaction(mirror, hash, accountId));
       setRefreshKey(key => key + 1);
+      // The send spends what the checks cleared: the allowance it used is gone, and the balances it read have
+      // moved. Keeping the plan would leave the button enabled on answers this send has already used up, so the
+      // plan is dropped and a second swap has to be quoted and checked again.
+      setPlan(null);
     } catch (error: unknown) {
       setSendFailure(explainError(error, { address: plan.call.address, functions: plan.functions }));
     } finally {
       setSending(false);
     }
-  }, [plan, checks, freshness, sending, config, mirror, accountId]);
+  }, [plan, checks, freshness, sending, config, mirror, accountId, account]);
 
   const onSwitch = useCallback(async (): Promise<void> => {
     setSwitchFailure(null);

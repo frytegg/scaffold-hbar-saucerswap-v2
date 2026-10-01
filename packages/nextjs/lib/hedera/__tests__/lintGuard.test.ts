@@ -19,6 +19,11 @@ type GuardMessage = Pick<Linter.LintMessage, "ruleId" | "line">;
  * `lib/hedera`, where it does not. Both are linted once here rather than once per test, because one `ESLint`
  * resolves the flat config on its first lint and that resolution is the whole cost: four of them made a cold run
  * miss the test's own timeout while the other suites were transforming on the neighbouring workers.
+ *
+ * The budget below is 600 s, not 180. A hardening pass measured this cold start between 16 s and 187 s on the
+ * same machine on 30 September 2026, and at 180 s the suite passed in a warm checkout and failed in a fresh
+ * clone of the same commit. A reader who scaffolds this template and runs the offline suite is always on the
+ * cold side of that range, so the budget has to clear its worst measured case rather than its median.
  */
 let inHooks: GuardMessage[];
 let inLibrary: GuardMessage[];
@@ -33,7 +38,7 @@ beforeAll(async () => {
   };
   inHooks = await guardMessagesAt(IN_HOOKS);
   inLibrary = await guardMessagesAt(FIXTURE);
-}, 180_000);
+}, 600_000);
 
 describe("the transaction-value lint guard", () => {
   it("fails a planted value: and the ether helpers in hooks/, and nothing else", () => {
