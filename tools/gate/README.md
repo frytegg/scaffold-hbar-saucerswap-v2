@@ -13,7 +13,7 @@ Checks that this template still scaffolds through the published `create-scaffold
 | `routes.test.mjs` | tests of the route rules: `node --test tools/gate/routes.test.mjs` |
 | `tsconfig.json` | strict type-check of the three JavaScript modules above; `check:tools` runs it with the tests |
 | `secret-scan.sh` | tracked env files, then gitleaks over the whole history and over an export of HEAD, with the root `.gitleaks.toml` |
-| `literal-command-control.sh` | negative control: records how the scaffolding command ends when it is typed exactly as the bounty brief prints it |
+| `literal-command-control.sh` | negative control: records how the scaffolding command ends when it carries `--template` with no `--` separator, the form the brief printed until 1 October 2026 and the form a reader still copies from older posts |
 
 ## One leg
 

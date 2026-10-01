@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Negative control. Runs the scaffolding command exactly as the bounty brief prints it (the "create" initializer
-# with --template and no "--" separator) under whatever npm is on PATH, and records how it ends. Seen so far:
+# Negative control. Runs the "create" initializer with --template and NO "--" separator, under whatever npm is
+# on PATH, and records how it ends. The bounty brief printed that form until 1 October 2026, when it was
+# corrected to `npm create scaffold-hbar@latest -- --template owner/repo` after this control's transcripts
+# were sent to the organisers. The form is still worth testing: it survives in older posts, screenshots and
+# agent contexts, and it is what someone copying from them will type. Seen so far:
 #   npm 10  drops --template silently; the CLI starts without a template and stops at its first prompt (no TTY)
 #   npm 11  the same, after warning that the flag will stop working
 #   npm 12  refuses the unknown flag before the CLI starts
