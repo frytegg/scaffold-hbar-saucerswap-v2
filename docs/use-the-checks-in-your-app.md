@@ -1,19 +1,19 @@
 # Use the checks in your app
 
-Each of these answers, before anything is signed, one question a Hedera transaction fails on: whether the recipient can receive the token, whether the router may spend it, whether the call can be priced at all. Those are the failures the network charges for and refuses anyway, and the allowance is the one every simulator a wallet can ask accepts: there the wallet showed a fee, a Confirm button and no warning of any kind, and the transaction failed on the network afterwards. This template's pages are one caller of these functions; your app can be another.
+Each of these answers one question a Hedera transaction fails on, before anything is signed. Can the recipient receive the token? May the router spend it? Can the call be priced at all? The network charges for these failures and refuses the transaction anyway. The allowance is the one every simulator a wallet can ask accepts. In that case the wallet showed a fee, a Confirm button and no warning of any kind. The transaction failed on the network afterwards. This template's pages are one caller of these functions; your app can be another.
 
 Every function below is exported by `packages/nextjs/lib/hedera/index.ts` and imported from `~~/lib/hedera`. The reads are keyless: an account, a token relation, an allowance, an NFT approval, a gas price.
 
-To call them from a project of your own, copy the modules at the top of `packages/nextjs/lib/hedera/` into it — its two subdirectories are this repository's own test and script tiers, and nothing you call is in them. Then point one of your own path aliases at where you put them, or replace `~~/lib/hedera` in the example below with that path: `~~` is this template's own alias and resolves to nothing outside a Scaffold-HBAR project. There is no package to install; copying is how you take it.
+To call them from a project of your own, copy the modules at the top of `packages/nextjs/lib/hedera/` into it. Its two subdirectories are this repository's own test and script tiers, and nothing you call is in them. Then point one of your own path aliases at where you put them. Or replace `~~/lib/hedera` in the example below with that path. `~~` is this template's own alias. It resolves to nothing outside a Scaffold-HBAR project. There is no package to install; copying is how you take it.
 
-Nothing else has to come with them. Each of those modules imports from that same directory and from `viem`, and from nothing else: no Next.js, no React, no wagmi, and no page, hook or component of this template. `packages/nextjs/lib/hedera/__tests__/libraryDependencies.test.ts` reads them and fails on any import that is neither, so that sentence is checked rather than remembered. What they need while they run is the two public endpoints the example names, and no key.
+Nothing else has to come with them. Each of those modules imports from that same directory and from `viem`, and from nothing else. No Next.js, no React, no wagmi, no page, hook or component of this template. `packages/nextjs/lib/hedera/__tests__/libraryDependencies.test.ts` reads them and fails on any import that is neither. That rule is checked, not remembered. At run time they need the two public endpoints the example names, and no key.
 
-That copy was made on 24 September 2026, into a project holding nothing but `viem` and TypeScript: the modules
-compiled under `strict`, and a `checkRecipient` in that project answered from the mirror node. Two things it needed,
-neither of them this template's: `skipLibCheck`, or the DOM library, in its `tsconfig.json`, because viem's own
-dependency declares browser types; and a bundler or CommonJS output, because these modules import each other without
-file extensions, which Node refuses when it reads them as ES modules. A Scaffold-HBAR or Next.js project gives both
-already.
+That copy was made on 24 September 2026, into a project holding nothing but `viem` and TypeScript. The modules
+compiled under `strict`, and a `checkRecipient` in that project answered from the mirror node. It needed two
+things, neither of them this template's. First, `skipLibCheck` or the DOM library in its `tsconfig.json`, because
+viem's own dependency declares browser types. Second, a bundler or CommonJS output, because these modules import
+each other without file extensions, and Node refuses that when it reads them as ES modules. A Scaffold-HBAR or
+Next.js project gives both already.
 
 ```ts
 import { createPublicClient, http } from "viem";
@@ -47,7 +47,7 @@ export async function beforeSending(call: BuiltCall, owner: EvmAddress, amountIn
 }
 ```
 
-`rpc` is a viem `PublicClient` and `mirror` a `MirrorClient` over the public endpoints. Every verdict carries `check`, `status` (`pass`, `warn` or `fail`), `message` and `action`; `explainError` returns `kind`, `code`, `statusName`, `message` and `action`. Below, `{…}` is what the call fills in.
+`rpc` is a viem `PublicClient` and `mirror` a `MirrorClient` over the public endpoints. Every verdict carries `check`, `status` (`pass`, `warn` or `fail`), `message` and `action`. `explainError` returns `kind`, `code`, `statusName`, `message` and `action`. Below, `{…}` is what the call fills in.
 
 | behaviour | exported from `~~/lib/hedera` | the call | what it answers |
 | --- | --- | --- | --- |
@@ -61,6 +61,6 @@ export async function beforeSending(call: BuiltCall, owner: EvmAddress, amountIn
 | an account can have two addresses, and only one of them can receive a token | `checkRecipient`, `isLongZeroAddress` | the same call, which compares the two forms before it looks at associations | `fail` — {recipient} is the long-zero form of {account}, which has its own EVM address {evmAddress}. Pass that address: the network refuses the long-zero form of such an account (INVALID_ALIAS_KEY). |
 | a failed HTS operation can be a successful transaction | `facadeResultVerdict`, `explainResponseCode` | `facadeResultVerdict(responseCode)` | on anything but 22, `fail` — The transaction succeeded but the HTS operation returned 194 (TOKEN_ALREADY_ASSOCIATED_TO_ACCOUNT). The account was already associated with this token: nothing changed, and the call was still charged. |
 
-After a send, `postMortem(mirror, result)` reads the transaction's DETAIL view and, when a `multicall` left `0x` behind, its `/actions`, and answers the same shape as `explainError`.
+After a send, `postMortem(mirror, result)` reads the transaction's DETAIL view, and its `/actions` when a `multicall` left `0x` behind. It answers the same shape as `explainError`.
 
-The transactions each sentence comes from, what the mistake costs in HBAR and the test that pins the sentence are in [`hedera-behaviour.md`](hedera-behaviour.md), one section per row and in this order, which `yarn check:docs` holds by reading the rows of the table above against that file's own headings. The nine sentences are quoted from the functions that say them, and `packages/nextjs/lib/hedera/__tests__/docSentences.test.ts` asserts each one against its own function, so a message reworded in the library fails `yarn test:unit` instead of leaving this page quietly wrong. `yarn replay` prints three of them with nothing else running: no key, no wallet, no account, no network.
+[`hedera-behaviour.md`](hedera-behaviour.md) holds the transactions each sentence comes from, what the mistake costs in HBAR and the test that pins the sentence. It has one section per row, in the order of the table above. `yarn check:docs` holds that order: it reads those rows against that file's own headings. The nine sentences are quoted from the functions that say them. `packages/nextjs/lib/hedera/__tests__/docSentences.test.ts` asserts each one against its own function, so a message reworded in the library fails `yarn test:unit` instead of leaving this page quietly wrong. `yarn replay` prints three of them with nothing else running: no key, no wallet, no account, no network.
