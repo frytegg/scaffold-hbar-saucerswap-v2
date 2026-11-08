@@ -50,7 +50,14 @@ if [ -z "$GITLEAKS" ]; then
   fi
   archive="$SCRATCH/gitleaks.tar.gz"
   url="https://github.com/gitleaks/gitleaks/releases/download/v$GITLEAKS_VERSION/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-  curl -fsSL -o "$archive" "$url" || { echo "cannot download $url" >&2; exit 1; }
+  delay=1
+  for attempt in 1 2 3 4 5; do
+    curl -fsSL --connect-timeout 20 --max-time 120 -o "$archive" "$url" && break
+    if [ "$attempt" -eq 5 ]; then echo "cannot download $url" >&2; exit 1; fi
+    echo "gitleaks download failed on attempt $attempt of 5, next try in ${delay}s" >&2
+    sleep "$delay"
+    delay=$((delay * 2))
+  done
   echo "$GITLEAKS_LINUX_X64_SHA256  $archive" | sha256sum -c - || { echo "checksum mismatch for $url" >&2; exit 1; }
   tar -xzf "$archive" -C "$SCRATCH" gitleaks || exit 1
   GITLEAKS="$SCRATCH/gitleaks"
